@@ -1,0 +1,32 @@
+{
+  "facilityName": "Lunch Booking",
+  "description": "Book lunch for office days",
+  "category": "Food",
+  "icon": "utensils",
+  "status": true,
+  "published": false,
+  "fields": [
+    {
+      "label": "Meal Type",
+      "fieldType": "DROPDOWN",
+      "placeholder": "Select meal type",
+      "required": true,
+      "displayOrder": 1,
+      "options": ["Veg", "Non-Veg", "Jain"]
+    },
+    {
+      "label": "Any Notes",
+      "fieldType": "TEXTAREA",
+      "placeholder": "Dietary notes",
+      "required": false,
+      "displayOrder": 2
+    }
+  ],
+  "rules": {
+    "bookingDeadline": "11:00",
+    "reminderTime": "10:30",
+    "qrRequired": false,
+    "allowCancellation": true,
+    "regularCommuteEnabled": false
+  }
+}

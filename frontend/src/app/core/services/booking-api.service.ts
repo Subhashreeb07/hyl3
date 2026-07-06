@@ -1,0 +1,33 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import {
+  BookingDetail,
+  BookingHistoryItem,
+  MessageResponse,
+  SubmitBookingRequest,
+  SubmitBookingResponse
+} from '../models/employee-flow.models';
+
+@Injectable({ providedIn: 'root' })
+export class BookingApiService {
+  private readonly baseUrl = 'http://localhost:8080/api/bookings';
+
+  constructor(private readonly http: HttpClient) {}
+
+  submitBooking(payload: SubmitBookingRequest): Observable<SubmitBookingResponse> {
+    return this.http.post<SubmitBookingResponse>(this.baseUrl, payload);
+  }
+
+  getBookingHistory(employeeId: string): Observable<BookingHistoryItem[]> {
+    return this.http.get<BookingHistoryItem[]>(`${this.baseUrl}/history/${employeeId}`);
+  }
+
+  getBookingDetail(bookingId: number): Observable<BookingDetail> {
+    return this.http.get<BookingDetail>(`${this.baseUrl}/${bookingId}`);
+  }
+
+  cancelBooking(bookingId: number): Observable<MessageResponse> {
+    return this.http.delete<MessageResponse>(`${this.baseUrl}/${bookingId}`);
+  }
+}

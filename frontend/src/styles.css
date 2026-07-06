@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --hy-bg: #edf2fb;
+  --hy-card: #ffffff;
+  --hy-ink: #0f172a;
+  --hy-muted: #5b667a;
+  --satori-accent: #0f6cbd;
+  --satori-accent-strong: #0b4f8a;
+  --satori-danger: #b42318;
+}
+
+body {
+  margin: 0;
+  background: var(--hy-bg);
+  color: var(--hy-ink);
+  font-family: "Inter", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.material-icons,
+.material-icons-outlined {
+  font-family: "Material Icons Outlined", "Material Icons", sans-serif !important;
+}
+
+.satori-card {
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 1rem;
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
+}
+
+.satori-primary,
+.satori-secondary,
+.satori-danger {
+  border-radius: 0.75rem;
+  padding: 0.58rem 0.95rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  transition: all 150ms ease;
+}
+
+.satori-primary {
+  border: 1px solid var(--satori-accent);
+  background: var(--satori-accent);
+  color: #ffffff;
+}
+
+.satori-primary:hover {
+  border-color: var(--satori-accent-strong);
+  background: var(--satori-accent-strong);
+}
+
+.satori-secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.satori-secondary:hover {
+  background: #f8fafc;
+}
+
+.satori-danger {
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: var(--satori-danger);
+}
+
+.satori-danger:hover {
+  background: #ffe4e6;
+}

@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: hyhub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hyhub
+      POSTGRES_USER: hyhub_app
+      POSTGRES_PASSWORD: hyhub_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - hyhub_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hyhub_app -d hyhub"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hyhub_postgres_data:
