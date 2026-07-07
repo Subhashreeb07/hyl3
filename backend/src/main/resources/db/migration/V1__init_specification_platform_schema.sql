@@ -123,12 +123,3 @@ CREATE INDEX idx_booking_responses_booking ON booking_responses (booking_id);
 CREATE INDEX idx_notifications_employee ON notifications (employee_id);
 CREATE INDEX idx_audit_logs_actor ON audit_logs (actor_id);
 CREATE INDEX idx_audit_logs_entity ON audit_logs (entity_name, entity_id);
-
-INSERT INTO employees (employee_id, full_name, email, role_code, active)
-VALUES ('EMP001', 'Subha', 'subha@hyhub.com', 'EMPLOYEE', TRUE);
-
-INSERT INTO employees (employee_id, full_name, email, role_code, active)
-VALUES ('EMP002', 'Sana', 'sana@hyhub.com', 'EMPLOYEE', TRUE);
-
-INSERT INTO employees (employee_id, full_name, email, role_code, active)
-VALUES ('ADMIN001', 'Platform Administrator', 'admin@hyhub.com', 'ADMIN', TRUE);

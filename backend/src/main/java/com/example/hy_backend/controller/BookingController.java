@@ -39,11 +39,7 @@ public class BookingController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                 required = true,
                 content = @Content(
-                    schema = @Schema(implementation = BookingDtos.SubmitBookingRequest.class),
-                    examples = @ExampleObject(
-                        name = "Lunch booking",
-                        value = "{\"facilityId\":1,\"employeeId\":\"EMP001\",\"bookingDate\":\"2026-07-07\",\"responses\":[{\"fieldId\":1,\"value\":\"Veg\"},{\"fieldId\":2,\"value\":\"No peanuts\"}]}"
-                    )
+                    schema = @Schema(implementation = BookingDtos.SubmitBookingRequest.class)
                 )
             ) BookingDtos.SubmitBookingRequest request
     ) {

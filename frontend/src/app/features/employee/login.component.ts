@@ -20,28 +20,21 @@ import { ToastService } from '../../core/services/toast.service';
         </div>
 
         <div class="rounded-2xl bg-white p-5 shadow-sm md:p-6">
-          <button
-            type="button"
-            class="w-full rounded-xl bg-[#9a562d] px-4 py-4 text-lg font-semibold text-white transition hover:bg-[#824923]"
-            (click)="signInWithSso()"
-          >
-            🔑 Sign in with SSO
-          </button>
-
-          <div class="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-[#9ca3af]">
-            <span class="h-px flex-1 bg-[#e5ded7]"></span>
-            <span>or</span>
-            <span class="h-px flex-1 bg-[#e5ded7]"></span>
-          </div>
-
-          <form [formGroup]="form" (ngSubmit)="continueWithEmail()" class="grid gap-3">
-            <label class="text-xs font-semibold uppercase tracking-[0.12em] text-[#7c5a45]">Work Email</label>
+          <form [formGroup]="form" (ngSubmit)="signInWithSso()" class="grid gap-3">
+            <label class="text-xs font-semibold uppercase tracking-[0.12em] text-[#7c5a45]">Employee ID</label>
             <input
-              formControlName="workEmail"
+              formControlName="employeeId"
               class="rounded-xl border border-[#ece6e0] bg-[#f7f5f3] px-4 py-3 text-sm text-[#374151] outline-none ring-[#d39c78] focus:ring"
-              placeholder="employee@hyland.com"
+              placeholder="Your Employee ID"
             />
-            <button type="submit" class="mt-1 text-sm font-semibold text-[#9a562d] hover:text-[#7b431f]">Continue with Email →</button>
+            <label class="text-xs font-semibold uppercase tracking-[0.12em] text-[#7c5a45]">Password</label>
+            <input
+              type="password"
+              formControlName="password"
+              class="rounded-xl border border-[#ece6e0] bg-[#f7f5f3] px-4 py-3 text-sm text-[#374151] outline-none ring-[#d39c78] focus:ring"
+              placeholder="Your Password"
+            />
+            <button type="submit" class="mt-1 w-full rounded-xl bg-[#9a562d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#824923]">Sign In</button>
           </form>
           <p *ngIf="error()" class="mt-2 text-sm font-medium text-rose-700">{{ error() }}</p>
         </div>
@@ -59,7 +52,8 @@ export class LoginComponent {
   readonly error = signal<string | null>(null);
 
   readonly form = this.fb.group({
-    workEmail: ['employee@hyland.com', [Validators.required, Validators.email]]
+    employeeId: ['', Validators.required],
+    password: ['', Validators.required]
   });
 
   constructor(
@@ -71,23 +65,16 @@ export class LoginComponent {
   ) {}
 
   signInWithSso(): void {
-    this.doLogin('EMP001', 'password123');
-  }
-
-  continueWithEmail(): void {
     this.error.set(null);
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    const employeeId = (document.querySelector('input[placeholder="Employee ID"]') as HTMLInputElement)?.value ?? '';
+    const password = (document.querySelector('input[placeholder="Password"]') as HTMLInputElement)?.value ?? '';
+    
+    if (!employeeId.trim() || !password.trim()) {
+      this.toastService.show('Please enter employee ID and password', 'error');
       return;
     }
-
-    const email = (this.form.value.workEmail ?? '').toLowerCase();
-    const employeeId = email.includes('admin')
-      ? 'ADMIN001'
-      : email.includes('sana')
-        ? 'EMP002'
-        : 'EMP001';
-    this.doLogin(employeeId, 'password123');
+    
+    this.doLogin(employeeId, password);
   }
 
   private doLogin(employeeId: string, password: string): void {

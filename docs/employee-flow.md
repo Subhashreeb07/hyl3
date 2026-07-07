@@ -55,14 +55,13 @@ Booking payload supports date-aware booking:
 18. Employee cancels from booking detail when permitted
 19. Frontend calls DELETE /api/bookings/{bookingId}
 
-## Demo Credentials
+## Credentials
 
-- EMP001 / password123
-- EMP002 / password123
+Employees must authenticate with their assigned employee ID and password through the login page.
 
-## Demo Data Bootstrap
+## Initial Setup
 
-A startup initializer creates a published "Lunch Booking" facility if no published facility exists. This ensures dashboard and booking flow are available immediately.
+No demo data or bootstrap data is created at startup. All facilities, templates, and triggers must be configured through the admin interface.
 
 Source:
 - backend/src/main/java/com/example/hy_backend/config/DemoDataInitializer.java

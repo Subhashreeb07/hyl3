@@ -381,11 +381,11 @@ export class AdminNotificationsPageComponent implements OnInit {
   previewTemplate(): void {
     const message = this.templateForm.value.messageTemplate ?? '';
     const rendered = message
-      .replaceAll('{{employeeName}}', 'Alex Johnson')
-      .replaceAll('{{facilityName}}', 'Lunch Booking')
-      .replaceAll('{{bookingDate}}', '2026-07-08')
-      .replaceAll('{{deadlineTime}}', '11:00')
-      .replaceAll('{{office}}', 'Hyderabad');
+      .replaceAll('{{employeeName}}', '[Employee Name]')
+      .replaceAll('{{facilityName}}', '[Facility Name]')
+      .replaceAll('{{bookingDate}}', '[Booking Date]')
+      .replaceAll('{{deadlineTime}}', '[Deadline Time]')
+      .replaceAll('{{office}}', '[Office Location]');
     this.templatePreview.set(rendered || 'No template content to preview');
   }
 
@@ -518,14 +518,14 @@ export class AdminNotificationsPageComponent implements OnInit {
       const response = await firstValueFrom(
         this.adminApi.testNotification({
           templateId,
-          employeeId: 'EMP001',
+          employeeId: '',
           channels: this.templateForm.value.channels ?? ['IN_APP'],
           placeholders: {
-            employeeName: 'Alex Johnson',
-            facilityName: 'Lunch Booking',
-            bookingDate: '2026-07-08',
-            deadlineTime: '11:00',
-            office: 'Hyderabad'
+            employeeName: '',
+            facilityName: '',
+            bookingDate: '',
+            deadlineTime: '',
+            office: ''
           }
         })
       );

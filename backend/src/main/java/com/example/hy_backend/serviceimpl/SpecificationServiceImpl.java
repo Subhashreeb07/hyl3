@@ -104,44 +104,14 @@ public class SpecificationServiceImpl implements SpecificationService {
     @Override
     public JsonNode getTemplateSpecification() {
         ObjectNode root = objectMapper.createObjectNode();
-        root.put("facilityName", "Lunch Booking");
-        root.put("description", "Book lunch for office days");
-        root.put("category", "Food");
-        root.put("icon", "utensils");
+        root.put("facilityName", "");
+        root.put("description", "");
+        root.put("category", "");
+        root.put("icon", "");
         root.put("status", true);
         root.put("published", false);
-
-        ArrayNode fields = root.putArray("fields");
-
-        ObjectNode field1 = fields.addObject();
-        field1.put("label", "Meal Type");
-        field1.put("fieldType", "DROPDOWN");
-        field1.put("placeholder", "Select meal type");
-        field1.put("required", true);
-        field1.put("displayOrder", 1);
-        field1.put("validationJson", "{\"allowed\":[\"Veg\",\"Non-Veg\",\"Jain\"]}");
-        ArrayNode options = field1.putArray("options");
-        options.add("Veg");
-        options.add("Non-Veg");
-        options.add("Jain");
-
-        ObjectNode field2 = fields.addObject();
-        field2.put("label", "Notes");
-        field2.put("fieldType", "TEXTAREA");
-        field2.put("placeholder", "Any dietary notes");
-        field2.put("required", false);
-        field2.put("displayOrder", 2);
-        field2.put("validationJson", "{\"maxLength\":250}");
-
-        ObjectNode rules = root.putObject("rules");
-        rules.put("bookingStartTime", "06:00");
-        rules.put("bookingDeadline", "11:00");
-        rules.put("reminderTime", "10:30");
-        rules.put("qrRequired", false);
-        rules.put("allowCancellation", true);
-        rules.put("maximumCapacity", 500);
-        rules.put("regularCommuteEnabled", false);
-
+        root.putArray("fields");
+        root.putObject("rules");
         return root;
     }
 

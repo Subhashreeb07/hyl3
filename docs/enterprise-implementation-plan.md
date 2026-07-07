@@ -57,7 +57,7 @@ Create a normalized schema for specification-driven facilities and dynamic booki
 
 ### Compatibility notes
 - Existing entities remain compatible with generated schema.
-- `employees` seed rows are included for current demo identities (`EMP001`, `EMP002`, `ADMIN001`).
+- No seed data is created on startup. All employees and facilities must be created through the application interfaces.
 
 ## Module 3: Entity Classes (Completed)
 

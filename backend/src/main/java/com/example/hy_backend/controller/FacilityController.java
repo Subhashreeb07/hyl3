@@ -38,11 +38,7 @@ public class FacilityController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                 required = true,
                 content = @Content(
-                    schema = @Schema(implementation = FacilityDtos.FacilityCreateRequest.class),
-                    examples = @ExampleObject(
-                        name = "Lunch Facility",
-                        value = "{\"facilityName\":\"Lunch Booking\",\"description\":\"Daily meal booking\",\"category\":\"Food\",\"icon\":\"utensils\",\"status\":true}"
-                    )
+                    schema = @Schema(implementation = FacilityDtos.FacilityCreateRequest.class)
                 )
             ) FacilityDtos.FacilityCreateRequest request
     ) {
