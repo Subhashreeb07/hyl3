@@ -36,3 +36,7 @@ build/
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+
+### Local Database ###
+data/
+backend/data/
