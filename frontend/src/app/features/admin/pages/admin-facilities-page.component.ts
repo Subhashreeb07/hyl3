@@ -68,22 +68,23 @@ export class AdminFacilitiesPageComponent {
   }
 
   createFacility(): void {
-    this.state.createDraft();
-    this.router.navigateByUrl('/admin/form-builder');
+    const draft = this.state.createDraft();
+    this.state.setActiveFacility(draft.id);
+    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'create', facilityId: draft.id } });
   }
 
   goImport(): void {
-    this.router.navigateByUrl('/admin/form-builder');
+    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'import' } });
   }
 
   editFacility(id: number): void {
     this.state.setActiveFacility(id);
-    this.router.navigateByUrl('/admin/form-builder');
+    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'edit', facilityId: id } });
   }
 
   previewFacility(id: number): void {
     this.state.setActiveFacility(id);
-    this.router.navigateByUrl('/admin/form-builder');
+    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'preview', facilityId: id } });
   }
 
   async publishFacility(id: number): Promise<void> {

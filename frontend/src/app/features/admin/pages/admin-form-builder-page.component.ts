@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -242,7 +243,8 @@ export class AdminFormBuilderPageComponent {
     private readonly state: FacilityBuilderStateService,
     private readonly snackBar: MatSnackBar,
     private readonly facilityAdminApi: FacilityAdminApiService,
-    private readonly specificationApi: SpecificationApiService
+    private readonly specificationApi: SpecificationApiService,
+    private readonly route: ActivatedRoute
   ) {
     this.bootstrap();
   }
@@ -253,7 +255,32 @@ export class AdminFormBuilderPageComponent {
     } catch {
       // Keep local builder usable even if backend load fails.
     }
-    this.loadInitialFacility();
+
+    const queryParams = this.route.snapshot.queryParams;
+    const mode = queryParams['mode'] ?? 'view';
+    const facilityId = queryParams['facilityId'] ? Number(queryParams['facilityId']) : null;
+
+    if (mode === 'create') {
+      // For create mode, ensure we're working with the newly created draft
+      if (facilityId) {
+        this.state.setActiveFacility(facilityId);
+      }
+      this.loadInitialFacility();
+    } else if (mode === 'edit' && facilityId) {
+      // For edit mode, load the specified facility
+      this.state.setActiveFacility(facilityId);
+      this.loadInitialFacility();
+    } else if (mode === 'import') {
+      // For import mode, create a fresh draft
+      const draft = this.state.createDraft();
+      this.state.setActiveFacility(draft.id);
+      this.patchFromRecord(draft);
+      this.refreshJson();
+      this.openImportPrompt();
+    } else {
+      // Default view mode - load existing or first facility
+      this.loadInitialFacility();
+    }
   }
 
   createNewDraft(): void {
