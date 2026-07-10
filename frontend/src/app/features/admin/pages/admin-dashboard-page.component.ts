@@ -67,9 +67,12 @@ import { FacilityBuilderStateService } from '../state/facility-builder-state.ser
 
           <div class="mt-6 rounded-xl bg-[#f0f6ff] p-4">
             <p class="text-xs uppercase tracking-[0.12em] text-[#0f6cbd]">Recently Published</p>
-            <ul class="mt-3 space-y-2 text-sm text-slate-700">
+            <ul class="mt-3 space-y-2 text-sm text-slate-700" *ngIf="recentlyPublished().length > 0; else noRecentPublished">
               <li *ngFor="let facility of recentlyPublished()">{{ facility.facilityName }} · {{ facility.updatedAt | date: 'mediumDate' }}</li>
             </ul>
+            <ng-template #noRecentPublished>
+              <p class="mt-3 text-sm text-slate-600">No recently published facilities</p>
+            </ng-template>
           </div>
         </article>
       </section>

@@ -110,7 +110,7 @@ import { ToastService } from '../../../core/services/toast.service';
               <span class="font-semibold">{{ point.totalBookings }} bookings</span>
             </div>
             <div class="mt-2 h-2 rounded bg-slate-200">
-              <div class="h-2 rounded bg-[#0f6cbd]" [style.width.%]="point.totalBookings"></div>
+              <div class="h-2 rounded bg-[#0f6cbd]" [style.width.%]="summaryPercent(point.totalBookings, trendMax())"></div>
             </div>
           </article>
         </div>
@@ -163,6 +163,11 @@ export class AdminReportsPageComponent implements OnInit {
       { label: 'Cancelled Bookings', value: String(s.cancelledBookings), icon: 'cancel' },
       { label: 'Cancellation Rate', value: `${s.cancellationRate}%`, icon: 'warning' }
     ];
+  });
+
+  readonly trendMax = computed(() => {
+    const points = this.trend()?.points ?? [];
+    return points.reduce((max, point) => Math.max(max, point.totalBookings), 0);
   });
 
   constructor(

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -44,7 +44,7 @@ import { firstValueFrom } from 'rxjs';
           <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
             <button class="satori-secondary" (click)="editFacility(facility.id)">Edit</button>
             <button class="satori-secondary" (click)="previewFacility(facility.id)">Preview</button>
-            <button class="satori-secondary" (click)="publishFacility(facility.id)">Publish</button>
+            <button class="satori-secondary" [disabled]="isPublishing(facility.id)" (click)="publishFacility(facility.id)">{{ isPublishing(facility.id) ? 'Publishing...' : 'Publish' }}</button>
             <button class="satori-secondary" (click)="duplicateFacility(facility.id)">Duplicate</button>
             <button class="satori-danger col-span-2" (click)="deleteFacility(facility.id)">Delete</button>
           </div>
@@ -55,6 +55,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class AdminFacilitiesPageComponent {
   readonly facilities = computed(() => this.state.filteredFacilities());
+  readonly publishingFacilityIds = signal<number[]>([]);
 
   constructor(
     private readonly state: FacilityBuilderStateService,
@@ -99,6 +100,7 @@ export class AdminFacilitiesPageComponent {
       return;
     }
 
+    this.publishingFacilityIds.update((ids) => (ids.includes(id) ? ids : [...ids, id]));
     this.facilityAdminApi.publishFacility(id, { targetLocations: publishConfig.targetLocations }).subscribe({
       next: () => {
         this.state.publishFacility(id);
@@ -106,8 +108,15 @@ export class AdminFacilitiesPageComponent {
       },
       error: (err) => {
         this.snackBar.open(err?.error?.message ?? 'Publish failed', 'Close', { duration: 3000 });
+      },
+      complete: () => {
+        this.publishingFacilityIds.update((ids) => ids.filter((existingId) => existingId !== id));
       }
     });
+  }
+
+  isPublishing(facilityId: number): boolean {
+    return this.publishingFacilityIds().includes(facilityId);
   }
 
   duplicateFacility(id: number): void {
