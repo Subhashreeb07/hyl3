@@ -37,6 +37,11 @@ build/
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+frontend/_logs/
+frontend/_update-notifier-last-checked
+
+### Built static assets (Angular output copied to Spring Boot) ###
+backend/src/main/resources/static/browser/
 
 ### Local Database ###
 data/

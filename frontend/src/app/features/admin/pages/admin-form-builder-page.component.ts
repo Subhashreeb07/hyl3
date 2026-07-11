@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, ViewChild, computed, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatStepper, MatStepperModule } from '@angular/material/stepper';
+import { MatStepperModule } from '@angular/material/stepper';
 import { BuilderFieldListComponent } from '../components/builder-field-list.component';
 import { BuilderLivePreviewComponent } from '../components/builder-live-preview.component';
 import { BuilderPublishPanelComponent } from '../components/builder-publish-panel.component';
@@ -46,55 +46,100 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
   ],
   template: `
     <div class="space-y-6">
-      <section class="rounded-2xl bg-white p-4 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-2xl font-bold text-slate-900">Create Facility Wizard</h2>
-            <p class="text-sm text-slate-600">Design dynamic facility forms, rules, and publish-ready specifications.</p>
-          </div>
-          <div class="flex gap-2">
-            <button class="satori-secondary" (click)="createNewDraft()">New Draft</button>
-            <button class="satori-secondary" (click)="openImportPrompt()">Import JSON</button>
-          </div>
-        </div>
-
-        <div class="mt-4 grid gap-3 md:grid-cols-3">
-
-          <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <p class="text-[11px] uppercase tracking-[0.08em] text-slate-500">Fields</p>
-            <p class="text-xl font-bold text-slate-900">{{ formFieldCount() }}</p>
-          </article>
-
-          <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <p class="text-[11px] uppercase tracking-[0.08em] text-slate-500">Required</p>
-            <p class="text-xl font-bold text-slate-900">{{ requiredFieldCount() }}</p>
-          </article>
-
-          <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <p class="text-[11px] uppercase tracking-[0.08em] text-slate-500">Option Sets</p>
-            <p class="text-xl font-bold text-slate-900">{{ optionSetCount() }}</p>
-          </article>
-        </div>
-      </section>
-
       <mat-stepper [linear]="false" class="rounded-2xl bg-white p-4 shadow-sm">
         <mat-step [stepControl]="basicForm" label="Basic Information">
           <form [formGroup]="basicForm" class="grid gap-4 py-4 md:grid-cols-2">
             <label class="admin-field">Facility Name<input type="text" formControlName="facilityName" /></label>
-            <label class="admin-field">Category
-              <select formControlName="category">
-                <option *ngFor="let category of categoryOptions" [value]="category">{{ category }}</option>
-              </select>
-            </label>
-            <label class="admin-field" *ngIf="basicForm.value.category === 'Other'">Custom Category<input type="text" formControlName="customCategory" placeholder="Enter category" /></label>
-            <label class="admin-field md:col-span-2">Description<textarea rows="3" formControlName="description"></textarea></label>
-            <label class="admin-field">Icon
-              <select formControlName="icon">
-                <option *ngFor="let icon of iconChoices" [value]="icon">{{ icon }}</option>
-              </select>
-            </label>
-            <label class="admin-field">Color Theme<input type="color" formControlName="colorTheme" /></label>
-            <label class="admin-inline"><input type="checkbox" formControlName="status" /> Enable Facility</label>
+
+            <!-- Custom category dropdown -->
+            <div class="admin-field">
+              Category
+              <div *ngIf="showCategoryDropdown()" class="fixed inset-0 z-40" (click)="showCategoryDropdown.set(false); showAddCategoryInput.set(false)"></div>
+              <div class="relative z-50">
+                <button type="button"
+                  (click)="showCategoryDropdown.set(!showCategoryDropdown())"
+                  class="w-full flex items-center justify-between rounded-[0.65rem] border bg-white px-3 py-[0.55rem] text-sm text-left transition-shadow"
+                  [style.border-color]="showCategoryDropdown() ? '#6366f1' : '#cbd5e1'"
+                  [style.box-shadow]="showCategoryDropdown() ? '0 0 0 3px rgba(99,102,241,0.12)' : 'none'">
+                  <span [class.text-slate-400]="!basicForm.value.category">
+                    {{ basicForm.value.category || 'Select category...' }}
+                  </span>
+                  <span class="material-icons-outlined text-slate-400" style="font-size:18px">
+                    {{ showCategoryDropdown() ? 'expand_less' : 'expand_more' }}
+                  </span>
+                </button>
+                <div *ngIf="showCategoryDropdown()"
+                     class="absolute top-full left-0 right-0 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                  <div class="max-h-44 overflow-y-auto">
+                    <button type="button" *ngFor="let cat of categoryOptions()"
+                      (click)="selectCategory(cat)"
+                      class="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 transition-colors"
+                      [class.bg-indigo-50]="basicForm.value.category === cat"
+                      [class.text-indigo-700]="basicForm.value.category === cat"
+                      [class.font-semibold]="basicForm.value.category === cat">
+                      {{ cat }}
+                    </button>
+                  </div>
+                  <div class="border-t border-slate-100 px-3 py-2">
+                    <ng-container *ngIf="!showAddCategoryInput()">
+                      <button type="button" (click)="showAddCategoryInput.set(true)"
+                        class="flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        <span class="material-icons-outlined" style="font-size:15px">add_circle</span> Add Category
+                      </button>
+                    </ng-container>
+                    <ng-container *ngIf="showAddCategoryInput()">
+                      <div class="flex gap-1.5 items-center">
+                        <input #newCatInput type="text"
+                          [value]="newCategoryName()"
+                          (input)="newCategoryName.set($any($event.target).value)"
+                          (keydown.enter)="addCustomCategory(newCatInput.value)"
+                          (keydown.escape)="showAddCategoryInput.set(false); newCategoryName.set('')"
+                          placeholder="Category name"
+                          class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                        <button type="button" (click)="addCustomCategory(newCatInput.value)"
+                          class="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors">Add</button>
+                        <button type="button" (click)="showAddCategoryInput.set(false); newCategoryName.set('')"
+                          class="rounded-full p-1 text-slate-400 hover:bg-slate-100 transition-colors">
+                          <span class="material-icons-outlined" style="font-size:15px">close</span>
+                        </button>
+                      </div>
+                    </ng-container>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <label class="admin-field md:col-span-2">Description<textarea rows="3" formControlName="description" placeholder="Describe what this facility provides..."></textarea></label>
+            <!-- Icon picker dropdown -->
+            <div class="admin-field">
+              Icon
+              <div *ngIf="showIconDropdown()" class="fixed inset-0 z-40" (click)="showIconDropdown.set(false)"></div>
+              <div class="relative z-50">
+                <button type="button"
+                  (click)="showIconDropdown.set(!showIconDropdown())"
+                  class="w-full flex items-center gap-2 rounded-[0.65rem] border bg-white px-3 py-[0.55rem] text-sm text-left transition-shadow"
+                  [style.border-color]="showIconDropdown() ? '#6366f1' : '#cbd5e1'"
+                  [style.box-shadow]="showIconDropdown() ? '0 0 0 3px rgba(99,102,241,0.12)' : 'none'">
+                  <span class="material-icons-outlined" style="font-size:18px;color:#4f46e5;">{{ basicForm.value.icon || 'inventory_2' }}</span>
+                  <span class="flex-1 text-slate-700">{{ iconLabel(basicForm.value.icon) }}</span>
+                  <span class="material-icons-outlined text-slate-400" style="font-size:18px;">{{ showIconDropdown() ? 'expand_less' : 'expand_more' }}</span>
+                </button>
+                <div *ngIf="showIconDropdown()"
+                     class="absolute top-full left-0 right-0 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-50 max-h-48 overflow-y-auto">
+                  <div class="grid grid-cols-5 gap-1">
+                    <button *ngFor="let ic of iconChoices" type="button"
+                      (click)="basicForm.patchValue({ icon: ic.value }); showIconDropdown.set(false)"
+                      [title]="ic.label"
+                      class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-center transition-all hover:bg-indigo-50"
+                      [style.background]="basicForm.value.icon === ic.value ? '#4f46e5' : ''"
+                      [style.color]="basicForm.value.icon === ic.value ? '#fff' : '#64748b'">
+                      <span class="material-icons-outlined" style="font-size:18px;">{{ ic.value }}</span>
+                      <span style="font-size:7.5px;font-weight:600;">{{ ic.label }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </form>
           <div class="flex justify-end"><button mat-flat-button color="primary" matStepperNext>Next</button></div>
         </mat-step>
@@ -103,6 +148,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
           <div class="grid gap-5 py-4 xl:grid-cols-[1fr_360px]">
             <app-builder-field-list
               [fields]="orderedFields()"
+              (add)="addField()"
               (addWithType)="addFieldWithType($event)"
               (edit)="editField($event)"
               (duplicate)="duplicateField($event)"
@@ -130,11 +176,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
         </mat-step>
 
         <mat-step label="Preview">
-          <app-builder-preview-step
-            [fields]="orderedFields()"
-            [generatedJson]="generatedJson()"
-            (applyJson)="applyEditedJson($event)"
-          />
+          <app-builder-preview-step [fields]="orderedFields()" [facilityName]="basicForm.value.facilityName || ''" [generatedJson]="generatedJson()" />
           <div class="flex justify-between">
             <button mat-button matStepperPrevious>Back</button>
             <button mat-flat-button color="primary" matStepperNext>Next</button>
@@ -144,12 +186,29 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
         <mat-step label="Publish">
           <app-builder-publish-panel
             [generatedJson]="generatedJson()"
-            [isPublished]="isCurrentFacilityPublished()"
+            [isPublished]="isPublished()"
             (saveDraft)="saveDraft()"
             (publish)="publish()"
+            (editJson)="applyJsonEdit($event)"
             (downloadJson)="downloadJson()"
             (importJson)="openImportPrompt()"
           />
+
+          <!-- Save as Template button -->
+          <div class="mt-4 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/60 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-indigo-700">Save as Template</p>
+              <p class="text-xs text-slate-500 mt-0.5">Store this facility as a reusable template. Others can create facilities from it.</p>
+            </div>
+            <button
+              mat-flat-button
+              color="accent"
+              class="shrink-0"
+              (click)="saveAsTemplate()"
+              [disabled]="!activeFacilityId()">
+              ⬡ Save as Template
+            </button>
+          </div>
 
           <div class="mt-4 flex justify-start">
             <button mat-button matStepperPrevious>Back</button>
@@ -189,32 +248,70 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
   ]
 })
 export class AdminFormBuilderPageComponent {
-  @ViewChild(MatStepper) private stepper?: MatStepper;
+  readonly iconChoices = [
+    { value: 'restaurant', label: 'Food' },
+    { value: 'directions_bus', label: 'Bus' },
+    { value: 'local_parking', label: 'Parking' },
+    { value: 'badge', label: 'Badge' },
+    { value: 'event', label: 'Event' },
+    { value: 'meeting_room', label: 'Room' },
+    { value: 'inventory_2', label: 'Inventory' },
+    { value: 'computer', label: 'IT' },
+    { value: 'security', label: 'Security' },
+    { value: 'people', label: 'People' },
+    { value: 'fitness_center', label: 'Gym' },
+    { value: 'local_cafe', label: 'Café' },
+    { value: 'sports_esports', label: 'Recreation' },
+    { value: 'local_hospital', label: 'Medical' },
+    { value: 'library_books', label: 'Library' },
+    { value: 'print', label: 'Print' },
+    { value: 'wifi', label: 'WiFi' },
+    { value: 'directions_car', label: 'Car' },
+    { value: 'apartment', label: 'Office' },
+    { value: 'cleaning_services', label: 'Cleaning' },
+  ];
 
-  readonly iconChoices = ['restaurant', 'directions_bus', 'local_parking', 'badge', 'event', 'meeting_room', 'inventory_2'];
-  readonly categoryOptions = ['Food', 'Mobility', 'Parking', 'Workspace', 'Events', 'Visitors', 'Security', 'IT Services', 'Other'];
+  private readonly CUSTOM_CATS_KEY = 'hyhub_custom_categories';
+  readonly categoryOptions = signal<string[]>(['Food', 'Mobility', 'Parking', 'Workspace', 'Events', 'Visitors', 'Security', 'IT Services']);
+  readonly showCategoryDropdown = signal(false);
+  readonly showAddCategoryInput = signal(false);
+  readonly newCategoryName = signal('');
+  readonly showIconDropdown = signal(false);
+  private openMode: 'new' | 'edit' = 'new';
 
+  /** Only non-template facilities appear in the working-facility dropdown. */
+  readonly facilityLibrary = computed(() => this.state.facilities().filter((f) => !f.isTemplate));
+  readonly activeFacilityId = computed(() => this.state.activeFacilityId());
+  readonly isPublished = computed(() => this.state.activeFacility()?.published ?? false);
   readonly formFieldCount = computed(() => this.orderedFields().length);
   readonly requiredFieldCount = computed(() => this.orderedFields().filter((field) => field.required).length);
   readonly optionSetCount = computed(() => this.orderedFields().filter((field) => (field.options ?? []).length > 0).length);
-  readonly isCurrentFacilityPublished = computed(() => Boolean(this.state.activeFacility()?.published));
 
   readonly basicForm = this.fb.group({
     facilityName: ['', Validators.required],
     description: [''],
-    category: ['Food', Validators.required],
-    customCategory: [''],
+    category: ['', Validators.required],
     icon: ['inventory_2'],
-    colorTheme: ['#0f6cbd'],
-    status: [true]
   });
 
   readonly rulesForm = this.fb.group({
-    bookingStartTime: ['', Validators.required],
-    bookingEndTime: ['', Validators.required],
-    reminderTime: ['', Validators.required],
-    cancellationDeadline: ['', Validators.required],
-    bookingWindow: ['', Validators.required]
+    bookingStartTime: [''],
+    bookingDeadline: [''],
+    // Employee Types
+    employeeTypeOnSite:   [true],
+    employeeTypeRemote:   [true],
+    employeeTypeHybrid:   [true],
+    // Roles
+    roleHR:       [true],
+    roleManager:  [true],
+    roleFinance:  [true],
+    roleCloud:    [true],
+    roleRD:       [true],
+    roleDirector: [true],
+    roleIS:       [true],
+    roleNOC:      [true],
+    roleOps:      [true],
+    roleDevops:   [true],
   });
 
   readonly draftFields = signal<FacilityField[]>([]);
@@ -233,8 +330,11 @@ export class AdminFormBuilderPageComponent {
     private readonly snackBar: MatSnackBar,
     private readonly facilityAdminApi: FacilityAdminApiService,
     private readonly specificationApi: SpecificationApiService,
-    private readonly route: ActivatedRoute
+    private readonly router: Router
   ) {
+    // Capture nav state BEFORE any async work — getCurrentNavigation() returns null after navigation settles.
+    const navState = this.router.getCurrentNavigation()?.extras?.state;
+    this.openMode = navState?.['editMode'] === true ? 'edit' : 'new';
     this.bootstrap();
   }
 
@@ -244,37 +344,38 @@ export class AdminFormBuilderPageComponent {
     } catch {
       // Keep local builder usable even if backend load fails.
     }
-
-    const queryParams = this.route.snapshot.queryParams;
-    const mode = queryParams['mode'] ?? 'view';
-    const facilityId = queryParams['facilityId'] ? Number(queryParams['facilityId']) : null;
-
-    if (mode === 'edit' && facilityId) {
-      const selected = this.state.facilities().find((facility) => facility.id === facilityId);
-      if (!selected) {
-        this.toast('Selected facility not found for editing', 'Close', 3200);
-        this.initializeFreshDraft();
-        return;
-      }
-
-      this.state.setActiveFacility(selected.id);
-      this.patchFromRecord(selected);
-      this.refreshJson();
-    } else if (mode === 'import') {
-      this.initializeFreshDraft();
-      this.openImportPrompt();
-    } else {
-      // Default mode starts from a blank new draft.
-      this.initializeFreshDraft();
-    }
+    this.loadInitialFacility();
   }
 
   createNewDraft(): void {
-    this.initializeFreshDraft();
-    if (this.stepper) {
-      this.stepper.selectedIndex = 0;
+    this.state.createDraft();
+    this.clearForm();
+    this.toast('New draft created');
+  }
+
+  selectCategory(cat: string): void {
+    this.basicForm.patchValue({ category: cat });
+    this.showCategoryDropdown.set(false);
+    this.showAddCategoryInput.set(false);
+    this.newCategoryName.set('');
+  }
+
+  iconLabel(value: string | null | undefined): string {
+    return this.iconChoices.find(ic => ic.value === value)?.label ?? value ?? '';
+  }
+
+  addCustomCategory(name: string): void {
+    const trimmed = name.trim();
+    if (!trimmed) { return; }
+    if (!this.categoryOptions().includes(trimmed)) {
+      this.categoryOptions.update(cats => [...cats, trimmed]);
+      try {
+        const stored = localStorage.getItem(this.CUSTOM_CATS_KEY);
+        const custom: string[] = stored ? JSON.parse(stored) : [];
+        if (!custom.includes(trimmed)) { custom.push(trimmed); localStorage.setItem(this.CUSTOM_CATS_KEY, JSON.stringify(custom)); }
+      } catch { /* ignore */ }
     }
-    this.toast('New draft facility created');
+    this.selectCategory(trimmed);
   }
 
   addField(): void {
@@ -300,11 +401,11 @@ export class AdminFormBuilderPageComponent {
         width: '640px',
         data: {
           field: {
-            label: this.defaultLabelForFieldType(fieldType),
+            label: '',
             fieldType,
             required: false,
             displayOrder: this.draftFields().length + 1,
-            options: this.fieldUsesOptions(fieldType) ? ['Option 1'] : []
+            options: []
           },
           displayOrder: this.draftFields().length + 1
         }
@@ -317,7 +418,6 @@ export class AdminFormBuilderPageComponent {
         this.draftFields.update((items) => [...items, field]);
         this.normalizeFieldOrder();
         this.refreshJson();
-        this.toast(`${field.label} added`);
       });
   }
 
@@ -366,18 +466,6 @@ export class AdminFormBuilderPageComponent {
   }
 
   async saveDraft(): Promise<void> {
-    if (this.rulesForm.invalid) {
-      this.rulesForm.markAllAsTouched();
-      this.toast('Please fill all required Business Rules fields', 'Close', 3000);
-      return;
-    }
-
-    const fieldError = this.validateDraftFields(this.orderedFields());
-    if (fieldError) {
-      this.toast(fieldError, 'Close', 3400);
-      return;
-    }
-
     try {
       const persisted = await this.persistBuilder(false);
       this.state.upsertFacility(persisted);
@@ -388,24 +476,26 @@ export class AdminFormBuilderPageComponent {
     }
   }
 
+  async saveAsTemplate(): Promise<void> {
+    const id = this.activeFacilityId();
+    if (!id) {
+      this.toast('Save a draft first before saving as template', 'Close', 3000);
+      return;
+    }
+    try {
+      // Persist current state first
+      const persisted = await this.persistBuilder(false);
+      this.state.upsertFacility(persisted);
+      // Mark as template on backend
+      await this.state.saveAsTemplate(id);
+      this.toast('✅ Saved as template! Find it in the Templates section.');
+      this.router.navigateByUrl('/admin/facilities');
+    } catch (error: any) {
+      this.toast(error?.error?.message ?? 'Save as template failed', 'Close', 3200);
+    }
+  }
+
   async publish(): Promise<void> {
-    if (this.isCurrentFacilityPublished()) {
-      this.toast('Facility is already published');
-      return;
-    }
-
-    if (this.rulesForm.invalid) {
-      this.rulesForm.markAllAsTouched();
-      this.toast('Please fill all required Business Rules fields', 'Close', 3000);
-      return;
-    }
-
-    const fieldError = this.validateDraftFields(this.orderedFields());
-    if (fieldError) {
-      this.toast(fieldError, 'Close', 3400);
-      return;
-    }
-
     try {
       const publishConfig = await firstValueFrom(
         this.dialog
@@ -433,6 +523,24 @@ export class AdminFormBuilderPageComponent {
   refreshJson(): void {
     const json = JSON.stringify(this.currentSpecification(), null, 2);
     this.generatedJson.set(json);
+  }
+
+  applyJsonEdit(json: string): void {
+    try {
+      const parsed = JSON.parse(json) as FacilitySpecification;
+      this.validateImportedSpecification(parsed);
+      const record = this.state.fromSpecification(parsed);
+      // Preserve current active facility id so we don't create a phantom draft
+      const activeId = this.state.activeFacilityId();
+      if (activeId) {
+        record.id = activeId;
+      }
+      this.patchFromRecord(record);
+      this.refreshJson();
+      this.toast('JSON applied — review changes then publish');
+    } catch (e: any) {
+      this.toast(e?.message ?? 'Invalid JSON', 'Close', 4000);
+    }
   }
 
   downloadJson(): void {
@@ -476,49 +584,20 @@ export class AdminFormBuilderPageComponent {
     }
   }
 
-  applyEditedJson(rawJson: string): void {
-    try {
-      const parsed = JSON.parse(rawJson) as FacilitySpecification;
-      this.validateImportedSpecification(parsed);
-
-      if (parsed.facilityName) {
-        this.basicForm.patchValue({
-          facilityName: parsed.facilityName,
-          description: parsed.description ?? '',
-          category: this.categoryOptions.includes(parsed.category ?? '') ? parsed.category : 'Other',
-          customCategory: this.categoryOptions.includes(parsed.category ?? '') ? '' : (parsed.category ?? ''),
-          icon: parsed.icon ?? 'inventory_2',
-          status: parsed.status ?? true
-        });
-      }
-
-      this.rulesForm.patchValue({
-        bookingStartTime: parsed.rules?.bookingStartTime ?? '',
-        bookingEndTime: parsed.rules?.bookingEndTime ?? '',
-        reminderTime: parsed.rules?.reminderTime ?? '',
-        cancellationDeadline: parsed.rules?.cancellationDeadline ?? '',
-        bookingWindow: parsed.rules?.bookingWindow ?? ''
-      });
-
-      const parsedFields = (parsed.fields ?? []).map((field, index) => ({
-          ...field,
-          displayOrder: field.displayOrder ?? index + 1
-        }));
-
-      const fieldError = this.validateDraftFields(parsedFields);
-      if (fieldError) {
-        this.toast(fieldError, 'Close', 3400);
-        return;
-      }
-
-      this.draftFields.set(parsedFields);
-
-      this.normalizeFieldOrder();
-      this.refreshJson();
-      this.toast('Edited JSON applied to form');
-    } catch (error: any) {
-      this.toast(error?.message ?? 'Invalid JSON format', 'Close', 3200);
+  switchFacility(facilityIdRaw: string): void {
+    const facilityId = Number(facilityIdRaw);
+    if (!Number.isFinite(facilityId)) {
+      return;
     }
+
+    const selected = this.state.facilities().find((facility) => facility.id === facilityId);
+    if (!selected) {
+      return;
+    }
+
+    this.state.setActiveFacility(selected.id);
+    this.patchFromRecord(selected);
+    this.refreshJson();
   }
 
   private validateImportedSpecification(spec: FacilitySpecification): void {
@@ -536,112 +615,84 @@ export class AdminFormBuilderPageComponent {
       if (!field.fieldType) {
         throw new Error(`Field ${index + 1} fieldType is required`);
       }
-
-      if (field.displayOrder !== undefined && Number(field.displayOrder) < 1) {
-        throw new Error(`Field ${index + 1} displayOrder must be >= 1`);
-      }
-
-      if (field.validationJson) {
-        try {
-          const parsed = JSON.parse(field.validationJson);
-          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-            throw new Error();
-          }
-        } catch {
-          throw new Error(`Field ${index + 1} validationJson must be a valid JSON object`);
-        }
-      }
-
-      if (this.fieldUsesOptions(field.fieldType) && !(field.options ?? []).length) {
-        throw new Error(`Field ${index + 1} requires at least one option`);
-      }
     });
   }
 
-  private validateDraftFields(fields: FacilityField[]): string | null {
-    for (let i = 0; i < fields.length; i += 1) {
-      const field = fields[i];
-      const fieldNo = i + 1;
-
-      if (!field.label?.trim()) {
-        return `Field ${fieldNo}: label is required`;
-      }
-
-      if (!field.fieldType) {
-        return `Field ${fieldNo}: type is required`;
-      }
-
-      if (!Number.isFinite(field.displayOrder) || Number(field.displayOrder) < 1) {
-        return `Field ${fieldNo}: display order must be 1 or greater`;
-      }
-
-      if (this.fieldUsesOptions(field.fieldType)) {
-        const options = (field.options ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
-        if (!options.length) {
-          return `Field ${fieldNo}: at least one option is required`;
-        }
-      }
-
-      if (field.validationJson?.trim()) {
-        try {
-          const parsed = JSON.parse(field.validationJson);
-          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-            return `Field ${fieldNo}: validation JSON must be an object`;
-          }
-        } catch {
-          return `Field ${fieldNo}: validation JSON is invalid`;
-        }
+  private loadInitialFacility(): void {
+    if (this.openMode === 'edit') {
+      // Arrived from facilities page — load the facility that was set active before navigation.
+      const active = this.state.activeFacility();
+      if (active) {
+        this.patchFromRecord(active);
+        this.refreshJson();
+        return;
       }
     }
-
-    return null;
+    // 'new' mode (nav link click) — always start blank.
+    this.state.createDraft();
+    this.clearForm();
   }
 
-  private initializeFreshDraft(): void {
-    const draft = this.state.createDraft();
-    this.state.setActiveFacility(draft.id);
+  private currentTimeString(): string {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
 
-    this.basicForm.reset({
-      facilityName: '',
-      description: '',
-      category: 'Food',
-      customCategory: '',
-      icon: 'inventory_2',
-      colorTheme: '#0f6cbd',
-      status: true
-    });
-
+  private clearForm(): void {
+    this.basicForm.reset({ facilityName: '', description: '', category: '', icon: 'inventory_2' });
     this.rulesForm.reset({
-      bookingStartTime: '',
-      bookingEndTime: '',
-      reminderTime: '',
-      cancellationDeadline: '',
-      bookingWindow: ''
+      bookingStartTime: this.currentTimeString(), bookingDeadline: '',
+      employeeTypeOnSite: true, employeeTypeRemote: true, employeeTypeHybrid: true,
+      roleHR: true, roleManager: true, roleFinance: true, roleCloud: true,
+      roleRD: true, roleDirector: true, roleIS: true, roleNOC: true,
+      roleOps: true, roleDevops: true,
     });
-
     this.draftFields.set([]);
     this.refreshJson();
   }
 
+  private loadCustomCategories(): void {
+    try {
+      const stored = localStorage.getItem(this.CUSTOM_CATS_KEY);
+      if (stored) {
+        const custom: string[] = JSON.parse(stored);
+        this.categoryOptions.update(cats => {
+          const merged = [...cats];
+          custom.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+          return merged;
+        });
+      }
+    } catch { /* ignore */ }
+  }
+
   private patchFromRecord(record: FacilityBuilderRecord): void {
-    const mappedCategory = this.categoryOptions.includes(record.category) ? record.category : 'Other';
+    if (record.category && !this.categoryOptions().includes(record.category)) {
+      this.categoryOptions.update(cats => [...cats, record.category]);
+    }
 
     this.basicForm.patchValue({
       facilityName: record.facilityName,
       description: record.description,
-      category: mappedCategory,
-      customCategory: mappedCategory === 'Other' ? record.category : '',
+      category: record.category || '',
       icon: record.icon,
-      colorTheme: record.colorTheme,
-      status: record.status
     });
 
     this.rulesForm.patchValue({
-      bookingStartTime: record.rules.bookingStartTime ?? '',
-      bookingEndTime: record.rules.bookingEndTime ?? '',
-      reminderTime: record.rules.reminderTime ?? '',
-      cancellationDeadline: record.rules.cancellationDeadline ?? '',
-      bookingWindow: record.rules.bookingWindow ?? ''
+      bookingStartTime: record.isTemplate ? this.currentTimeString() : (record.rules.bookingStartTime || this.currentTimeString()),
+      bookingDeadline:  record.rules.bookingDeadline  ?? '',
+      employeeTypeOnSite:   (record.rules.employeeTypes ?? []).includes('On-site'),
+      employeeTypeRemote:   (record.rules.employeeTypes ?? []).includes('Remote'),
+      employeeTypeHybrid:   (record.rules.employeeTypes ?? []).includes('Hybrid'),
+      roleHR:       (record.rules.roles ?? []).includes('HR'),
+      roleManager:  (record.rules.roles ?? []).includes('Manager'),
+      roleFinance:  (record.rules.roles ?? []).includes('Finance'),
+      roleCloud:    (record.rules.roles ?? []).includes('Cloud'),
+      roleRD:       (record.rules.roles ?? []).includes('RD'),
+      roleDirector: (record.rules.roles ?? []).includes('Director'),
+      roleIS:       (record.rules.roles ?? []).includes('IS'),
+      roleNOC:      (record.rules.roles ?? []).includes('NOC'),
+      roleOps:      (record.rules.roles ?? []).includes('Ops'),
+      roleDevops:   (record.rules.roles ?? []).includes('Devops'),
     });
 
     this.draftFields.set(record.fields.map((field) => ({ ...field })));
@@ -657,22 +708,34 @@ export class AdminFormBuilderPageComponent {
       description: this.basicForm.value.description?.trim() || '',
       category: this.resolveCategoryValue(),
       icon: this.basicForm.value.icon || 'inventory_2',
-      colorTheme: this.basicForm.value.colorTheme || '#0f6cbd',
-      status: Boolean(this.basicForm.value.status),
+      colorTheme: '#0f6cbd',
+      status: true,
       published,
+      isTemplate: existing?.isTemplate ?? false,
+      isPublic: existing?.isPublic ?? true,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       fields: this.orderedFields().map((field) => ({ ...field })),
       rules: {
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
-        bookingEndTime: this.rulesForm.value.bookingEndTime || null,
-        bookingDeadline: this.rulesForm.value.bookingEndTime || null,
-        reminderTime: this.rulesForm.value.reminderTime || null,
-        cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
-        bookingWindow: this.rulesForm.value.bookingWindow || null,
-        allowCancellation: true,
-        qrRequired: false,
-        regularCommuteEnabled: false
+        bookingDeadline:  this.rulesForm.value.bookingDeadline  || null,
+        employeeTypes: [
+          this.rulesForm.value.employeeTypeOnSite   ? 'On-site'  : null,
+          this.rulesForm.value.employeeTypeRemote   ? 'Remote'   : null,
+          this.rulesForm.value.employeeTypeHybrid   ? 'Hybrid'   : null,
+        ].filter((v): v is string => v !== null),
+        roles: [
+          this.rulesForm.value.roleHR       ? 'HR'       : null,
+          this.rulesForm.value.roleManager  ? 'Manager'  : null,
+          this.rulesForm.value.roleFinance  ? 'Finance'  : null,
+          this.rulesForm.value.roleCloud    ? 'Cloud'    : null,
+          this.rulesForm.value.roleRD       ? 'RD'       : null,
+          this.rulesForm.value.roleDirector ? 'Director' : null,
+          this.rulesForm.value.roleIS       ? 'IS'       : null,
+          this.rulesForm.value.roleNOC      ? 'NOC'      : null,
+          this.rulesForm.value.roleOps      ? 'Ops'      : null,
+          this.rulesForm.value.roleDevops   ? 'Devops'   : null,
+        ].filter((v): v is string => v !== null),
       }
     };
   }
@@ -769,13 +832,8 @@ export class AdminFormBuilderPageComponent {
 
     await firstValueFrom(
       this.facilityAdminApi.saveRules(facilityId, {
-        bookingDeadline: this.rulesForm.value.bookingEndTime || null,
+        bookingDeadline:  this.rulesForm.value.bookingDeadline  || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
-        reminderTime: this.rulesForm.value.reminderTime || null,
-        qrRequired: false,
-        allowCancellation: true,
-        maximumCapacity: null,
-        regularCommuteEnabled: false
       })
     );
 
@@ -859,12 +917,7 @@ export class AdminFormBuilderPageComponent {
   }
 
   private resolveCategoryValue(): string {
-    const selected = (this.basicForm.value.category ?? '').trim();
-    if (selected === 'Other') {
-      const custom = (this.basicForm.value.customCategory ?? '').trim();
-      return custom || 'General';
-    }
-    return selected || 'General';
+    return (this.basicForm.value.category ?? '').trim() || 'General';
   }
 
   private defaultLabelForFieldType(type: FacilityField['fieldType']): string {

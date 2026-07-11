@@ -15,7 +15,9 @@ public final class FacilityDtos {
             String description,
             String category,
             String icon,
-            @NotNull Boolean status
+            @NotNull Boolean status,
+            Boolean isTemplate,
+            Boolean isPublic
     ) {
     }
 
@@ -24,14 +26,22 @@ public final class FacilityDtos {
             String description,
             String category,
             String icon,
-            @NotNull Boolean status
+            @NotNull Boolean status,
+            Boolean isTemplate,
+            Boolean isPublic
     ) {
     }
 
     public record FacilityCreateResponse(Long facilityId, String message) {
     }
 
-    public record FacilitySummaryResponse(Long facilityId, String facilityName, Boolean status) {
+    public record FacilitySummaryResponse(
+            Long facilityId,
+            String facilityName,
+            Boolean status,
+            Boolean isTemplate,
+            Boolean isPublic
+    ) {
     }
 
     public record FacilityDetailResponse(
@@ -42,6 +52,8 @@ public final class FacilityDtos {
             String icon,
             Boolean status,
             Boolean published,
+            Boolean isTemplate,
+            Boolean isPublic,
             List<String> targetLocations
     ) {
     }
@@ -50,5 +62,11 @@ public final class FacilityDtos {
     }
 
     public record PublishResponse(Long facilityId, String message) {
+    }
+
+    public record CreateFromTemplateResponse(Long facilityId, String facilityName, String message) {
+    }
+
+    public record TemplateVisibilityRequest(@NotNull Boolean isPublic) {
     }
 }

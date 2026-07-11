@@ -33,19 +33,9 @@ export interface FacilityField {
 
 export interface FacilityRules {
   bookingStartTime?: string | null;
-  bookingEndTime?: string | null;
   bookingDeadline?: string | null;
-  cancellationDeadline?: string | null;
-  bookingWindow?: string | null;
-  reminderTime?: string | null;
-  maximumCapacity?: number | null;
-  qrRequired?: boolean;
-  approvalRequired?: boolean;
-  allowCancellation?: boolean;
-  autoCloseFacility?: boolean;
-  weekendEnabled?: boolean;
-  holidayEnabled?: boolean;
-  regularCommuteEnabled?: boolean;
+  employeeTypes?: string[] | null;
+  roles?: string[] | null;
 }
 
 export interface FacilitySpecification {

@@ -61,6 +61,8 @@ public class FacilityServiceImpl implements FacilityService {
         facility.setIcon(request.icon());
         facility.setStatus(request.status());
         facility.setPublished(false);
+        facility.setIsTemplate(request.isTemplate() != null && request.isTemplate());
+        facility.setIsPublic(request.isPublic() == null || request.isPublic());
 
         Facility saved = facilityRepository.save(facility);
         return new FacilityDtos.FacilityCreateResponse(saved.getFacilityId(), "Facility created successfully");
@@ -72,7 +74,9 @@ public class FacilityServiceImpl implements FacilityService {
                 .map(f -> new FacilityDtos.FacilitySummaryResponse(
                         f.getFacilityId(),
                         f.getFacilityName(),
-                        f.getStatus()
+                        f.getStatus(),
+                        f.getIsTemplate(),
+                        f.getIsPublic()
                 ))
                 .toList();
     }
@@ -91,6 +95,10 @@ public class FacilityServiceImpl implements FacilityService {
         facility.setCategory(request.category());
         facility.setIcon(request.icon());
         facility.setStatus(request.status());
+        if (request.isPublic() != null) {
+            facility.setIsPublic(request.isPublic());
+        }
+        // isTemplate can only be set at creation; not updatable via normal update endpoint
         Facility saved = facilityRepository.save(facility);
         return toDetailResponse(saved);
     }
@@ -99,6 +107,9 @@ public class FacilityServiceImpl implements FacilityService {
     @Transactional
     public void deleteFacility(Long facilityId) {
         Facility facility = getFacilityOrThrow(facilityId);
+        if (Boolean.TRUE.equals(facility.getIsTemplate())) {
+            throw new BadRequestException("Template facilities cannot be deleted. Use 'Create from Template' to make a new facility.");
+        }
         facilityRepository.delete(facility);
     }
 
@@ -106,6 +117,9 @@ public class FacilityServiceImpl implements FacilityService {
     @Transactional
     public FacilityDtos.PublishResponse publishFacility(Long facilityId, FacilityDtos.PublishRequest request) {
         Facility facility = getFacilityOrThrow(facilityId);
+        if (Boolean.TRUE.equals(facility.getIsTemplate())) {
+            throw new BadRequestException("Template facilities cannot be published directly. Use 'Create from Template' to make a new facility.");
+        }
         validatePublishReadiness(facilityId);
         List<String> normalizedLocations = normalizeTargetLocations(request == null ? null : request.targetLocations());
         facility.setTargetLocations(String.join(",", normalizedLocations));
@@ -113,6 +127,100 @@ public class FacilityServiceImpl implements FacilityService {
         facility.setPublished(true);
         facilityRepository.save(facility);
         return new FacilityDtos.PublishResponse(facility.getFacilityId(), "Facility published successfully");
+    }
+
+    @Override
+    @Transactional
+    public FacilityDtos.CreateFromTemplateResponse createFromTemplate(Long templateFacilityId, String newFacilityName) {
+        Facility template = getFacilityOrThrow(templateFacilityId);
+        if (!Boolean.TRUE.equals(template.getIsTemplate())) {
+            throw new BadRequestException("The selected facility is not a template.");
+        }
+
+        String baseName = (newFacilityName != null && !newFacilityName.isBlank())
+                ? newFacilityName.trim()
+                : template.getFacilityName() + "_COPY";
+
+        // Ensure unique name — collect all existing names first, then loop without lambda
+        Set<String> existingNames = facilityRepository.findAll().stream()
+                .map(f -> f.getFacilityName().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        String uniqueName = baseName;
+        int suffix = 1;
+        while (existingNames.contains(uniqueName.toLowerCase(Locale.ROOT))) {
+            uniqueName = baseName + "_" + suffix++;
+        }
+
+        Facility copy = new Facility();
+        copy.setFacilityName(uniqueName);
+        copy.setDescription(template.getDescription());
+        copy.setCategory(template.getCategory());
+        copy.setIcon(template.getIcon());
+        copy.setStatus(true);
+        copy.setPublished(false);
+        copy.setIsTemplate(false);
+        copy.setIsPublic(template.getIsPublic());
+        Facility savedCopy = facilityRepository.save(copy);
+
+        // Deep-copy fields
+        List<FieldDefinition> sourceFields =
+                fieldDefinitionRepository.findByFacilityFacilityIdWithOptions(templateFacilityId);
+        for (FieldDefinition src : sourceFields) {
+            FieldDefinition fd = new FieldDefinition();
+            fd.setFacility(savedCopy);
+            fd.setLabel(src.getLabel());
+            fd.setFieldType(src.getFieldType());
+            fd.setRequired(src.getRequired());
+            fd.setPlaceholder(src.getPlaceholder());
+            fd.setDefaultValue(src.getDefaultValue());
+            fd.setValidationJson(src.getValidationJson());
+            fd.setDisplayOrder(src.getDisplayOrder());
+            fieldDefinitionRepository.save(fd);
+        }
+
+        // Deep-copy rule
+        FacilityRule srcRule = facilityRuleRepository
+                .findByFacilityFacilityId(templateFacilityId).orElse(null);
+        if (srcRule != null) {
+            FacilityRule rule = new FacilityRule();
+            rule.setFacility(savedCopy);
+            rule.setBookingDeadline(srcRule.getBookingDeadline());
+            rule.setBookingStartTime(srcRule.getBookingStartTime());
+            rule.setReminderTime(srcRule.getReminderTime());
+            rule.setQrRequired(srcRule.getQrRequired());
+            rule.setAllowCancellation(srcRule.getAllowCancellation());
+            rule.setMaximumCapacity(srcRule.getMaximumCapacity());
+            rule.setRegularCommuteEnabled(srcRule.getRegularCommuteEnabled());
+            facilityRuleRepository.save(rule);
+        }
+
+        return new FacilityDtos.CreateFromTemplateResponse(
+                savedCopy.getFacilityId(), savedCopy.getFacilityName(),
+                "Facility created from template. You can now edit and publish it.");
+    }
+
+    @Override
+    @Transactional
+    public FacilityDtos.FacilityDetailResponse updateTemplateVisibility(Long facilityId,
+            FacilityDtos.TemplateVisibilityRequest request) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        if (!Boolean.TRUE.equals(facility.getIsTemplate())) {
+            throw new BadRequestException("Only template facilities have a public/private visibility setting.");
+        }
+        facility.setIsPublic(request.isPublic());
+        return toDetailResponse(facilityRepository.save(facility));
+    }
+
+    @Override
+    @Transactional
+    public FacilityDtos.FacilityDetailResponse saveAsTemplate(Long facilityId) {
+        Facility facility = getFacilityOrThrow(facilityId);
+        if (Boolean.TRUE.equals(facility.getIsTemplate())) {
+            return toDetailResponse(facility); // already a template, no-op
+        }
+        facility.setIsTemplate(true);
+        facility.setPublished(false); // templates are not published
+        return toDetailResponse(facilityRepository.save(facility));
     }
 
     @Override
@@ -286,6 +394,8 @@ public class FacilityServiceImpl implements FacilityService {
                 facility.getIcon(),
                 facility.getStatus(),
                 facility.getPublished(),
+                facility.getIsTemplate(),
+                facility.getIsPublic(),
                 splitTargetLocations(facility.getTargetLocations())
         );
     }
@@ -346,4 +456,6 @@ public class FacilityServiceImpl implements FacilityService {
     private boolean requiresOptions(FieldType fieldType) {
         return fieldType == FieldType.DROPDOWN || fieldType == FieldType.RADIO_BUTTON || fieldType == FieldType.CHECKBOX;
     }
+
 }
+
