@@ -223,6 +223,12 @@ export class AdminApiService {
     });
   }
 
+  importFacilityFromJson(jsonData: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/admin/facilities/import-json`, jsonData, {
+      headers: this.authHeader()
+    });
+  }
+
   private authHeader(): HttpHeaders {
     const token = this.sessionService.getToken();
     return new HttpHeaders(token ? { Authorization: `Bearer ${token}` } : {});

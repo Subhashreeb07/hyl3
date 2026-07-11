@@ -3,15 +3,17 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AdminBookingSearchItem } from '../../../core/models/admin.models';
 import { AdminApiService } from '../../../core/services/admin-api.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { FacilityBuilderStateService } from '../state/facility-builder-state.service';
+import { SpecificationImportDialogComponent } from '../components/specification-import-dialog.component';
 
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, MatDialogModule],
   template: `
     <div class="space-y-6">
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -19,23 +21,6 @@ import { FacilityBuilderStateService } from '../state/facility-builder-state.ser
           <p class="text-xs uppercase tracking-[0.12em] text-slate-500">{{ card.label }}</p>
           <p class="mt-2 text-2xl font-bold text-slate-900">{{ card.value }}</p>
         </article>
-      </section>
-
-      <section class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <p>
-            Last synced:
-            <strong class="text-slate-800">{{ lastUpdated() ? (lastUpdated() | date: 'medium') : 'Not synchronized yet' }}</strong>
-          </p>
-          <div class="flex gap-2">
-            <button class="satori-secondary" [disabled]="loading()" (click)="refreshDashboard()">
-              {{ loading() ? 'Refreshing...' : 'Refresh Data' }}
-            </button>
-            <button class="satori-primary" [disabled]="processingNotifications()" (click)="processPendingNotifications()">
-              {{ processingNotifications() ? 'Processing...' : 'Process Pending Alerts' }}
-            </button>
-          </div>
-        </div>
       </section>
 
       <section class="grid gap-6 xl:grid-cols-[2fr_1fr]">
@@ -61,7 +46,7 @@ import { FacilityBuilderStateService } from '../state/facility-builder-state.ser
           <h2 class="text-lg font-semibold text-slate-900">Quick Actions</h2>
           <div class="mt-4 grid gap-3">
             <button class="satori-primary" (click)="createFacility()">Create Facility Draft</button>
-            <button class="satori-secondary" (click)="goBuilder()">Import Configuration</button>
+            <button class="satori-secondary" (click)="openImportDialog()">Import Configuration</button>
             <button class="satori-secondary" (click)="goReports()">Open Reports</button>
           </div>
 
@@ -152,21 +137,16 @@ import { FacilityBuilderStateService } from '../state/facility-builder-state.ser
   `
 })
 export class AdminDashboardPageComponent implements OnInit {
-  readonly loading = signal(false);
-  readonly processingNotifications = signal(false);
   readonly todayTotalBookings = signal(0);
   readonly todayConfirmedBookings = signal(0);
   readonly todayCancelledBookings = signal(0);
   readonly pendingNotifications = signal(0);
   readonly cancellationRate = signal(0);
-  readonly lastUpdated = signal<Date | null>(null);
   readonly bookings = signal<AdminBookingSearchItem[]>([]);
   readonly deletingBookingIds = signal<number[]>([]);
   bookingEmployeeId = '';
   bookingStatus = '';
   bookingDate = this.todayIsoDate();
-
-  private readonly emptyCardValue = '--';
 
   readonly summaryCards = computed(() => {
     const facilities = this.state.facilities();
@@ -179,11 +159,11 @@ export class AdminDashboardPageComponent implements OnInit {
       { label: 'Draft Facilities', value: draft },
       {
         label: 'Cancellation Rate',
-        value: this.loading() ? this.emptyCardValue : `${this.cancellationRate()}%`
+        value: `${this.cancellationRate()}%`
       },
       {
         label: 'Pending Notifications',
-        value: this.loading() ? this.emptyCardValue : this.pendingNotifications()
+        value: this.pendingNotifications()
       }
     ];
   });
@@ -200,15 +180,11 @@ export class AdminDashboardPageComponent implements OnInit {
     private readonly state: FacilityBuilderStateService,
     private readonly adminApi: AdminApiService,
     private readonly toastService: ToastService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
-    this.loadDashboard();
-    this.loadBookings();
-  }
-
-  refreshDashboard(): void {
     this.loadDashboard();
     this.loadBookings();
   }
@@ -227,28 +203,7 @@ export class AdminDashboardPageComponent implements OnInit {
     }
   }
 
-  async processPendingNotifications(): Promise<void> {
-    this.processingNotifications.set(true);
-    try {
-      const result = await firstValueFrom(this.adminApi.processNotifications());
-      this.toastService.show(
-        `Notification processing completed: sent ${result.sent}, retried ${result.retried}, failed ${result.failed}.`,
-        'success'
-      );
-      await this.loadDashboard();
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Pending notifications could not be processed.', 'error');
-    } finally {
-      this.processingNotifications.set(false);
-    }
-  }
-
   private async loadDashboard(): Promise<void> {
-    if (this.loading()) {
-      return;
-    }
-
-    this.loading.set(true);
     try {
       await this.state.loadFromBackend();
       const [summary, notificationSummary] = await Promise.all([
@@ -261,11 +216,8 @@ export class AdminDashboardPageComponent implements OnInit {
       this.todayCancelledBookings.set(summary.cancelledBookings ?? 0);
       this.cancellationRate.set(summary.cancellationRate ?? 0);
       this.pendingNotifications.set(notificationSummary.pending ?? 0);
-      this.lastUpdated.set(new Date());
     } catch (error: any) {
       this.toastService.show(error?.error?.message ?? 'Admin dashboard data could not be loaded at this time.', 'error');
-    } finally {
-      this.loading.set(false);
     }
   }
 
@@ -274,8 +226,32 @@ export class AdminDashboardPageComponent implements OnInit {
     this.router.navigateByUrl('/admin/form-builder');
   }
 
-  goBuilder(): void {
-    this.router.navigateByUrl('/admin/form-builder');
+  openImportDialog(): void {
+    const dialogRef = this.dialog.open(SpecificationImportDialogComponent, {
+      width: '600px',
+      data: {}
+    });
+
+    dialogRef.afterClosed().subscribe(async (jsonText: string | undefined) => {
+      if (!jsonText) {
+        return;
+      }
+
+      try {
+        const jsonData = JSON.parse(jsonText);
+        const response = await firstValueFrom(this.adminApi.importFacilityFromJson(jsonData));
+        
+        this.toastService.show(`Facility "${response.facilityName}" imported successfully!`, 'success');
+        await this.loadDashboard();
+        await this.state.loadFromBackend();
+      } catch (error: any) {
+        if (error instanceof SyntaxError) {
+          this.toastService.show('Invalid JSON format. Please check your JSON syntax.', 'error');
+        } else {
+          this.toastService.show(error?.error?.message ?? 'Failed to import facility from JSON.', 'error');
+        }
+      }
+    });
   }
 
   goReports(): void {

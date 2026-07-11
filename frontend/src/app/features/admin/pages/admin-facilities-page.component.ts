@@ -8,6 +8,7 @@ import { ConfirmDialogComponent } from '../components/confirm-dialog.component';
 import { FacilityAdminApiService } from '../../../core/services/facility-admin-api.service';
 import { PublishLocationsDialogComponent } from '../components/publish-locations-dialog.component';
 import { firstValueFrom } from 'rxjs';
+import { FacilityMobilePreviewDialogComponent } from '../components/facility-mobile-preview-dialog.component';
 
 @Component({
   selector: 'app-admin-facilities-page',
@@ -27,7 +28,8 @@ import { firstValueFrom } from 'rxjs';
       </section>
 
       <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <article *ngFor="let facility of facilities()" class="satori-card">
+        <ng-container *ngIf="!loading()">
+          <article *ngFor="let facility of facilities()" class="satori-card">
           <div class="flex items-start justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.12em] text-slate-500">{{ facility.category }}</p>
@@ -44,11 +46,31 @@ import { firstValueFrom } from 'rxjs';
           <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
             <button class="satori-secondary" (click)="editFacility(facility.id)">Edit</button>
             <button class="satori-secondary" (click)="previewFacility(facility.id)">Preview</button>
-            <button class="satori-secondary" [disabled]="isPublishing(facility.id)" (click)="publishFacility(facility.id)">{{ isPublishing(facility.id) ? 'Publishing...' : 'Publish' }}</button>
+            <button
+              class="satori-secondary"
+              [disabled]="facility.published || isPublishing(facility.id)"
+              (click)="publishFacility(facility.id)"
+            >
+              {{ facility.published ? 'Published' : (isPublishing(facility.id) ? 'Publishing...' : 'Publish') }}
+            </button>
             <button class="satori-secondary" (click)="duplicateFacility(facility.id)">Duplicate</button>
             <button class="satori-danger col-span-2" (click)="deleteFacility(facility.id)">Delete</button>
           </div>
         </article>
+        </ng-container>
+
+        <ng-container *ngIf="!loading() && facilities().length === 0">
+          <div class="col-span-full rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+            <p class="text-sm text-slate-600">No facilities created yet.</p>
+            <p class="mt-1 text-xs text-slate-500">Create a new facility or import one using JSON to get started.</p>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="loading()">
+          <div class="col-span-full rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+            <p class="text-sm text-slate-600">Loading facilities...</p>
+          </div>
+        </ng-container>
       </section>
     </div>
   `
@@ -56,6 +78,7 @@ import { firstValueFrom } from 'rxjs';
 export class AdminFacilitiesPageComponent {
   readonly facilities = computed(() => this.state.filteredFacilities());
   readonly publishingFacilityIds = signal<number[]>([]);
+  readonly loading = signal(false);
 
   constructor(
     private readonly state: FacilityBuilderStateService,
@@ -68,9 +91,7 @@ export class AdminFacilitiesPageComponent {
   }
 
   createFacility(): void {
-    const draft = this.state.createDraft();
-    this.state.setActiveFacility(draft.id);
-    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'create', facilityId: draft.id } });
+    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'create' } });
   }
 
   goImport(): void {
@@ -83,11 +104,26 @@ export class AdminFacilitiesPageComponent {
   }
 
   previewFacility(id: number): void {
-    this.state.setActiveFacility(id);
-    this.router.navigate(['/admin/form-builder'], { queryParams: { mode: 'preview', facilityId: id } });
+    const facility = this.state.facilities().find((item) => item.id === id);
+    if (!facility) {
+      this.snackBar.open('Facility not found', 'Close', { duration: 2600 });
+      return;
+    }
+
+    this.dialog.open(FacilityMobilePreviewDialogComponent, {
+      width: '460px',
+      maxWidth: '95vw',
+      data: { facility }
+    });
   }
 
   async publishFacility(id: number): Promise<void> {
+    const facility = this.state.facilities().find((item) => item.id === id);
+    if (facility?.published) {
+      this.snackBar.open('This facility is already published', 'OK', { duration: 2200 });
+      return;
+    }
+
     const publishConfig = await firstValueFrom(
       this.dialog
         .open(PublishLocationsDialogComponent, {
@@ -137,12 +173,23 @@ export class AdminFacilitiesPageComponent {
       .subscribe((confirmed) => {
         if (confirmed) {
           this.facilityAdminApi.deleteFacility(id).subscribe({
-            next: () => {
+            next: async () => {
               this.state.deleteFacility(id);
+              await this.refreshFromBackend();
               this.snackBar.open('Facility deleted', 'OK', { duration: 2000 });
             },
-            error: (err) => {
-              this.snackBar.open(err?.error?.message ?? 'Delete failed', 'Close', { duration: 3000 });
+            error: async (err) => {
+              const status = Number(err?.status ?? 0);
+
+              // Allow deleting local draft records that are not yet persisted to backend.
+              if (status === 404) {
+                this.state.deleteFacility(id);
+                this.snackBar.open('Local draft deleted', 'OK', { duration: 2200 });
+                return;
+              }
+
+              await this.refreshFromBackend();
+              this.snackBar.open(err?.error?.message ?? 'Delete failed', 'Close', { duration: 3200 });
             }
           });
         }
@@ -150,10 +197,13 @@ export class AdminFacilitiesPageComponent {
   }
 
   private async refreshFromBackend(): Promise<void> {
+    this.loading.set(true);
     try {
       await this.state.loadFromBackend();
     } catch (error: any) {
       this.snackBar.open(error?.error?.message ?? 'Failed to load facilities from backend', 'Close', { duration: 3500 });
+    } finally {
+      this.loading.set(false);
     }
   }
 }

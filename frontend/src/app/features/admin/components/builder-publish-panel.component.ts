@@ -15,8 +15,9 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
       <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <button class="satori-secondary" (click)="saveDraft.emit()">Save Draft</button>
-        <button class="satori-primary" (click)="publish.emit()">Publish Facility</button>
-        <button class="satori-secondary" (click)="generateJson.emit()">Regenerate JSON</button>
+        <button class="satori-primary" [disabled]="isPublished" (click)="publish.emit()">
+          {{ isPublished ? 'Already Published' : 'Publish Facility' }}
+        </button>
         <button class="satori-secondary" (click)="downloadJson.emit()">Download JSON</button>
         <button class="satori-secondary" (click)="importJson.emit()">Import JSON</button>
       </section>
@@ -32,10 +33,10 @@ import { MatExpansionModule } from '@angular/material/expansion';
 })
 export class BuilderPublishPanelComponent {
   @Input() generatedJson = '';
+  @Input() isPublished = false;
 
   @Output() saveDraft = new EventEmitter<void>();
   @Output() publish = new EventEmitter<void>();
-  @Output() generateJson = new EventEmitter<void>();
   @Output() downloadJson = new EventEmitter<void>();
   @Output() importJson = new EventEmitter<void>();
 }

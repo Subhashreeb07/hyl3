@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, ViewChild, computed, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { BuilderFieldListComponent } from '../components/builder-field-list.component';
 import { BuilderLivePreviewComponent } from '../components/builder-live-preview.component';
 import { BuilderPublishPanelComponent } from '../components/builder-publish-panel.component';
@@ -58,13 +58,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
           </div>
         </div>
 
-        <div class="mt-4 grid gap-3 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
-          <label class="admin-field">
-            Working Facility
-            <select [value]="activeFacilityId() ?? ''" (change)="switchFacility($any($event.target).value)">
-              <option *ngFor="let facility of facilityLibrary()" [value]="facility.id">{{ facility.facilityName }}</option>
-            </select>
-          </label>
+        <div class="mt-4 grid gap-3 md:grid-cols-3">
 
           <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
             <p class="text-[11px] uppercase tracking-[0.08em] text-slate-500">Fields</p>
@@ -109,7 +103,6 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
           <div class="grid gap-5 py-4 xl:grid-cols-[1fr_360px]">
             <app-builder-field-list
               [fields]="orderedFields()"
-              (add)="addField()"
               (addWithType)="addFieldWithType($event)"
               (edit)="editField($event)"
               (duplicate)="duplicateField($event)"
@@ -137,7 +130,11 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
         </mat-step>
 
         <mat-step label="Preview">
-          <app-builder-preview-step [fields]="orderedFields()" [generatedJson]="generatedJson()" />
+          <app-builder-preview-step
+            [fields]="orderedFields()"
+            [generatedJson]="generatedJson()"
+            (applyJson)="applyEditedJson($event)"
+          />
           <div class="flex justify-between">
             <button mat-button matStepperPrevious>Back</button>
             <button mat-flat-button color="primary" matStepperNext>Next</button>
@@ -147,9 +144,9 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
         <mat-step label="Publish">
           <app-builder-publish-panel
             [generatedJson]="generatedJson()"
+            [isPublished]="isCurrentFacilityPublished()"
             (saveDraft)="saveDraft()"
             (publish)="publish()"
-            (generateJson)="refreshJson()"
             (downloadJson)="downloadJson()"
             (importJson)="openImportPrompt()"
           />
@@ -192,14 +189,15 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
   ]
 })
 export class AdminFormBuilderPageComponent {
+  @ViewChild(MatStepper) private stepper?: MatStepper;
+
   readonly iconChoices = ['restaurant', 'directions_bus', 'local_parking', 'badge', 'event', 'meeting_room', 'inventory_2'];
   readonly categoryOptions = ['Food', 'Mobility', 'Parking', 'Workspace', 'Events', 'Visitors', 'Security', 'IT Services', 'Other'];
 
-  readonly facilityLibrary = computed(() => this.state.facilities());
-  readonly activeFacilityId = computed(() => this.state.activeFacilityId());
   readonly formFieldCount = computed(() => this.orderedFields().length);
   readonly requiredFieldCount = computed(() => this.orderedFields().filter((field) => field.required).length);
   readonly optionSetCount = computed(() => this.orderedFields().filter((field) => (field.options ?? []).length > 0).length);
+  readonly isCurrentFacilityPublished = computed(() => Boolean(this.state.activeFacility()?.published));
 
   readonly basicForm = this.fb.group({
     facilityName: ['', Validators.required],
@@ -212,20 +210,11 @@ export class AdminFormBuilderPageComponent {
   });
 
   readonly rulesForm = this.fb.group({
-    bookingStartTime: [''],
-    bookingEndTime: [''],
-    bookingDeadline: [''],
-    reminderTime: [''],
-    maximumCapacity: [null as number | null],
-    allowCancellation: [true],
-    cancellationDeadline: [''],
-    qrRequired: [false],
-    approvalRequired: [false],
-    regularCommuteEnabled: [false],
-    autoCloseFacility: [false],
-    bookingWindow: [''],
-    weekendEnabled: [false],
-    holidayEnabled: [false]
+    bookingStartTime: ['', Validators.required],
+    bookingEndTime: ['', Validators.required],
+    reminderTime: ['', Validators.required],
+    cancellationDeadline: ['', Validators.required],
+    bookingWindow: ['', Validators.required]
   });
 
   readonly draftFields = signal<FacilityField[]>([]);
@@ -260,33 +249,31 @@ export class AdminFormBuilderPageComponent {
     const mode = queryParams['mode'] ?? 'view';
     const facilityId = queryParams['facilityId'] ? Number(queryParams['facilityId']) : null;
 
-    if (mode === 'create') {
-      // For create mode, ensure we're working with the newly created draft
-      if (facilityId) {
-        this.state.setActiveFacility(facilityId);
+    if (mode === 'edit' && facilityId) {
+      const selected = this.state.facilities().find((facility) => facility.id === facilityId);
+      if (!selected) {
+        this.toast('Selected facility not found for editing', 'Close', 3200);
+        this.initializeFreshDraft();
+        return;
       }
-      this.loadInitialFacility();
-    } else if (mode === 'edit' && facilityId) {
-      // For edit mode, load the specified facility
-      this.state.setActiveFacility(facilityId);
-      this.loadInitialFacility();
-    } else if (mode === 'import') {
-      // For import mode, create a fresh draft
-      const draft = this.state.createDraft();
-      this.state.setActiveFacility(draft.id);
-      this.patchFromRecord(draft);
+
+      this.state.setActiveFacility(selected.id);
+      this.patchFromRecord(selected);
       this.refreshJson();
+    } else if (mode === 'import') {
+      this.initializeFreshDraft();
       this.openImportPrompt();
     } else {
-      // Default view mode - load existing or first facility
-      this.loadInitialFacility();
+      // Default mode starts from a blank new draft.
+      this.initializeFreshDraft();
     }
   }
 
   createNewDraft(): void {
-    const draft = this.state.createDraft();
-    this.patchFromRecord(draft);
-    this.refreshJson();
+    this.initializeFreshDraft();
+    if (this.stepper) {
+      this.stepper.selectedIndex = 0;
+    }
     this.toast('New draft facility created');
   }
 
@@ -317,7 +304,7 @@ export class AdminFormBuilderPageComponent {
             fieldType,
             required: false,
             displayOrder: this.draftFields().length + 1,
-            options: []
+            options: this.fieldUsesOptions(fieldType) ? ['Option 1'] : []
           },
           displayOrder: this.draftFields().length + 1
         }
@@ -330,6 +317,7 @@ export class AdminFormBuilderPageComponent {
         this.draftFields.update((items) => [...items, field]);
         this.normalizeFieldOrder();
         this.refreshJson();
+        this.toast(`${field.label} added`);
       });
   }
 
@@ -378,6 +366,18 @@ export class AdminFormBuilderPageComponent {
   }
 
   async saveDraft(): Promise<void> {
+    if (this.rulesForm.invalid) {
+      this.rulesForm.markAllAsTouched();
+      this.toast('Please fill all required Business Rules fields', 'Close', 3000);
+      return;
+    }
+
+    const fieldError = this.validateDraftFields(this.orderedFields());
+    if (fieldError) {
+      this.toast(fieldError, 'Close', 3400);
+      return;
+    }
+
     try {
       const persisted = await this.persistBuilder(false);
       this.state.upsertFacility(persisted);
@@ -389,6 +389,23 @@ export class AdminFormBuilderPageComponent {
   }
 
   async publish(): Promise<void> {
+    if (this.isCurrentFacilityPublished()) {
+      this.toast('Facility is already published');
+      return;
+    }
+
+    if (this.rulesForm.invalid) {
+      this.rulesForm.markAllAsTouched();
+      this.toast('Please fill all required Business Rules fields', 'Close', 3000);
+      return;
+    }
+
+    const fieldError = this.validateDraftFields(this.orderedFields());
+    if (fieldError) {
+      this.toast(fieldError, 'Close', 3400);
+      return;
+    }
+
     try {
       const publishConfig = await firstValueFrom(
         this.dialog
@@ -459,20 +476,49 @@ export class AdminFormBuilderPageComponent {
     }
   }
 
-  switchFacility(facilityIdRaw: string): void {
-    const facilityId = Number(facilityIdRaw);
-    if (!Number.isFinite(facilityId)) {
-      return;
-    }
+  applyEditedJson(rawJson: string): void {
+    try {
+      const parsed = JSON.parse(rawJson) as FacilitySpecification;
+      this.validateImportedSpecification(parsed);
 
-    const selected = this.state.facilities().find((facility) => facility.id === facilityId);
-    if (!selected) {
-      return;
-    }
+      if (parsed.facilityName) {
+        this.basicForm.patchValue({
+          facilityName: parsed.facilityName,
+          description: parsed.description ?? '',
+          category: this.categoryOptions.includes(parsed.category ?? '') ? parsed.category : 'Other',
+          customCategory: this.categoryOptions.includes(parsed.category ?? '') ? '' : (parsed.category ?? ''),
+          icon: parsed.icon ?? 'inventory_2',
+          status: parsed.status ?? true
+        });
+      }
 
-    this.state.setActiveFacility(selected.id);
-    this.patchFromRecord(selected);
-    this.refreshJson();
+      this.rulesForm.patchValue({
+        bookingStartTime: parsed.rules?.bookingStartTime ?? '',
+        bookingEndTime: parsed.rules?.bookingEndTime ?? '',
+        reminderTime: parsed.rules?.reminderTime ?? '',
+        cancellationDeadline: parsed.rules?.cancellationDeadline ?? '',
+        bookingWindow: parsed.rules?.bookingWindow ?? ''
+      });
+
+      const parsedFields = (parsed.fields ?? []).map((field, index) => ({
+          ...field,
+          displayOrder: field.displayOrder ?? index + 1
+        }));
+
+      const fieldError = this.validateDraftFields(parsedFields);
+      if (fieldError) {
+        this.toast(fieldError, 'Close', 3400);
+        return;
+      }
+
+      this.draftFields.set(parsedFields);
+
+      this.normalizeFieldOrder();
+      this.refreshJson();
+      this.toast('Edited JSON applied to form');
+    } catch (error: any) {
+      this.toast(error?.message ?? 'Invalid JSON format', 'Close', 3200);
+    }
   }
 
   private validateImportedSpecification(spec: FacilitySpecification): void {
@@ -490,13 +536,90 @@ export class AdminFormBuilderPageComponent {
       if (!field.fieldType) {
         throw new Error(`Field ${index + 1} fieldType is required`);
       }
+
+      if (field.displayOrder !== undefined && Number(field.displayOrder) < 1) {
+        throw new Error(`Field ${index + 1} displayOrder must be >= 1`);
+      }
+
+      if (field.validationJson) {
+        try {
+          const parsed = JSON.parse(field.validationJson);
+          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            throw new Error();
+          }
+        } catch {
+          throw new Error(`Field ${index + 1} validationJson must be a valid JSON object`);
+        }
+      }
+
+      if (this.fieldUsesOptions(field.fieldType) && !(field.options ?? []).length) {
+        throw new Error(`Field ${index + 1} requires at least one option`);
+      }
     });
   }
 
-  private loadInitialFacility(): void {
-    const active = this.state.activeFacility() ?? this.state.facilities()[0] ?? this.state.createDraft();
-    this.state.setActiveFacility(active.id);
-    this.patchFromRecord(active);
+  private validateDraftFields(fields: FacilityField[]): string | null {
+    for (let i = 0; i < fields.length; i += 1) {
+      const field = fields[i];
+      const fieldNo = i + 1;
+
+      if (!field.label?.trim()) {
+        return `Field ${fieldNo}: label is required`;
+      }
+
+      if (!field.fieldType) {
+        return `Field ${fieldNo}: type is required`;
+      }
+
+      if (!Number.isFinite(field.displayOrder) || Number(field.displayOrder) < 1) {
+        return `Field ${fieldNo}: display order must be 1 or greater`;
+      }
+
+      if (this.fieldUsesOptions(field.fieldType)) {
+        const options = (field.options ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
+        if (!options.length) {
+          return `Field ${fieldNo}: at least one option is required`;
+        }
+      }
+
+      if (field.validationJson?.trim()) {
+        try {
+          const parsed = JSON.parse(field.validationJson);
+          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            return `Field ${fieldNo}: validation JSON must be an object`;
+          }
+        } catch {
+          return `Field ${fieldNo}: validation JSON is invalid`;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private initializeFreshDraft(): void {
+    const draft = this.state.createDraft();
+    this.state.setActiveFacility(draft.id);
+
+    this.basicForm.reset({
+      facilityName: '',
+      description: '',
+      category: 'Food',
+      customCategory: '',
+      icon: 'inventory_2',
+      colorTheme: '#0f6cbd',
+      status: true
+    });
+
+    this.rulesForm.reset({
+      bookingStartTime: '',
+      bookingEndTime: '',
+      reminderTime: '',
+      cancellationDeadline: '',
+      bookingWindow: ''
+    });
+
+    this.draftFields.set([]);
     this.refreshJson();
   }
 
@@ -516,18 +639,9 @@ export class AdminFormBuilderPageComponent {
     this.rulesForm.patchValue({
       bookingStartTime: record.rules.bookingStartTime ?? '',
       bookingEndTime: record.rules.bookingEndTime ?? '',
-      bookingDeadline: record.rules.bookingDeadline ?? '',
       reminderTime: record.rules.reminderTime ?? '',
-      maximumCapacity: record.rules.maximumCapacity ?? null,
-      allowCancellation: record.rules.allowCancellation ?? true,
       cancellationDeadline: record.rules.cancellationDeadline ?? '',
-      qrRequired: record.rules.qrRequired ?? false,
-      approvalRequired: record.rules.approvalRequired ?? false,
-      regularCommuteEnabled: record.rules.regularCommuteEnabled ?? false,
-      autoCloseFacility: record.rules.autoCloseFacility ?? false,
-      bookingWindow: record.rules.bookingWindow ?? '',
-      weekendEnabled: record.rules.weekendEnabled ?? false,
-      holidayEnabled: record.rules.holidayEnabled ?? false
+      bookingWindow: record.rules.bookingWindow ?? ''
     });
 
     this.draftFields.set(record.fields.map((field) => ({ ...field })));
@@ -552,18 +666,13 @@ export class AdminFormBuilderPageComponent {
       rules: {
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
         bookingEndTime: this.rulesForm.value.bookingEndTime || null,
-        bookingDeadline: this.rulesForm.value.bookingDeadline || null,
+        bookingDeadline: this.rulesForm.value.bookingEndTime || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
-        maximumCapacity: this.rulesForm.value.maximumCapacity ?? null,
-        allowCancellation: Boolean(this.rulesForm.value.allowCancellation),
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
-        qrRequired: Boolean(this.rulesForm.value.qrRequired),
-        approvalRequired: Boolean(this.rulesForm.value.approvalRequired),
-        regularCommuteEnabled: Boolean(this.rulesForm.value.regularCommuteEnabled),
-        autoCloseFacility: Boolean(this.rulesForm.value.autoCloseFacility),
         bookingWindow: this.rulesForm.value.bookingWindow || null,
-        weekendEnabled: Boolean(this.rulesForm.value.weekendEnabled),
-        holidayEnabled: Boolean(this.rulesForm.value.holidayEnabled)
+        allowCancellation: true,
+        qrRequired: false,
+        regularCommuteEnabled: false
       }
     };
   }
@@ -660,13 +769,13 @@ export class AdminFormBuilderPageComponent {
 
     await firstValueFrom(
       this.facilityAdminApi.saveRules(facilityId, {
-        bookingDeadline: this.rulesForm.value.bookingDeadline || null,
+        bookingDeadline: this.rulesForm.value.bookingEndTime || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
-        qrRequired: Boolean(this.rulesForm.value.qrRequired),
-        allowCancellation: Boolean(this.rulesForm.value.allowCancellation),
-        maximumCapacity: this.rulesForm.value.maximumCapacity ?? null,
-        regularCommuteEnabled: Boolean(this.rulesForm.value.regularCommuteEnabled)
+        qrRequired: false,
+        allowCancellation: true,
+        maximumCapacity: null,
+        regularCommuteEnabled: false
       })
     );
 

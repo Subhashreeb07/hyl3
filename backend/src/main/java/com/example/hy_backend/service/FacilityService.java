@@ -4,6 +4,7 @@ import com.example.hy_backend.dto.EmployeeDtos;
 import com.example.hy_backend.dto.FacilityDtos;
 
 import java.util.List;
+import java.util.Map;
 
 public interface FacilityService {
     FacilityDtos.FacilityCreateResponse createFacility(FacilityDtos.FacilityCreateRequest request);
@@ -19,4 +20,6 @@ public interface FacilityService {
     FacilityDtos.PublishResponse publishFacility(Long facilityId, FacilityDtos.PublishRequest request);
 
     EmployeeDtos.FacilitySpecificationResponse getFacilitySpecification(Long facilityId);
+
+    FacilityDtos.FacilityDetailResponse importFacilityFromJson(Map<String, Object> jsonData);
 }

@@ -13,7 +13,6 @@ import { FacilityField, FieldType } from '../../../core/models/specification.mod
           <h3 class="text-lg font-semibold text-slate-900">Fields</h3>
           <p class="text-xs text-slate-500">Design the employee form with reusable field templates.</p>
         </div>
-        <button class="satori-primary" (click)="add.emit()">Custom Field</button>
       </div>
 
       <div class="rounded-xl border border-slate-200 bg-white p-3">
@@ -50,7 +49,7 @@ import { FacilityField, FieldType } from '../../../core/models/specification.mod
         </div>
       </article>
 
-      <p *ngIf="fields.length === 0" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No fields yet. Click Add Field to start building the dynamic form.</p>
+      <p *ngIf="fields.length === 0" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No fields yet. Use quick-add templates to build the dynamic form.</p>
     </div>
   `,
   styles: [
@@ -104,7 +103,6 @@ export class BuilderFieldListComponent {
 
   @Input({ required: true }) fields: FacilityField[] = [];
 
-  @Output() add = new EventEmitter<void>();
   @Output() edit = new EventEmitter<FacilityField>();
   @Output() addWithType = new EventEmitter<FieldType>();
   @Output() duplicate = new EventEmitter<FacilityField>();

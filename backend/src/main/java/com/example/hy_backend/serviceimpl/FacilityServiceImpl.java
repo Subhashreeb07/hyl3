@@ -6,10 +6,12 @@ import com.example.hy_backend.exception.BadRequestException;
 import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FieldDefinition;
+import com.example.hy_backend.model.FieldOption;
 import com.example.hy_backend.model.FacilityRule;
 import com.example.hy_backend.model.FieldType;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
+import com.example.hy_backend.repository.FieldOptionRepository;
 import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.service.FacilityService;
 import jakarta.transaction.Transactional;
@@ -21,8 +23,11 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class FacilityServiceImpl implements FacilityService {
@@ -32,15 +37,18 @@ public class FacilityServiceImpl implements FacilityService {
 
     private final FacilityRepository facilityRepository;
     private final FieldDefinitionRepository fieldDefinitionRepository;
+    private final FieldOptionRepository fieldOptionRepository;
     private final FacilityRuleRepository facilityRuleRepository;
 
     public FacilityServiceImpl(
             FacilityRepository facilityRepository,
             FieldDefinitionRepository fieldDefinitionRepository,
-                        FacilityRuleRepository facilityRuleRepository
+            FieldOptionRepository fieldOptionRepository,
+            FacilityRuleRepository facilityRuleRepository
     ) {
         this.facilityRepository = facilityRepository;
         this.fieldDefinitionRepository = fieldDefinitionRepository;
+        this.fieldOptionRepository = fieldOptionRepository;
         this.facilityRuleRepository = facilityRuleRepository;
     }
 
@@ -147,6 +155,121 @@ public class FacilityServiceImpl implements FacilityService {
                 specificationFields,
                 specificationRule
         );
+    }
+
+    @Override
+    @Transactional
+    public FacilityDtos.FacilityDetailResponse importFacilityFromJson(java.util.Map<String, Object> jsonData) {
+        try {
+            // Extract facility information
+            String facilityName = (String) jsonData.getOrDefault("facilityName", "Imported Facility");
+            String description = (String) jsonData.getOrDefault("description", "");
+            String category = (String) jsonData.getOrDefault("category", "General");
+            String icon = (String) jsonData.getOrDefault("icon", "business");
+            Boolean status = (Boolean) jsonData.getOrDefault("status", true);
+
+            // Create Facility
+            Facility facility = new Facility();
+            facility.setFacilityName(facilityName.trim());
+            facility.setDescription(description);
+            facility.setCategory(category);
+            facility.setIcon(icon);
+            facility.setStatus(status);
+            facility.setPublished(false);
+            Facility savedFacility = facilityRepository.save(facility);
+
+            // Extract and create fields
+            @SuppressWarnings("unchecked")
+            List<java.util.Map<String, Object>> fieldsList = (List<java.util.Map<String, Object>>) jsonData.get("fields");
+            if (fieldsList != null) {
+                int order = 1;
+                for (java.util.Map<String, Object> fieldData : fieldsList) {
+                    String fieldLabel = (String) fieldData.get("label");
+                    String fieldTypeStr = (String) fieldData.get("fieldType");
+                    Boolean required = (Boolean) fieldData.getOrDefault("required", false);
+                    String placeholder = (String) fieldData.getOrDefault("placeholder", "");
+
+                    try {
+                        FieldType fieldType = FieldType.valueOf(fieldTypeStr.toUpperCase(java.util.Locale.ROOT));
+
+                        FieldDefinition field = new FieldDefinition();
+                        field.setFacility(savedFacility);
+                        field.setLabel(fieldLabel);
+                        field.setFieldType(fieldType);
+                        field.setRequired(required);
+                        field.setPlaceholder(placeholder);
+                        field.setDisplayOrder(order++);
+
+                        FieldDefinition savedField = fieldDefinitionRepository.save(field);
+
+                        // Create options if it's a dropdown/radio/checkbox field
+                        @SuppressWarnings("unchecked")
+                        List<String> options = (List<String>) fieldData.get("options");
+                        if (options != null && requiresOptions(fieldType)) {
+                            for (String optionValue : options) {
+                                FieldOption option = new FieldOption();
+                                option.setField(savedField);
+                                option.setOptionValue(optionValue);
+                                fieldOptionRepository.save(option);
+                            }
+                        }
+                    } catch (IllegalArgumentException e) {
+                        throw new BadRequestException("Invalid field type: " + fieldTypeStr);
+                    }
+                }
+            }
+
+            // Extract and create rules
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> rulesData = (java.util.Map<String, Object>) jsonData.get("rules");
+            if (rulesData != null) {
+                FacilityRule rule = new FacilityRule();
+                rule.setFacility(savedFacility);
+                
+                if (rulesData.containsKey("bookingDeadline")) {
+                    try {
+                        rule.setBookingDeadline(LocalTime.parse((String) rulesData.get("bookingDeadline")));
+                    } catch (Exception e) {
+                        // Skip invalid time format
+                    }
+                }
+                if (rulesData.containsKey("reminderTime")) {
+                    try {
+                        rule.setReminderTime(LocalTime.parse((String) rulesData.get("reminderTime")));
+                    } catch (Exception e) {
+                        // Skip invalid time format
+                    }
+                }
+                if (rulesData.containsKey("bookingStartTime")) {
+                    try {
+                        rule.setBookingStartTime(LocalTime.parse((String) rulesData.get("bookingStartTime")));
+                    } catch (Exception e) {
+                        // Skip invalid time format
+                    }
+                }
+                if (rulesData.containsKey("qrRequired")) {
+                    rule.setQrRequired((Boolean) rulesData.getOrDefault("qrRequired", false));
+                }
+                if (rulesData.containsKey("allowCancellation")) {
+                    rule.setAllowCancellation((Boolean) rulesData.getOrDefault("allowCancellation", true));
+                }
+                if (rulesData.containsKey("maximumCapacity")) {
+                    Object capacityObj = rulesData.get("maximumCapacity");
+                    if (capacityObj instanceof Number) {
+                        rule.setMaximumCapacity(((Number) capacityObj).intValue());
+                    }
+                }
+                if (rulesData.containsKey("regularCommuteEnabled")) {
+                    rule.setRegularCommuteEnabled((Boolean) rulesData.getOrDefault("regularCommuteEnabled", false));
+                }
+                
+                facilityRuleRepository.save(rule);
+            }
+
+            return toDetailResponse(savedFacility);
+        } catch (ClassCastException e) {
+            throw new BadRequestException("Invalid JSON format: " + e.getMessage());
+        }
     }
 
     private Facility getFacilityOrThrow(Long facilityId) {
