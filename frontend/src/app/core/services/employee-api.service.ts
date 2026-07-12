@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  AvailableFacility,
   DashboardFacility,
   EmployeeNotificationListResponse,
   EmployeeHomeResponse,
@@ -24,6 +25,12 @@ export class EmployeeApiService {
 
   getEmployeeHomeSummary(employeeId: string): Observable<EmployeeHomeResponse> {
     return this.http.get<EmployeeHomeResponse>(`${this.baseUrl}/employee/home/${employeeId}`);
+  }
+
+  getAvailableFacilitiesForDate(employeeId: string, date: string): Observable<AvailableFacility[]> {
+    return this.http.get<AvailableFacility[]>(`${this.baseUrl}/employee/facilities/available`, {
+      params: { employeeId, date }
+    });
   }
 
   getEmployeeProfile(employeeId: string): Observable<EmployeeProfileResponse> {

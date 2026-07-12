@@ -77,6 +77,10 @@ export interface RuleRequest {
   allowCancellation?: boolean;
   maximumCapacity?: number | null;
   regularCommuteEnabled?: boolean;
+  availableDays?: string | null;
+  bookingWindowDays?: number | null;
+  facilityAvailableFromDate?: string | null;
+  facilityAvailableToDate?: string | null;
 }
 
 export interface RuleResponse {
@@ -87,6 +91,10 @@ export interface RuleResponse {
   allowCancellation?: boolean;
   maximumCapacity?: number | null;
   regularCommuteEnabled?: boolean;
+  availableDays?: string | null;
+  bookingWindowDays?: number | null;
+  facilityAvailableFromDate?: string | null;
+  facilityAvailableToDate?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

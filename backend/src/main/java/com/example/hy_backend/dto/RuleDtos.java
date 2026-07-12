@@ -14,7 +14,11 @@ public final class RuleDtos {
             Boolean qrRequired,
             Boolean allowCancellation,
             @Min(1) Integer maximumCapacity,
-            Boolean regularCommuteEnabled
+            Boolean regularCommuteEnabled,
+            String availableDays,
+            Integer bookingWindowDays,
+            String facilityAvailableFromDate,
+            String facilityAvailableToDate
     ) {
     }
 
@@ -25,7 +29,11 @@ public final class RuleDtos {
             Boolean qrRequired,
             Boolean allowCancellation,
             Integer maximumCapacity,
-            Boolean regularCommuteEnabled
+            Boolean regularCommuteEnabled,
+            String availableDays,
+            Integer bookingWindowDays,
+            String facilityAvailableFromDate,
+            String facilityAvailableToDate
     ) {
     }
 }

@@ -10,6 +10,7 @@ import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.service.RuleService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Service
@@ -59,6 +60,8 @@ public class RuleServiceImpl implements RuleService {
         LocalTime bookingDeadline = parseTime(request.bookingDeadline(), "bookingDeadline");
         LocalTime bookingStartTime = parseTime(request.bookingStartTime(), "bookingStartTime");
         LocalTime reminderTime = parseTime(request.reminderTime(), "reminderTime");
+        LocalDate facilityAvailableFromDate = parseDate(request.facilityAvailableFromDate(), "facilityAvailableFromDate");
+        LocalDate facilityAvailableToDate = parseDate(request.facilityAvailableToDate(), "facilityAvailableToDate");
 
         if (bookingStartTime != null && bookingDeadline != null && bookingStartTime.isAfter(bookingDeadline)) {
             throw new BadRequestException("bookingStartTime must be before or equal to bookingDeadline");
@@ -72,6 +75,14 @@ public class RuleServiceImpl implements RuleService {
             throw new BadRequestException("maximumCapacity must be greater than zero");
         }
 
+        if (request.bookingWindowDays() != null && request.bookingWindowDays() < 0) {
+            throw new BadRequestException("bookingWindowDays must be greater than or equal to zero");
+        }
+
+        if (facilityAvailableFromDate != null && facilityAvailableToDate != null && facilityAvailableFromDate.isAfter(facilityAvailableToDate)) {
+            throw new BadRequestException("facilityAvailableFromDate must be before or equal to facilityAvailableToDate");
+        }
+
         rule.setBookingDeadline(bookingDeadline);
         rule.setBookingStartTime(bookingStartTime);
         rule.setReminderTime(reminderTime);
@@ -79,6 +90,10 @@ public class RuleServiceImpl implements RuleService {
         rule.setAllowCancellation(request.allowCancellation() != null ? request.allowCancellation() : true);
         rule.setMaximumCapacity(request.maximumCapacity());
         rule.setRegularCommuteEnabled(request.regularCommuteEnabled() != null ? request.regularCommuteEnabled() : false);
+        rule.setAvailableDays(request.availableDays());
+        rule.setBookingWindowDays(request.bookingWindowDays());
+        rule.setFacilityAvailableFromDate(facilityAvailableFromDate);
+        rule.setFacilityAvailableToDate(facilityAvailableToDate);
     }
 
     private RuleDtos.RuleResponse toResponse(FacilityRule rule) {
@@ -89,7 +104,11 @@ public class RuleServiceImpl implements RuleService {
                 rule.getQrRequired() != null ? rule.getQrRequired() : false,
                 rule.getAllowCancellation() != null ? rule.getAllowCancellation() : true,
                 rule.getMaximumCapacity(),
-                rule.getRegularCommuteEnabled() != null ? rule.getRegularCommuteEnabled() : false
+                rule.getRegularCommuteEnabled() != null ? rule.getRegularCommuteEnabled() : false,
+                rule.getAvailableDays(),
+                rule.getBookingWindowDays(),
+                rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString(),
+                rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString()
         );
     }
 
@@ -101,6 +120,17 @@ public class RuleServiceImpl implements RuleService {
             return LocalTime.parse(value);
         } catch (Exception ex) {
             throw new BadRequestException("Invalid time format for " + fieldName + ". Use HH:mm or HH:mm:ss");
+        }
+    }
+
+    private LocalDate parseDate(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value);
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid date format for " + fieldName + ". Use yyyy-MM-dd");
         }
     }
 }

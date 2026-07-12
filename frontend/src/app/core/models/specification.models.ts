@@ -32,11 +32,15 @@ export interface FacilityField {
 }
 
 export interface FacilityRules {
+  facilityAvailableFromDate?: string | null;
+  facilityAvailableToDate?: string | null;
   bookingStartTime?: string | null;
   bookingEndTime?: string | null;
   bookingDeadline?: string | null;
   cancellationDeadline?: string | null;
   bookingWindow?: string | null;
+  bookingWindowDays?: number | null;
+  availableDays?: string | null;
   reminderTime?: string | null;
   maximumCapacity?: number | null;
   qrRequired?: boolean;

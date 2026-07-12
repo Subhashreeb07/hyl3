@@ -48,10 +48,10 @@ import { FacilityMobilePreviewDialogComponent } from '../components/facility-mob
             <button class="satori-secondary" (click)="previewFacility(facility.id)">Preview</button>
             <button
               class="satori-secondary"
-              [disabled]="facility.published || isPublishing(facility.id)"
+              [disabled]="isPublishing(facility.id)"
               (click)="publishFacility(facility.id)"
             >
-              {{ facility.published ? 'Published' : (isPublishing(facility.id) ? 'Publishing...' : 'Publish') }}
+              {{ isPublishing(facility.id) ? 'Publishing...' : (facility.published ? 'Republish' : 'Publish') }}
             </button>
             <button class="satori-secondary" (click)="duplicateFacility(facility.id)">Duplicate</button>
             <button class="satori-danger col-span-2" (click)="deleteFacility(facility.id)">Delete</button>
@@ -119,11 +119,6 @@ export class AdminFacilitiesPageComponent {
 
   async publishFacility(id: number): Promise<void> {
     const facility = this.state.facilities().find((item) => item.id === id);
-    if (facility?.published) {
-      this.snackBar.open('This facility is already published', 'OK', { duration: 2200 });
-      return;
-    }
-
     const publishConfig = await firstValueFrom(
       this.dialog
         .open(PublishLocationsDialogComponent, {

@@ -9,11 +9,15 @@ import com.example.hy_backend.model.Notification;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.EmployeeRepository;
 import com.example.hy_backend.repository.FacilityRepository;
+import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.repository.NotificationRepository;
+import com.example.hy_backend.model.FacilityRule;
+import java.time.LocalTime;
 import com.example.hy_backend.service.EmployeeService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,17 +34,20 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final BookingRepository bookingRepository;
     private final EmployeeRepository employeeRepository;
     private final NotificationRepository notificationRepository;
+    private final FacilityRuleRepository facilityRuleRepository;
 
     public EmployeeServiceImpl(
             FacilityRepository facilityRepository,
             BookingRepository bookingRepository,
             EmployeeRepository employeeRepository,
-            NotificationRepository notificationRepository
+            NotificationRepository notificationRepository,
+            FacilityRuleRepository facilityRuleRepository
     ) {
         this.facilityRepository = facilityRepository;
         this.bookingRepository = bookingRepository;
         this.employeeRepository = employeeRepository;
         this.notificationRepository = notificationRepository;
+        this.facilityRuleRepository = facilityRuleRepository;
     }
 
     @Override
@@ -229,4 +236,141 @@ public class EmployeeServiceImpl implements EmployeeService {
                 }
                 return normalized.charAt(0) + normalized.substring(1).toLowerCase(Locale.ROOT);
         }
+
+    @Override
+    public List<EmployeeDtos.AvailableFacilityResponse> getAvailableFacilitiesForDate(
+            String employeeId, java.time.LocalDate date) {
+
+        String normalizedEmployeeId = normalizeEmployeeId(employeeId);
+        LocalDate today = LocalDate.now();
+
+        // Don't return facilities for past dates
+        if (date.isBefore(today)) {
+            return List.of();
+        }
+
+        String officeLocation = employeeRepository.findById(normalizedEmployeeId)
+                .map(employee -> normalizeLocation(employee.getOfficeLocation()))
+                .orElse(null);
+
+        List<Facility> publishedFacilities = facilityRepository.findByPublishedTrueAndStatusTrue()
+                .stream()
+                .filter(f -> facilityVisibleForOffice(f, officeLocation))
+                .toList();
+
+        LocalTime now = LocalTime.now();
+        java.time.DayOfWeek dayOfWeek = date.getDayOfWeek();
+        long daysFromToday = java.time.temporal.ChronoUnit.DAYS.between(today, date);
+
+        return publishedFacilities.stream().map(facility -> {
+            Optional<FacilityRule> ruleOpt = facilityRuleRepository.findByFacilityFacilityId(facility.getFacilityId());
+
+            boolean bookingAllowed = true;
+            String unavailableReason = null;
+
+            if (ruleOpt.isPresent()) {
+                FacilityRule rule = ruleOpt.get();
+
+                // Check facility date range — FILTER OUT (hide) if selected date is outside range
+                java.time.LocalDate facilityFromDate = rule.getFacilityAvailableFromDate();
+                java.time.LocalDate facilityToDate = rule.getFacilityAvailableToDate();
+                if (facilityFromDate != null || facilityToDate != null) {
+                    if (facilityFromDate != null && date.isBefore(facilityFromDate)) {
+                        return null; // hide facility — not yet available on this date
+                    }
+                    if (facilityToDate != null && date.isAfter(facilityToDate)) {
+                        return null; // hide facility — no longer available on this date
+                    }
+                }
+
+                // Check booking window restriction (how many days in advance can book)
+                Integer bookingWindowDays = rule.getBookingWindowDays();
+                if (bookingAllowed && bookingWindowDays != null && daysFromToday > bookingWindowDays) {
+                    bookingAllowed = false;
+                    LocalDate openDate = today.plusDays(bookingWindowDays);
+                    unavailableReason = "Booking opens on " + openDate.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"));
+                }
+
+                // Check available days restriction
+                String availableDays = rule.getAvailableDays();
+                if (bookingAllowed && availableDays != null && !availableDays.isBlank()) {
+                    boolean allowed = java.util.Arrays.stream(availableDays.split(","))
+                            .map(String::trim)
+                            .map(String::toUpperCase)
+                            .anyMatch(d -> d.equals(dayOfWeek.name()));
+                    if (!allowed) {
+                        bookingAllowed = false;
+                        String dayName = dayOfWeek.name().charAt(0) + dayOfWeek.name().substring(1).toLowerCase();
+                        unavailableReason = "Not available on " + dayName;
+                    }
+                }
+
+                // For today: check the booking window (bookingStartTime → bookingDeadline)
+                if (bookingAllowed && date.equals(today)) {
+                    LocalTime startTime = rule.getBookingStartTime();
+                    LocalTime deadline = rule.getBookingDeadline();
+
+                    if (startTime != null && now.isBefore(startTime)) {
+                        bookingAllowed = false;
+                        unavailableReason = "Booking window opens at " + startTime;
+                    } else if (deadline != null && now.isAfter(deadline)) {
+                        bookingAllowed = false;
+                        unavailableReason = "Booking window closed at " + deadline;
+                    }
+                }
+            }
+
+            String startTimeStr = ruleOpt
+                    .map(FacilityRule::getBookingStartTime)
+                    .map(LocalTime::toString)
+                    .orElse(null);
+
+            String deadlineStr = ruleOpt
+                    .map(FacilityRule::getBookingDeadline)
+                    .map(LocalTime::toString)
+                    .orElse(null);
+
+            String availableDaysStr = ruleOpt
+                    .map(FacilityRule::getAvailableDays)
+                    .orElse(null);
+
+            Integer bookingWindowDaysInt = ruleOpt
+                    .map(FacilityRule::getBookingWindowDays)
+                    .orElse(null);
+
+            boolean alreadyBooked = bookingAllowed && bookingRepository
+                    .existsByEmployeeIdAndFacilityFacilityIdAndBookingDateAndStatus(
+                            normalizedEmployeeId, facility.getFacilityId(), date, BookingStatus.CONFIRMED);
+
+            String bookingIdStr = null;
+            if (alreadyBooked) {
+                List<Booking> existing = bookingRepository
+                        .findByEmployeeIdAndBookingDateOrderByCreatedAtDesc(normalizedEmployeeId, date);
+                bookingIdStr = existing.stream()
+                        .filter(b -> b.getFacility().getFacilityId().equals(facility.getFacilityId()))
+                        .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+                        .findFirst()
+                        .map(b -> String.valueOf(b.getBookingId()))
+                        .orElse(null);
+            }
+
+            return new EmployeeDtos.AvailableFacilityResponse(
+                    facility.getFacilityId(),
+                    facility.getFacilityName(),
+                    facility.getIcon(),
+                    facility.getCategory(),
+                    facility.getDescription(),
+                    startTimeStr,
+                    deadlineStr,
+                    alreadyBooked,
+                    bookingIdStr,
+                    availableDaysStr,
+                    bookingWindowDaysInt,
+                    bookingAllowed,
+                    unavailableReason
+            );
+        })
+        .filter(java.util.Objects::nonNull)
+        .toList();
+    }
 }

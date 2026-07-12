@@ -138,7 +138,7 @@ public class FacilityServiceImpl implements FacilityService {
                 .toList();
 
         EmployeeDtos.SpecificationRule specificationRule = rule == null
-                ? new EmployeeDtos.SpecificationRule(null, null, null, false, true, null, false)
+                ? new EmployeeDtos.SpecificationRule(null, null, null, false, true, null, false, null)
                 : new EmployeeDtos.SpecificationRule(
                         rule.getBookingDeadline() == null ? null : rule.getBookingDeadline().toString(),
                         rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString(),
@@ -146,7 +146,8 @@ public class FacilityServiceImpl implements FacilityService {
                         rule.getQrRequired(),
                         rule.getAllowCancellation(),
                         rule.getMaximumCapacity(),
-                        rule.getRegularCommuteEnabled()
+                        rule.getRegularCommuteEnabled(),
+                        rule.getAvailableDays()
                 );
 
         return new EmployeeDtos.FacilitySpecificationResponse(

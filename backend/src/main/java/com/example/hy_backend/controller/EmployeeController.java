@@ -49,4 +49,14 @@ public class EmployeeController {
     public ResponseEntity<EmployeeDtos.InvitationsResponse> employeeInvitations(@PathVariable String employeeId) {
         return ResponseEntity.ok(employeeService.getEmployeeInvitations(employeeId));
     }
+
+    @GetMapping("/employee/facilities/available")
+    @Operation(summary = "Get facilities available for booking on a specific date")
+    public ResponseEntity<java.util.List<EmployeeDtos.AvailableFacilityResponse>> availableFacilitiesForDate(
+            @RequestParam String employeeId,
+            @RequestParam String date
+    ) {
+        java.time.LocalDate localDate = java.time.LocalDate.parse(date);
+        return ResponseEntity.ok(employeeService.getAvailableFacilitiesForDate(employeeId, localDate));
+    }
 }

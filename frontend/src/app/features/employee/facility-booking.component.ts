@@ -23,6 +23,9 @@ import { ToastService } from '../../core/services/toast.service';
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#0f6cbd]">Facility Request</p>
           <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ data.facilityName }}</h2>
+          <p *ngIf="bookingDate" class="mt-1 text-sm font-medium text-slate-700">
+            📅 Booking for: <strong>{{ bookingDate | date: 'EEEE, MMMM d, y' }}</strong>
+          </p>
           <p class="text-sm text-slate-600">Complete the form to submit your service request through the Hyland employee portal.</p>
         </div>
         <a routerLink="/employee/dashboard" class="satori-secondary">Return to Dashboard</a>
@@ -47,6 +50,7 @@ export class FacilityBookingComponent implements OnInit {
   readonly form: FormGroup = this.fb.group({});
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  bookingDate: string | null = null;
 
   readonly orderedFields = computed(() => {
     const fields = this.spec()?.fields ?? [];
@@ -69,6 +73,8 @@ export class FacilityBookingComponent implements OnInit {
       this.router.navigateByUrl('/employee/dashboard');
       return;
     }
+
+    this.bookingDate = this.route.snapshot.queryParamMap.get('date');
 
     this.employeeApi.getFacilitySpecification(facilityId).subscribe({
       next: (data) => {

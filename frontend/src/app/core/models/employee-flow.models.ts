@@ -33,6 +33,22 @@ export interface DashboardFacility {
   icon?: string;
 }
 
+export interface AvailableFacility {
+  facilityId: number;
+  facilityName: string;
+  icon?: string;
+  category?: string;
+  description?: string;
+  bookingStartTime?: string | null;
+  bookingDeadline?: string | null;
+  alreadyBooked: boolean;
+  bookingId?: string | null;
+  availableDays?: string | null;
+  bookingWindowDays?: number | null;
+  bookingAllowed: boolean;
+  unavailableReason?: string | null;
+}
+
 export interface DateChip {
   day: string;
   date: number;

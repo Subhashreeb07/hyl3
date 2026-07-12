@@ -15,8 +15,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
       <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <button class="satori-secondary" (click)="saveDraft.emit()">Save Draft</button>
-        <button class="satori-primary" [disabled]="isPublished" (click)="publish.emit()">
-          {{ isPublished ? 'Already Published' : 'Publish Facility' }}
+        <button class="satori-primary" (click)="publish.emit()">
+          {{ isPublished ? 'Republish Facility' : 'Publish Facility' }}
         </button>
         <button class="satori-secondary" (click)="downloadJson.emit()">Download JSON</button>
         <button class="satori-secondary" (click)="importJson.emit()">Import JSON</button>

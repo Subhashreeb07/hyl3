@@ -63,6 +63,23 @@ public final class EmployeeDtos {
     public record InvitationsResponse(String employeeId, Integer pendingCount, List<InvitationItem> invitations) {
     }
 
+    public record AvailableFacilityResponse(
+            Long facilityId,
+            String facilityName,
+            String icon,
+            String category,
+            String description,
+            String bookingStartTime,
+            String bookingDeadline,
+            boolean alreadyBooked,
+            String bookingId,
+            String availableDays,
+            Integer bookingWindowDays,
+            boolean bookingAllowed,
+            String unavailableReason
+    ) {
+    }
+
     public record FacilitySpecificationResponse(
             Long facilityId,
             String facilityName,
@@ -90,7 +107,8 @@ public final class EmployeeDtos {
             Boolean qrRequired,
             Boolean allowCancellation,
             Integer maximumCapacity,
-            Boolean regularCommuteEnabled
+            Boolean regularCommuteEnabled,
+            String availableDays
     ) {
     }
 }

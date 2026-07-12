@@ -12,4 +12,6 @@ public interface EmployeeService {
     EmployeeDtos.EmployeeProfileResponse getEmployeeProfile(String employeeId);
 
     EmployeeDtos.InvitationsResponse getEmployeeInvitations(String employeeId);
+
+    List<EmployeeDtos.AvailableFacilityResponse> getAvailableFacilitiesForDate(String employeeId, java.time.LocalDate date);
 }

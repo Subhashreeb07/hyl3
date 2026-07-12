@@ -99,6 +99,7 @@ com\example\hy_backend\dto\BookingDtos$BookingSummaryResponse.class
 com\example\hy_backend\repository\BookingRepository.class
 com\example\hy_backend\dto\RuleDtos.class
 com\example\hy_backend\dto\FacilityDtos.class
+com\example\hy_backend\dto\EmployeeDtos$AvailableFacilityResponse.class
 com\example\hy_backend\serviceimpl\RuleEngineServiceImpl.class
 com\example\hy_backend\repository\FieldOptionRepository.class
 com\example\hy_backend\dto\EmployeeDtos$EmployeeHomeResponse.class
@@ -125,6 +126,7 @@ com\example\hy_backend\dto\RuleDtos$RuleRequest.class
 com\example\hy_backend\model\BookingStatus.class
 com\example\hy_backend\dto\FieldDtos.class
 com\example\hy_backend\dto\RuleDtos$RuleResponse.class
+com\example\hy_backend\controller\AdminFacilityController.class
 com\example\hy_backend\dto\ReportDtos$EmployeeRegistrationItem.class
 com\example\hy_backend\repository\NotificationTemplateRepository.class
 com\example\hy_backend\controller\BookingController.class

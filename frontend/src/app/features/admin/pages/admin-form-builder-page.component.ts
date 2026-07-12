@@ -210,11 +210,14 @@ export class AdminFormBuilderPageComponent {
   });
 
   readonly rulesForm = this.fb.group({
+    facilityAvailableFromDate: [''],
+    facilityAvailableToDate: [''],
     bookingStartTime: ['', Validators.required],
     bookingEndTime: ['', Validators.required],
     reminderTime: ['', Validators.required],
     cancellationDeadline: ['', Validators.required],
-    bookingWindow: ['', Validators.required]
+    bookingWindowDays: [null as number | null],
+    availableDays: ['']
   });
 
   readonly draftFields = signal<FacilityField[]>([]);
@@ -389,11 +392,6 @@ export class AdminFormBuilderPageComponent {
   }
 
   async publish(): Promise<void> {
-    if (this.isCurrentFacilityPublished()) {
-      this.toast('Facility is already published');
-      return;
-    }
-
     if (this.rulesForm.invalid) {
       this.rulesForm.markAllAsTouched();
       this.toast('Please fill all required Business Rules fields', 'Close', 3000);
@@ -493,11 +491,14 @@ export class AdminFormBuilderPageComponent {
       }
 
       this.rulesForm.patchValue({
+        facilityAvailableFromDate: parsed.rules?.facilityAvailableFromDate ?? '',
+        facilityAvailableToDate: parsed.rules?.facilityAvailableToDate ?? '',
         bookingStartTime: parsed.rules?.bookingStartTime ?? '',
         bookingEndTime: parsed.rules?.bookingEndTime ?? '',
         reminderTime: parsed.rules?.reminderTime ?? '',
         cancellationDeadline: parsed.rules?.cancellationDeadline ?? '',
-        bookingWindow: parsed.rules?.bookingWindow ?? ''
+        bookingWindowDays: parsed.rules?.bookingWindowDays ?? null,
+        availableDays: parsed.rules?.availableDays ?? ''
       });
 
       const parsedFields = (parsed.fields ?? []).map((field, index) => ({
@@ -612,11 +613,14 @@ export class AdminFormBuilderPageComponent {
     });
 
     this.rulesForm.reset({
+      facilityAvailableFromDate: '',
+      facilityAvailableToDate: '',
       bookingStartTime: '',
       bookingEndTime: '',
       reminderTime: '',
       cancellationDeadline: '',
-      bookingWindow: ''
+      bookingWindowDays: null,
+      availableDays: ''
     });
 
     this.draftFields.set([]);
@@ -637,11 +641,14 @@ export class AdminFormBuilderPageComponent {
     });
 
     this.rulesForm.patchValue({
+      facilityAvailableFromDate: record.rules.facilityAvailableFromDate ?? '',
+      facilityAvailableToDate: record.rules.facilityAvailableToDate ?? '',
       bookingStartTime: record.rules.bookingStartTime ?? '',
       bookingEndTime: record.rules.bookingEndTime ?? '',
       reminderTime: record.rules.reminderTime ?? '',
       cancellationDeadline: record.rules.cancellationDeadline ?? '',
-      bookingWindow: record.rules.bookingWindow ?? ''
+      bookingWindowDays: record.rules.bookingWindowDays ?? null,
+      availableDays: record.rules.availableDays ?? ''
     });
 
     this.draftFields.set(record.fields.map((field) => ({ ...field })));
@@ -664,12 +671,15 @@ export class AdminFormBuilderPageComponent {
       updatedAt: new Date().toISOString(),
       fields: this.orderedFields().map((field) => ({ ...field })),
       rules: {
+        facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
+        facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
         bookingEndTime: this.rulesForm.value.bookingEndTime || null,
         bookingDeadline: this.rulesForm.value.bookingEndTime || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
-        bookingWindow: this.rulesForm.value.bookingWindow || null,
+        bookingWindowDays: this.rulesForm.value.bookingWindowDays || null,
+        availableDays: this.rulesForm.value.availableDays || null,
         allowCancellation: true,
         qrRequired: false,
         regularCommuteEnabled: false
@@ -775,7 +785,11 @@ export class AdminFormBuilderPageComponent {
         qrRequired: false,
         allowCancellation: true,
         maximumCapacity: null,
-        regularCommuteEnabled: false
+        regularCommuteEnabled: false,
+        availableDays: this.rulesForm.value.availableDays || null,
+        bookingWindowDays: this.rulesForm.value.bookingWindowDays ?? null,
+        facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
+        facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null
       })
     );
 
