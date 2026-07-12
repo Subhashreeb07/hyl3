@@ -190,4 +190,53 @@ public final class NotificationDtos {
             String message
     ) {
     }
+
+    public record CreateScheduleRequest(
+            @NotNull Long templateId,
+            @NotBlank String frequency,
+            String scheduledAt,
+            String timeOfDay,
+            String daysOfWeek,
+            Integer dayOfMonth,
+            @NotBlank String startDate,
+            String endDate,
+            String timezone
+    ) {
+    }
+
+    public record UpdateScheduleRequest(
+            @NotNull Long scheduleId,
+            @NotNull Long templateId,
+            @NotBlank String frequency,
+            String scheduledAt,
+            String timeOfDay,
+            String daysOfWeek,
+            Integer dayOfMonth,
+            @NotBlank String startDate,
+            String endDate,
+            String timezone,
+            @NotNull Boolean active
+    ) {
+    }
+
+    public record ScheduleResponse(
+            Long scheduleId,
+            Long templateId,
+            String templateName,
+            String frequency,
+            String scheduledAt,
+            String timeOfDay,
+            String daysOfWeek,
+            Integer dayOfMonth,
+            String startDate,
+            String endDate,
+            Boolean active,
+            String timezone,
+            String createdAt,
+            String updatedAt
+    ) {
+    }
+
+    public record ScheduleListResponse(List<ScheduleResponse> items) {
+    }
 }

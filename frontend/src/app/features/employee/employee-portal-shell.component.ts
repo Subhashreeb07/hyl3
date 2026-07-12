@@ -10,6 +10,7 @@ import { takeUntil } from 'rxjs/operators';
 import { AuthApiService } from '../../core/services/auth-api.service';
 import { EmployeeApiService } from '../../core/services/employee-api.service';
 import { SessionService } from '../../core/services/session.service';
+import { NotificationStreamService } from '../../core/services/notification-stream.service';
 
 @Component({
   selector: 'app-employee-portal-shell',
@@ -25,70 +26,98 @@ import { SessionService } from '../../core/services/session.service';
     MatMenuModule
   ],
   template: `
-    <div class="mx-auto max-w-[1400px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_20px_60px_rgba(17,35,63,0.08)]">
-      <header class="border-b border-slate-200 bg-white px-5 py-4 md:px-8">
-        <div class="flex flex-wrap items-center gap-4 md:gap-6">
-          <div class="flex items-center gap-3">
-            <img
-              class="hyland-logo"
-              src="https://hyland.atlassian.net/s/-s1g255/b/0/23f31f9f9a8155235832888b764f7e4e/_/jira-logo-scaled.png"
-              alt="Hyland logo"
-            />
-            <div class="hidden md:block">
-              <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#0f6cbd]">Employee Portal</p>
-              <p class="text-sm font-semibold text-slate-900">Welcome, {{ employeeDisplayName() }}</p>
+    <div class="min-h-screen w-full bg-slate-50/30">
+      <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div class="mx-auto max-w-[1320px] flex items-center justify-between h-16 px-5 md:px-8 gap-6">
+          
+          <!-- Left: Logo & Nav items -->
+          <div class="flex items-center gap-8">
+            <div class="flex items-center gap-3">
+              <img
+                class="hyland-logo"
+                src="https://hyland.atlassian.net/s/-s1g255/b/0/23f31f9f9a8155235832888b764f7e4e/_/jira-logo-scaled.png"
+                alt="Hyland logo"
+              />
+              <div class="h-5 w-[1px] bg-slate-200 hidden md:block"></div>
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:block">Employee Portal</p>
             </div>
+            
+            <!-- Inline Nav for Desktop -->
+            <nav class="hidden lg:flex items-center gap-1">
+              <a *ngFor="let item of navItems"
+                 [routerLink]="item.link"
+                 routerLinkActive="text-slate-900 border-slate-900"
+                 class="h-16 flex items-center px-3 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors border-b-2 border-transparent">
+                {{ item.label }}
+              </a>
+            </nav>
           </div>
 
-          <label class="portal-search flex min-w-[240px] flex-1 items-center gap-2 px-4 py-2">
-            <mat-icon class="!text-[20px] text-slate-500">search</mat-icon>
-            <input class="w-full bg-transparent text-sm outline-none" placeholder="Search services, bookings, and notifications" />
-          </label>
+          <!-- Right: Search, Actions & Profile -->
+          <div class="flex items-center gap-4">
+            <label class="hidden md:flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-md bg-slate-50/50 w-52">
+              <mat-icon class="!text-[18px] text-slate-400">search</mat-icon>
+              <input class="bg-transparent text-xs outline-none text-slate-700 w-full" placeholder="Search bookings..." />
+            </label>
 
-          <div class="flex items-center gap-2 md:gap-3">
-            <button class="rounded-lg bg-[#0f6cbd] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0b4f8a]" (click)="goDashboard()">Request Service</button>
+            <button class="rounded-md bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition" (click)="goDashboard()">Request Service</button>
+            
             <button
               mat-icon-button
-              class="!text-slate-600"
+              class="!text-slate-500"
               [matBadge]="unreadNotifications()"
               [matBadgeHidden]="unreadNotifications() === 0"
               matBadgeColor="warn"
               matBadgeSize="small"
               (click)="openNotifications()"
-            ><mat-icon>notifications_none</mat-icon></button>
-            <div class="hidden text-right lg:block">
-              <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Employee</p>
-              <p class="text-sm font-semibold text-slate-900">{{ employeeDisplayName() }}</p>
-            </div>
-            <button mat-button class="!min-w-0 !rounded-full !border !border-slate-200 !bg-white !px-2" (click)="openNotifications()" aria-label="Open employee notifications">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-[#0f6cbd] text-xs font-bold text-white">
+            ><mat-icon class="!text-[22px]">notifications_none</mat-icon></button>
+
+            <!-- Initials Avatar -->
+            <button mat-button class="!min-w-0 !rounded-full !p-0" [matMenuTriggerFor]="profileMenu" aria-label="Open profile menu">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 border border-slate-200 hover:bg-slate-200 transition">
                 {{ initials() }}
               </div>
             </button>
-            <button mat-icon-button [matMenuTriggerFor]="profileMenu" class="!text-slate-600" aria-label="Open profile menu">
-              <mat-icon>more_vert</mat-icon>
-            </button>
           </div>
         </div>
-
-        <nav class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        
+        <!-- Mobile/Tablet Nav row -->
+        <nav class="lg:hidden flex items-center gap-1 border-t border-slate-100 overflow-x-auto py-2 bg-white px-5 scrollbar-none">
           <a *ngFor="let item of navItems"
              [routerLink]="item.link"
-             routerLinkActive="border-[#0f6cbd] bg-[#edf5ff] text-[#0f6cbd]"
-             class="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+             routerLinkActive="bg-slate-100 text-slate-900 font-semibold"
+             class="rounded-md px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition whitespace-nowrap">
             {{ item.label }}
           </a>
         </nav>
       </header>
 
-      <main class="bg-[#fafbfd] px-5 py-6 md:px-8 md:py-8">
+      <main class="mx-auto max-w-[1320px] px-5 py-6 md:px-8 md:py-8">
         <router-outlet></router-outlet>
       </main>
 
       <mat-menu #profileMenu="matMenu">
+        <div class="px-4 py-2 border-b border-slate-100">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Welcome</p>
+          <p class="text-sm font-bold text-slate-800 mt-0.5">{{ employeeDisplayName() }}</p>
+          <p class="text-xs text-slate-500">Employee Account</p>
+        </div>
         <button mat-menu-item (click)="goProfile()"><mat-icon>badge</mat-icon><span>Profile</span></button>
         <button mat-menu-item (click)="logout()"><mat-icon>logout</mat-icon><span>Sign Out</span></button>
       </mat-menu>
+
+      <!-- Notification Toaster -->
+      <div class="fixed bottom-5 right-5 z-50 space-y-3 max-w-sm w-full">
+        <div *ngFor="let toast of activeToasts()"
+             class="flex items-center gap-3 p-4 rounded-lg bg-slate-900 text-white shadow-lg border border-slate-800 text-xs transition duration-300 animate-slide-in">
+          <span class="text-emerald-400">🔔</span>
+          <div class="flex-1">
+            <p class="font-semibold">Notification Received</p>
+            <p class="text-slate-300 mt-0.5">{{ toast.message }}</p>
+          </div>
+          <button class="text-slate-400 hover:text-white font-bold" (click)="dismissToast(toast.id)">✕</button>
+        </div>
+      </div>
     </div>
   `
 })
@@ -100,27 +129,50 @@ export class EmployeePortalShellComponent implements OnInit, OnDestroy {
     { label: 'Profile', icon: 'badge', link: '/employee/profile' }
   ];
   readonly unreadNotifications = signal(0);
+  readonly activeToasts = signal<{ id: number; message: string; type: string }[]>([]);
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     public readonly sessionService: SessionService,
     private readonly employeeApi: EmployeeApiService,
     private readonly authApi: AuthApiService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly notificationStreamService: NotificationStreamService
   ) {}
 
   ngOnInit(): void {
     this.hydrateEmployeeIdentity();
     this.loadUnreadNotifications();
 
-    interval(15000)
+    const employeeId = this.sessionService.getEmployeeId();
+    if (employeeId) {
+      this.notificationStreamService.connect(employeeId);
+    }
+
+    this.notificationStreamService.notifications$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.loadUnreadNotifications(true));
+      .subscribe((notification) => {
+        this.loadUnreadNotifications(true);
+        if (notification && notification.messageBody) {
+          this.addToast(notification.messageBody);
+        }
+      });
   }
 
   ngOnDestroy(): void {
+    this.notificationStreamService.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  addToast(message: string): void {
+    const id = Date.now();
+    this.activeToasts.update((t) => [...t, { id, message, type: 'info' }]);
+    setTimeout(() => this.dismissToast(id), 5000);
+  }
+
+  dismissToast(id: number): void {
+    this.activeToasts.update((t) => t.filter((x) => x.id !== id));
   }
 
   initials(): string {

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import {
   BookingDetail,
   BookingHistoryItem,
@@ -11,7 +12,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class BookingApiService {
-  private readonly baseUrl = 'http://localhost:8080/api/bookings';
+  private readonly baseUrl = `${environment.apiUrl}/bookings`;
 
   constructor(private readonly http: HttpClient) {}
 

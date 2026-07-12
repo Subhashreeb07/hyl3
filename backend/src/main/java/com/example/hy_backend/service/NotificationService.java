@@ -39,4 +39,14 @@ public interface NotificationService {
     NotificationDtos.TestNotificationResponse testNotification(NotificationDtos.TestNotificationRequest request);
 
     NotificationDtos.BroadcastNotificationResponse broadcastNotification(NotificationDtos.BroadcastNotificationRequest request);
+
+    NotificationDtos.ScheduleResponse createSchedule(String employeeId, NotificationDtos.CreateScheduleRequest request);
+
+    NotificationDtos.ScheduleResponse updateSchedule(String employeeId, NotificationDtos.UpdateScheduleRequest request);
+
+    NotificationDtos.ScheduleResponse getSchedule(String employeeId, Long scheduleId);
+
+    NotificationDtos.ScheduleListResponse getEmployeeSchedules(String employeeId);
+
+    boolean deleteSchedule(String employeeId, Long scheduleId);
 }

@@ -31,7 +31,7 @@ import { SessionService } from '../../core/services/session.service';
     MatBadgeModule
   ],
   template: `
-    <mat-sidenav-container class="portal-surface h-[calc(100vh-2rem)] overflow-hidden">
+    <mat-sidenav-container class="h-screen w-screen overflow-hidden bg-white">
       <mat-sidenav #drawer mode="side" opened class="!w-[280px] !border-r !border-slate-200 !bg-white !text-slate-900">
         <div class="flex h-full flex-col px-5 py-5">
           <div class="mb-6">

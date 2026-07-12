@@ -10,7 +10,7 @@ import { ToastService } from './core/services/toast.service';
   standalone: true,
   imports: [CommonModule, RouterOutlet],
   template: `
-    <main class="min-h-screen p-4 md:p-6">
+    <main class="min-h-screen">
       <section
         *ngIf="toastService.toast() as toast"
         class="mx-auto mb-4 max-w-md rounded-xl border px-4 py-3 text-sm shadow"

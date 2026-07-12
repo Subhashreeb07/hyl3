@@ -1,6 +1,7 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { SessionService } from './session.service';
 
 export interface FacilityCreateRequest {
@@ -99,7 +100,7 @@ export interface RuleResponse {
 
 @Injectable({ providedIn: 'root' })
 export class FacilityAdminApiService {
-  private readonly baseUrl = 'http://localhost:8080/api';
+  private readonly baseUrl = environment.apiUrl;
 
   constructor(
     private readonly http: HttpClient,

@@ -51,19 +51,33 @@ public class NotificationServiceImpl implements NotificationService {
     private final EmployeeRepository employeeRepository;
     private final NotificationTemplateRepository notificationTemplateRepository;
     private final NotificationTriggerRepository notificationTriggerRepository;
+    private final com.example.hy_backend.service.SseEmitterService sseEmitterService;
+    private final org.springframework.beans.factory.ObjectProvider<org.springframework.mail.javamail.JavaMailSender> mailSenderProvider;
+    private final com.example.hy_backend.repository.NotificationPreferenceRepository notificationPreferenceRepository;
+    private final boolean emailSendEnabled;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(NotificationServiceImpl.class);
 
     public NotificationServiceImpl(
             NotificationRepository notificationRepository,
             BookingRepository bookingRepository,
             EmployeeRepository employeeRepository,
             NotificationTemplateRepository notificationTemplateRepository,
-            NotificationTriggerRepository notificationTriggerRepository
+            NotificationTriggerRepository notificationTriggerRepository,
+            com.example.hy_backend.service.SseEmitterService sseEmitterService,
+            org.springframework.beans.factory.ObjectProvider<org.springframework.mail.javamail.JavaMailSender> mailSenderProvider,
+            com.example.hy_backend.repository.NotificationPreferenceRepository notificationPreferenceRepository,
+            @org.springframework.beans.factory.annotation.Value("${app.notifications.email.enabled:false}") boolean emailSendEnabled
     ) {
         this.notificationRepository = notificationRepository;
         this.bookingRepository = bookingRepository;
         this.employeeRepository = employeeRepository;
         this.notificationTemplateRepository = notificationTemplateRepository;
         this.notificationTriggerRepository = notificationTriggerRepository;
+        this.sseEmitterService = sseEmitterService;
+        this.mailSenderProvider = mailSenderProvider;
+        this.notificationPreferenceRepository = notificationPreferenceRepository;
+        this.emailSendEnabled = emailSendEnabled;
     }
 
     @Override
@@ -604,6 +618,68 @@ public class NotificationServiceImpl implements NotificationService {
             return false;
         }
 
+        // 1. Check user preferences
+        String employeeId = notification.getEmployeeId();
+        String type = notification.getNotificationType();
+        var prefOpt = notificationPreferenceRepository.findByEmployeeIdAndNotificationType(employeeId, type);
+        if (prefOpt.isPresent()) {
+            var pref = prefOpt.get();
+            boolean isEnabled = true;
+            if ("IN_APP".equals(channel) || "PUSH".equals(channel)) {
+                isEnabled = pref.isInAppEnabled();
+            } else if ("EMAIL".equals(channel)) {
+                isEnabled = pref.isEmailEnabled();
+            } else if ("SMS".equals(channel)) {
+                isEnabled = pref.isSmsEnabled();
+            }
+            if (!isEnabled) {
+                log.info("Skipping notification delivery of type {} via {} due to employee {} preferences", type, channel, employeeId);
+                notification.setStatusCode("CANCELLED");
+                notification.setProcessedAt(now);
+                notification.setLastError("Skipped due to user notification channel preference");
+                notificationRepository.save(notification);
+                return true; // successfully finished (skipped)
+            }
+        }
+
+        // 2. Multi-Channel dispatch routing
+        if ("IN_APP".equals(channel) || "PUSH".equals(channel)) {
+            try {
+                // Real-time dispatch via SSE Emitter
+                sseEmitterService.sendNotification(employeeId, toResponse(notification));
+            } catch (Exception e) {
+                log.warn("Failed to push SSE real-time event to employee {}: {}", employeeId, e.getMessage());
+            }
+        } else if ("EMAIL".equals(channel)) {
+            if (emailSendEnabled && mailSenderProvider.getIfAvailable() != null) {
+                try {
+                    org.springframework.mail.javamail.JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+                    org.springframework.mail.SimpleMailMessage message = new org.springframework.mail.SimpleMailMessage();
+                    
+                    String toEmail = employeeRepository.findById(employeeId)
+                            .map(Employee::getEmail)
+                            .orElse("employee@example.com");
+                            
+                    message.setTo(toEmail);
+                    message.setSubject("HyHub Alert: " + type.replace("_", " "));
+                    message.setText(notification.getMessageBody());
+                    message.setFrom("no-reply@example.com");
+                    
+                    mailSender.send(message);
+                    log.info("Email successfully sent to employee {}", employeeId);
+                } catch (Exception e) {
+                    log.error("Failed to send email to employee {}: {}", employeeId, e.getMessage());
+                    markFailure(notification, "SMTP Send Error: " + e.getMessage(), now);
+                    return false;
+                }
+            } else {
+                log.info("SMTP email delivery simulated (Email sending disabled or JavaMailSender bean unavailable) for employee {}: {}", employeeId, notification.getMessageBody());
+            }
+        } else if ("SMS".equals(channel)) {
+            log.info("SMS Dispatch Simulated to employee {}: {}", employeeId, notification.getMessageBody());
+        }
+
+        // Save delivery completion state
         notification.setStatusCode("SENT");
         notification.setSentAt(now);
         notification.setProcessedAt(now);
@@ -873,5 +949,51 @@ public class NotificationServiceImpl implements NotificationService {
             return null;
         }
         return normalized;
+    }
+
+    private NotificationScheduleService notificationScheduleService;
+
+    public void setNotificationScheduleService(NotificationScheduleService service) {
+        this.notificationScheduleService = service;
+    }
+
+    @Override
+    public NotificationDtos.ScheduleResponse createSchedule(String employeeId, NotificationDtos.CreateScheduleRequest request) {
+        if (notificationScheduleService == null) {
+            throw new BadRequestException("Schedule service not available");
+        }
+        return notificationScheduleService.createSchedule(employeeId, request);
+    }
+
+    @Override
+    public NotificationDtos.ScheduleResponse updateSchedule(String employeeId, NotificationDtos.UpdateScheduleRequest request) {
+        if (notificationScheduleService == null) {
+            throw new BadRequestException("Schedule service not available");
+        }
+        return notificationScheduleService.updateSchedule(employeeId, request);
+    }
+
+    @Override
+    public NotificationDtos.ScheduleResponse getSchedule(String employeeId, Long scheduleId) {
+        if (notificationScheduleService == null) {
+            throw new BadRequestException("Schedule service not available");
+        }
+        return notificationScheduleService.getSchedule(employeeId, scheduleId);
+    }
+
+    @Override
+    public NotificationDtos.ScheduleListResponse getEmployeeSchedules(String employeeId) {
+        if (notificationScheduleService == null) {
+            throw new BadRequestException("Schedule service not available");
+        }
+        return notificationScheduleService.getEmployeeSchedules(employeeId);
+    }
+
+    @Override
+    public boolean deleteSchedule(String employeeId, Long scheduleId) {
+        if (notificationScheduleService == null) {
+            throw new BadRequestException("Schedule service not available");
+        }
+        return notificationScheduleService.deleteSchedule(employeeId, scheduleId);
     }
 }

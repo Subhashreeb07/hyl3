@@ -18,6 +18,7 @@ import { FacilityBookingComponent } from './features/employee/facility-booking.c
 import { LandingRedirectComponent } from './features/employee/landing-redirect.component';
 import { LoginComponent } from './features/employee/login.component';
 import { ProfileComponent } from './features/employee/profile.component';
+import { NotificationSchedulesComponent } from './features/employee/notification-schedules.component';
 
 export const routes: Routes = [
   {
@@ -77,6 +78,10 @@ export const routes: Routes = [
       {
         path: 'notifications',
         component: EmployeeNotificationsComponent
+      },
+      {
+        path: 'notification-schedules',
+        component: NotificationSchedulesComponent
       },
       {
         path: 'facility/:facilityId/book',
