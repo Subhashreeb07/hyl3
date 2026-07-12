@@ -101,6 +101,7 @@ export class BuilderFieldListComponent {
     { type: 'PHONE',        label: 'Phone',      icon: 'phone' },
     { type: 'FILE_UPLOAD',  label: 'File',       icon: 'attach_file' },
     { type: 'SIGNATURE',    label: 'Signature',  icon: 'draw' },
+    { type: 'TREE_SELECT',  label: 'Tree Select',icon: 'account_tree' },
   ];
 
   private readonly typeMap: Record<string, { label: string; icon: string }> = Object.fromEntries(

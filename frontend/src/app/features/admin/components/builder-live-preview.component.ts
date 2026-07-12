@@ -163,6 +163,41 @@ import { FacilityField } from '../../../core/models/specification.models';
                     <span style="font-size:8.5px;color:#6366f1;font-weight:600;">Scan QR Code</span>
                   </div>
 
+                  <!-- TREE SELECT -->
+                  <div *ngSwitchCase="'TREE_SELECT'"
+                       style="border:1px solid #e0e7ff;border-radius:8px;overflow:hidden;background:#fff;">
+                    <ng-container *ngFor="let node of getTreeNodes(field); let ri = index">
+                      <div (click)="toggleTree(i, ri)"
+                           style="display:flex;align-items:center;gap:5px;padding:4px 8px;cursor:pointer;border-bottom:1px solid #f1f5f9;"
+                           [style.background]="isTreeExpanded(i, ri) ? '#eef2ff' : '#fafafa'">
+                        <span class="material-icons-outlined" style="font-size:11px;color:#6366f1;">
+                          {{ isTreeExpanded(i, ri) ? 'folder_open' : 'folder' }}
+                        </span>
+                        <span style="font-size:9px;font-weight:700;color:#374151;flex:1;">{{ node.label }}</span>
+                        <span class="material-icons-outlined" style="font-size:10px;color:#94a3b8;">
+                          {{ isTreeExpanded(i, ri) ? 'expand_less' : 'expand_more' }}
+                        </span>
+                      </div>
+                      <ng-container *ngIf="isTreeExpanded(i, ri)">
+                        <div *ngFor="let stop of node.children"
+                             (click)="selectTreeStop(i, node.label, stop)"
+                             style="display:flex;align-items:center;gap:4px;padding:3px 8px 3px 20px;cursor:pointer;border-bottom:1px solid #f8fafc;"
+                             [style.background]="getTreeSelection(i) === node.label + ' > ' + stop ? '#eef2ff' : '#fff'"
+                             [style.color]="getTreeSelection(i) === node.label + ' > ' + stop ? '#4f46e5' : '#64748b'">
+                          <span class="material-icons-outlined" style="font-size:9px;">location_on</span>
+                          <span style="font-size:8.5px;font-weight:500;">{{ stop }}</span>
+                          <span *ngIf="getTreeSelection(i) === node.label + ' > ' + stop"
+                                class="material-icons-outlined" style="font-size:9px;margin-left:auto;color:#4f46e5;">check_circle</span>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                  </div>
+                  <div *ngIf="getTreeSelection(i)"
+                       style="margin-top:3px;display:flex;align-items:center;gap:3px;font-size:8px;color:#6366f1;font-weight:700;">
+                    <span class="material-icons-outlined" style="font-size:10px;">check_circle</span>
+                    {{ getTreeSelection(i) }}
+                  </div>
+
                   <!-- SIGNATURE -->
                   <div *ngSwitchCase="'SIGNATURE'" style="border:1.5px dashed #e2e8f0;border-radius:7px;padding:8px;background:#f8fafc;display:flex;align-items:center;justify-content:center;height:36px;">
                     <span style="font-size:8.5px;color:#94a3b8;">Sign here</span>
@@ -215,6 +250,8 @@ export class BuilderLivePreviewComponent implements OnChanges {
   dropdownSelections = new Map<number, string>();
   checkedItems = new Map<number, Set<string>>();
   radioSelections = new Map<number, string>();
+  treeExpanded = new Map<string, boolean>();
+  treeSelections = new Map<number, string>();
   submitTapped = false;
 
   ngOnChanges(): void {
@@ -223,6 +260,8 @@ export class BuilderLivePreviewComponent implements OnChanges {
     this.dropdownSelections.clear();
     this.checkedItems.clear();
     this.radioSelections.clear();
+    this.treeExpanded.clear();
+    this.treeSelections.clear();
     this.submitTapped = false;
   }
 
@@ -251,5 +290,34 @@ export class BuilderLivePreviewComponent implements OnChanges {
 
   selectRadio(index: number, option: string): void {
     this.radioSelections = new Map(this.radioSelections.set(index, option));
+  }
+
+  // ── Tree helpers ──────────────────────────────────────────────────────
+  getTreeNodes(field: FacilityField): { label: string; children: string[] }[] {
+    try {
+      if (field.validationJson) return JSON.parse(field.validationJson);
+    } catch { /* fall through */ }
+    return [
+      { label: 'Main Route',    children: ['City Center', 'Airport', 'Tech Park'] },
+      { label: 'Express Route', children: ['North Stop', 'South Gate'] },
+    ];
+  }
+
+  toggleTree(fieldIdx: number, routeIdx: number): void {
+    const key = `${fieldIdx}:${routeIdx}`;
+    this.treeExpanded.set(key, !this.treeExpanded.get(key));
+    this.treeExpanded = new Map(this.treeExpanded);
+  }
+
+  isTreeExpanded(fieldIdx: number, routeIdx: number): boolean {
+    return this.treeExpanded.get(`${fieldIdx}:${routeIdx}`) ?? false;
+  }
+
+  selectTreeStop(fieldIdx: number, route: string, stop: string): void {
+    this.treeSelections = new Map(this.treeSelections.set(fieldIdx, `${route} > ${stop}`));
+  }
+
+  getTreeSelection(fieldIdx: number): string {
+    return this.treeSelections.get(fieldIdx) ?? '';
   }
 }

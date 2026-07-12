@@ -140,6 +140,54 @@ export interface FieldDialogData {
           </button>
         </div>
 
+        <!-- Tree Editor (TREE_SELECT) -->
+        <div *ngIf="usesTree(form.value.fieldType)" class="flex flex-col gap-3">
+          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Tree Structure
+            <span class="text-slate-400 font-normal normal-case ml-1">(Routes → Stops)</span>
+          </label>
+
+          <div *ngFor="let node of treeNodes; let ri = index"
+               class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+            <!-- Route label row -->
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-icons-outlined text-indigo-400" style="font-size:16px">account_tree</span>
+              <input type="text" [value]="node.label" (input)="updateRouteLabel(ri, $event)"
+                placeholder="Route / Category name" class="field-input flex-1"
+                style="background:#fff;border-color:#e0e7ff;" />
+              <button type="button" (click)="removeRoute(ri)"
+                class="rounded-full p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                [disabled]="treeNodes.length === 1">
+                <span class="material-icons-outlined" style="font-size:16px">delete</span>
+              </button>
+            </div>
+            <!-- Stops -->
+            <div class="ml-6 flex flex-col gap-1.5">
+              <div *ngFor="let stop of node.children; let si = index" class="flex items-center gap-2">
+                <span class="material-icons-outlined text-slate-400" style="font-size:13px">subdirectory_arrow_right</span>
+                <input type="text" [value]="stop" (input)="updateStop(ri, si, $event)"
+                  placeholder="Stop name" class="field-input flex-1" style="font-size:0.8rem;" />
+                <button type="button" (click)="removeStop(ri, si)"
+                  class="rounded-full p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                  [disabled]="node.children.length === 1">
+                  <span class="material-icons-outlined" style="font-size:15px">close</span>
+                </button>
+              </div>
+              <button type="button" (click)="addStop(ri)"
+                class="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 mt-1 self-start">
+                <span class="material-icons-outlined" style="font-size:14px">add</span>
+                Add Stop
+              </button>
+            </div>
+          </div>
+
+          <button type="button" (click)="addRoute()"
+            class="flex items-center gap-1.5 rounded-xl border-2 border-dashed border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-colors self-start">
+            <span class="material-icons-outlined" style="font-size:16px">add</span>
+            Add Route
+          </button>
+        </div>
+
         <!-- Required toggle -->
         <label class="toggle-wrap">
           <div class="toggle-track" [class.on]="form.value.required">
@@ -183,6 +231,7 @@ export class FieldConfigDialogComponent {
     { type: 'PHONE',        label: 'Phone',      icon: 'phone' },
     { type: 'FILE_UPLOAD',  label: 'File',       icon: 'attach_file' },
     { type: 'SIGNATURE',    label: 'Signature',  icon: 'draw' },
+    { type: 'TREE_SELECT',  label: 'Tree Select',icon: 'account_tree' },
   ];
 
   readonly form = this.fb.group({
@@ -198,8 +247,19 @@ export class FieldConfigDialogComponent {
     ? [...this.data.field.options]
     : [''];
 
+  treeNodes: { label: string; children: string[] }[] = (() => {
+    if (this.data.field?.fieldType === 'TREE_SELECT' && this.data.field.validationJson) {
+      try { return JSON.parse(this.data.field.validationJson); } catch { /* fall through */ }
+    }
+    return [{ label: 'Route A', children: ['Stop 1', 'Stop 2'] }];
+  })();
+
   usesOptions(type: FieldType | null | undefined): boolean {
     return type === 'DROPDOWN' || type === 'CHECKBOX' || type === 'RADIO_BUTTON';
+  }
+
+  usesTree(type: FieldType | null | undefined): boolean {
+    return type === 'TREE_SELECT';
   }
 
   optionIcon(type: FieldType | null | undefined): string {
@@ -218,20 +278,48 @@ export class FieldConfigDialogComponent {
     this.optionsList[i] = (event.target as HTMLInputElement).value;
   }
 
+  // ── Tree methods ──────────────────────────────────────
+  addRoute(): void {
+    this.treeNodes = [...this.treeNodes, { label: 'New Route', children: ['Stop 1'] }];
+  }
+
+  removeRoute(ri: number): void {
+    if (this.treeNodes.length > 1) this.treeNodes = this.treeNodes.filter((_, i) => i !== ri);
+  }
+
+  updateRouteLabel(ri: number, event: Event): void {
+    this.treeNodes[ri].label = (event.target as HTMLInputElement).value;
+  }
+
+  addStop(ri: number): void {
+    this.treeNodes[ri].children = [...this.treeNodes[ri].children, ''];
+  }
+
+  removeStop(ri: number, si: number): void {
+    if (this.treeNodes[ri].children.length > 1)
+      this.treeNodes[ri].children = this.treeNodes[ri].children.filter((_, i) => i !== si);
+  }
+
+  updateStop(ri: number, si: number, event: Event): void {
+    this.treeNodes[ri].children[si] = (event.target as HTMLInputElement).value;
+  }
+
   save(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const v = this.form.getRawValue();
+    const isTree = v.fieldType === 'TREE_SELECT';
     const field: FacilityField = {
       ...(this.data.field?.fieldId ? { fieldId: this.data.field.fieldId } : {}),
-      label:        (v.label        ?? '').trim(),
-      fieldType:    v.fieldType     ?? 'TEXTBOX',
-      placeholder:  (v.placeholder  ?? '').trim() || undefined,
-      helpText:     (v.helpText     ?? '').trim() || undefined,
-      required:     Boolean(v.required),
-      displayOrder: Number(v.displayOrder),
-      options: this.usesOptions(v.fieldType)
-        ? this.optionsList.map(s => s.trim()).filter(Boolean)
-        : [],
+      label:          (v.label        ?? '').trim(),
+      fieldType:      v.fieldType     ?? 'TEXTBOX',
+      placeholder:    (v.placeholder  ?? '').trim() || undefined,
+      helpText:       (v.helpText     ?? '').trim() || undefined,
+      required:       Boolean(v.required),
+      displayOrder:   Number(v.displayOrder),
+      options:        this.usesOptions(v.fieldType) ? this.optionsList.map(s => s.trim()).filter(Boolean) : [],
+      validationJson: isTree
+        ? JSON.stringify(this.treeNodes.map(n => ({ label: n.label.trim(), children: n.children.map(c => c.trim()).filter(Boolean) })))
+        : undefined,
     };
     this.dialogRef.close(field);
   }

@@ -12,5 +12,6 @@ public enum FieldType {
     NUMBER,
     PHONE,
     QR_SCANNER,
-    FILE_UPLOAD
+    FILE_UPLOAD,
+    TREE_SELECT
 }
