@@ -15,6 +15,8 @@ export interface FacilityBuilderRecord {
   colorTheme: string;
   status: boolean;
   published: boolean;
+  isTemplate: boolean;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
   fields: FacilityField[];
@@ -100,6 +102,8 @@ export class FacilityBuilderStateService {
         record.icon = detail.icon ?? 'inventory_2';
         record.status = detail.status;
         record.published = detail.published;
+        record.isTemplate = detail.isTemplate ?? false;
+        record.isPublic = detail.isPublic ?? true;
         records.push(record);
       }
 
@@ -126,15 +130,14 @@ export class FacilityBuilderStateService {
       colorTheme: '#0f6cbd',
       status: true,
       published: false,
+      isTemplate: false,
+      isPublic: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       fields: [],
       rules: {
-        allowCancellation: true,
-        qrRequired: false,
-        weekendEnabled: false,
-        holidayEnabled: false,
-        regularCommuteEnabled: false
+        employeeTypes: ['On-site', 'Remote', 'Hybrid'],
+        roles: ['HR', 'Manager', 'Finance', 'Cloud', 'RD', 'Director', 'IS', 'NOC', 'Ops', 'Devops'],
       }
     };
 
@@ -157,6 +160,27 @@ export class FacilityBuilderStateService {
     this.activeFacilityId.set(next.id);
   }
 
+  async createFromTemplate(templateId: number): Promise<FacilityBuilderRecord> {
+    const resp = await firstValueFrom(this.facilityAdminApi.createFromTemplate(templateId));
+    const detail = await firstValueFrom(this.facilityAdminApi.getFacility(resp.facilityId));
+    const record = this.fromSpecification({
+      facilityId: detail.facilityId,
+      facilityName: detail.facilityName,
+      description: detail.description,
+      category: detail.category,
+      icon: detail.icon,
+      status: detail.status,
+      published: detail.published,
+      fields: [],
+      rules: {}
+    });
+    record.isTemplate = false;
+    record.isPublic = detail.isPublic ?? true;
+    this.facilities.update((items) => [record, ...items]);
+    this.activeFacilityId.set(record.id);
+    return record;
+  }
+
   duplicateFacility(id: number): void {
     const source = this.facilities().find((f) => f.id === id);
     if (!source) {
@@ -168,6 +192,7 @@ export class FacilityBuilderStateService {
       id: this.idCounter++,
       facilityName: `${source.facilityName} Copy`,
       published: false,
+      isTemplate: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       fields: source.fields.map((field) => ({ ...field }))
@@ -182,6 +207,13 @@ export class FacilityBuilderStateService {
     if (this.activeFacilityId() === id) {
       this.activeFacilityId.set(null);
     }
+  }
+
+  async saveAsTemplate(id: number): Promise<void> {
+    await firstValueFrom(this.facilityAdminApi.saveAsTemplate(id));
+    this.facilities.update((items) =>
+      items.map((f) => (f.id === id ? { ...f, isTemplate: true, published: false } : f))
+    );
   }
 
   publishFacility(id: number): void {
@@ -217,6 +249,8 @@ export class FacilityBuilderStateService {
       colorTheme: '#0f6cbd',
       status: spec.status ?? true,
       published: spec.published ?? false,
+      isTemplate: (spec as any).isTemplate ?? false,
+      isPublic: (spec as any).isPublic ?? true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       fields: (spec.fields ?? []).map((field, index) => ({

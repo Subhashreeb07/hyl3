@@ -1,0 +1,95 @@
+{
+  "facilityName": "TPL_EVENT_ORGANIZATION",
+  "description": "Reusable template for team event registration with eligibility, capacity, waitlist, and reminder controls.",
+  "category": "Events",
+  "icon": "event",
+  "status": true,
+  "published": false,
+  "fields": [
+    {
+      "label": "Event Name",
+      "fieldType": "TEXTBOX",
+      "required": true,
+      "displayOrder": 1,
+      "placeholder": "Quarterly Townhall",
+      "validationJson": "{\"maxLength\":120}"
+    },
+    {
+      "label": "Event Status",
+      "fieldType": "DROPDOWN",
+      "required": true,
+      "displayOrder": 2,
+      "defaultValue": "OPEN",
+      "options": ["OPEN", "CLOSED", "CANCELLED"]
+    },
+    {
+      "label": "Registration Date",
+      "fieldType": "DATE_PICKER",
+      "required": true,
+      "displayOrder": 3
+    },
+    {
+      "label": "Registration Deadline",
+      "fieldType": "TIME_PICKER",
+      "required": true,
+      "displayOrder": 4,
+      "defaultValue": "17:00"
+    },
+    {
+      "label": "Department Eligibility",
+      "fieldType": "DROPDOWN",
+      "required": true,
+      "displayOrder": 5,
+      "defaultValue": "ALL",
+      "options": ["ALL", "ENGINEERING", "PRODUCT", "HR", "FINANCE", "SALES"]
+    },
+    {
+      "label": "Role Eligibility",
+      "fieldType": "DROPDOWN",
+      "required": true,
+      "displayOrder": 6,
+      "defaultValue": "ALL",
+      "options": ["ALL", "EMPLOYEE", "MANAGER", "LEAD", "DIRECTOR"]
+    },
+    {
+      "label": "Waitlist Enabled",
+      "fieldType": "RADIO_BUTTON",
+      "required": true,
+      "displayOrder": 7,
+      "defaultValue": "YES",
+      "options": ["YES", "NO"]
+    },
+    {
+      "label": "Schedule Conflict Policy",
+      "fieldType": "DROPDOWN",
+      "required": true,
+      "displayOrder": 8,
+      "defaultValue": "BLOCK_ON_CONFLICT",
+      "options": ["BLOCK_ON_CONFLICT", "ALLOW_WITH_WARNING"]
+    },
+    {
+      "label": "Cancellation Allowed",
+      "fieldType": "RADIO_BUTTON",
+      "required": true,
+      "displayOrder": 9,
+      "defaultValue": "YES",
+      "options": ["YES", "NO"]
+    },
+    {
+      "label": "Additional Notes",
+      "fieldType": "TEXTAREA",
+      "required": false,
+      "displayOrder": 10,
+      "placeholder": "Optional event notes"
+    }
+  ],
+  "rules": {
+    "bookingStartTime": "08:00",
+    "bookingDeadline": "17:00",
+    "reminderTime": "16:00",
+    "qrRequired": false,
+    "allowCancellation": true,
+    "maximumCapacity": 200,
+    "regularCommuteEnabled": false
+  }
+}

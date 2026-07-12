@@ -88,4 +88,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     long countByBookingDate(LocalDate bookingDate);
 
     long countByBookingDateAndStatus(LocalDate bookingDate, BookingStatus status);
+
+    @Query("SELECT COUNT(b) FROM Booking b JOIN b.employee e WHERE b.facility.facilityId = :facilityId AND b.bookingDate = :bookingDate AND b.status = :status AND LOWER(e.officeLocation) = LOWER(:officeLocation)")
+    long countByFacilityDateStatusAndOfficeLocation(
+            @Param("facilityId") Long facilityId,
+            @Param("bookingDate") LocalDate bookingDate,
+            @Param("status") BookingStatus status,
+            @Param("officeLocation") String officeLocation
+    );
 }

@@ -82,7 +82,9 @@ class FacilityServiceImplIntegrationTest extends PostgresIntegrationTestSupport 
                         "publish test",
                         "General",
                         "inventory_2",
-                        true
+                        true,
+                        false,
+                        false
                 )
         );
 
@@ -119,6 +121,8 @@ class FacilityServiceImplIntegrationTest extends PostgresIntegrationTestSupport 
                         "publish status test",
                         "General",
                         "inventory_2",
+                        false,
+                        false,
                         false
                 )
         );

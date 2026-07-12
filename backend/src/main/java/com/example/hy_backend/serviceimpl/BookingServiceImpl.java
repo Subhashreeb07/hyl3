@@ -9,8 +9,10 @@ import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
 import com.example.hy_backend.repository.FacilityRuleRepository;
+import com.example.hy_backend.repository.OfficeLocationRepository;
 import com.example.hy_backend.service.AuditService;
 import com.example.hy_backend.service.BookingService;
+import com.example.hy_backend.service.LocationService;
 import com.example.hy_backend.service.NotificationService;
 import com.example.hy_backend.service.RuleEngineService;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,8 @@ public class BookingServiceImpl implements BookingService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final RuleEngineService ruleEngineService;
+    private final LocationService locationService;
+    private final OfficeLocationRepository officeLocationRepository;
 
     public BookingServiceImpl(
             BookingRepository bookingRepository,
@@ -38,7 +42,9 @@ public class BookingServiceImpl implements BookingService {
             FacilityRuleRepository facilityRuleRepository,
             NotificationService notificationService,
             AuditService auditService,
-            RuleEngineService ruleEngineService
+            RuleEngineService ruleEngineService,
+            LocationService locationService,
+            OfficeLocationRepository officeLocationRepository
     ) {
         this.bookingRepository = bookingRepository;
         this.facilityRepository = facilityRepository;
@@ -47,6 +53,8 @@ public class BookingServiceImpl implements BookingService {
         this.notificationService = notificationService;
         this.auditService = auditService;
         this.ruleEngineService = ruleEngineService;
+        this.locationService = locationService;
+        this.officeLocationRepository = officeLocationRepository;
     }
 
     @Override
@@ -185,6 +193,22 @@ public class BookingServiceImpl implements BookingService {
             "{\"status\":\"CONFIRMED\"}",
             null
         );
+
+        // ── Increment facility-location stat (best-effort, never fails the booking) ──
+        try {
+            com.example.hy_backend.model.Employee emp = saved.getEmployee();
+            String officeLoc = (emp != null && emp.getOfficeLocation() != null)
+                    ? emp.getOfficeLocation() : "HYDERABAD";
+            final long facId    = saved.getFacility().getFacilityId();
+            final String bdStr  = saved.getBookingDate().toString();
+            officeLocationRepository.findByLocationNameIgnoreCase(officeLoc)
+                    .ifPresent(loc -> {
+                        locationService.incrementRequested(facId, loc.getId(), bdStr);
+                        locationService.incrementAcknowledged(facId, loc.getId(), bdStr);
+                    });
+        } catch (Exception ignored) {
+            // stat tracking is non-critical; do not fail the booking
+        }
 
         return new BookingDtos.SubmitBookingResponse(
                 saved.getBookingId(),

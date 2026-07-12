@@ -28,6 +28,12 @@ public class Facility {
     @Column(nullable = false)
     private Boolean published = false;
 
+    @Column(name = "is_template", nullable = false)
+    private Boolean isTemplate = false;
+
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = true;
+
     @Column(name = "target_locations", length = 255)
     private String targetLocations;
 
@@ -108,6 +114,22 @@ public class Facility {
 
     public void setPublished(Boolean published) {
         this.published = published;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
+    }
+
+    public Boolean getIsPublic() {
+        return isPublic;
+    }
+
+    public void setIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
     }
 
     public String getTargetLocations() {

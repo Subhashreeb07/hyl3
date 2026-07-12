@@ -11,7 +11,8 @@ export type FieldType =
   | 'NUMBER'
   | 'PHONE'
   | 'QR_SCANNER'
-  | 'FILE_UPLOAD';
+  | 'FILE_UPLOAD'
+  | 'TREE_SELECT';
 
 export interface FacilityFieldOption {
   value: string;
@@ -35,7 +36,6 @@ export interface FacilityRules {
   facilityAvailableFromDate?: string | null;
   facilityAvailableToDate?: string | null;
   bookingStartTime?: string | null;
-  bookingEndTime?: string | null;
   bookingDeadline?: string | null;
   cancellationDeadline?: string | null;
   bookingWindow?: string | null;
@@ -50,6 +50,8 @@ export interface FacilityRules {
   weekendEnabled?: boolean;
   holidayEnabled?: boolean;
   regularCommuteEnabled?: boolean;
+  employeeTypes?: string[] | null;
+  roles?: string[] | null;
 }
 
 export interface FacilitySpecification {

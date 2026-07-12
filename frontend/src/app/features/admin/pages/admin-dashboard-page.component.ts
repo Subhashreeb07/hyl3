@@ -1,287 +1,362 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { AdminBookingSearchItem } from '../../../core/models/admin.models';
-import { AdminApiService } from '../../../core/services/admin-api.service';
-import { ToastService } from '../../../core/services/toast.service';
-import { FacilityBuilderStateService } from '../state/facility-builder-state.service';
-import { SpecificationImportDialogComponent } from '../components/specification-import-dialog.component';
+import { AuthApiService } from '../../../core/services/auth-api.service';
+import { SessionService } from '../../../core/services/session.service';
+import {
+  DateEventCount,
+  DashboardStatsResponse,
+  LocationResponse,
+  LocationStatsResponse,
+  LocationApiService
+} from '../../../core/services/location-api.service';
 
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="space-y-6">
-      <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <article class="satori-card" *ngFor="let card of summaryCards()">
-          <p class="text-xs uppercase tracking-[0.12em] text-slate-500">{{ card.label }}</p>
-          <p class="mt-2 text-2xl font-bold text-slate-900">{{ card.value }}</p>
-        </article>
-      </section>
+    <div class="min-h-screen bg-slate-50">
 
-      <section class="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <article class="satori-card">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Published Facilities</h2>
-            <a routerLink="/admin/facilities" class="text-sm font-semibold text-[#0f6cbd]">View all</a>
-          </div>
-          <ul class="mt-4 space-y-3" *ngIf="recentlyPublished().length > 0; else noPublished">
-            <li *ngFor="let facility of recentlyPublished()" class="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-              <p class="font-semibold text-slate-900">{{ facility.facilityName }}</p>
-              <p>Updated {{ facility.updatedAt | date: 'medium' }}</p>
-            </li>
-          </ul>
-          <ng-template #noPublished>
-            <p class="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
-              No published facilities are currently available.
-            </p>
-          </ng-template>
-        </article>
+      <!-- ── Top bar ── -->
+      <header class="sticky top-0 z-10 flex items-center justify-between bg-white px-6 py-3 shadow-sm">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">Admin Console</p>
+          <h1 class="text-xl font-bold text-slate-900">Dashboard</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                  (click)="goFacilities()">Facilities</button>
+          <button class="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"
+                  (click)="logout()">Logout</button>
+        </div>
+      </header>
 
-        <article class="satori-card">
-          <h2 class="text-lg font-semibold text-slate-900">Quick Actions</h2>
-          <div class="mt-4 grid gap-3">
-            <button class="satori-primary" (click)="createFacility()">Create Facility Draft</button>
-            <button class="satori-secondary" (click)="openImportDialog()">Import Configuration</button>
-            <button class="satori-secondary" (click)="goReports()">Open Reports</button>
-          </div>
+      <div class="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-6">
 
-          <div class="mt-6 rounded-xl bg-[#f0f6ff] p-4">
-            <p class="text-xs uppercase tracking-[0.12em] text-[#0f6cbd]">Recently Published</p>
-            <ul class="mt-3 space-y-2 text-sm text-slate-700" *ngIf="recentlyPublished().length > 0; else noRecentPublished">
-              <li *ngFor="let facility of recentlyPublished()">{{ facility.facilityName }} · {{ facility.updatedAt | date: 'mediumDate' }}</li>
-            </ul>
-            <ng-template #noRecentPublished>
-              <p class="mt-3 text-sm text-slate-600">No recently published facilities</p>
-            </ng-template>
+        <!-- ── Date strip ── -->
+        <section class="rounded-2xl bg-white p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Select Date</h2>
+            <button (click)="datePicker.showPicker()" class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors">
+              <span class="material-icons-outlined" style="font-size:18px">calendar_today</span>
+              Pick Date
+            </button>
+            <input #datePicker type="date" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;" [value]="selectedDate()" (change)="onDatePick($event)" />
           </div>
-        </article>
-      </section>
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            <button *ngFor="let d of dateStrip()"
+                    (click)="selectDate(d.date)"
+                    class="flex shrink-0 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
+                    [class.bg-indigo-600]="d.date === selectedDate()"
+                    [class.text-white]="d.date === selectedDate()"
+                    [class.shadow-md]="d.date === selectedDate()"
+                    [class.bg-slate-50]="d.date !== selectedDate()"
+                    [class.text-slate-700]="d.date !== selectedDate()">
+              <span class="text-xs font-semibold">{{ d.label }}</span>
+              <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
+              <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
+              <span class="mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    [class.bg-indigo-500]="d.date === selectedDate()"
+                    [class.text-white]="d.date === selectedDate()"
+                    [class.bg-slate-200]="d.date !== selectedDate()"
+                    [class.text-slate-600]="d.date !== selectedDate()">
+                {{ d.eventCount }} Events
+              </span>
+            </button>
+            <ng-container *ngIf="dateStrip().length === 0">
+              <button *ngFor="let d of fallbackStrip"
+                      (click)="selectDate(d.date)"
+                      class="flex shrink-0 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
+                      [class.bg-indigo-600]="d.date === selectedDate()"
+                      [class.text-white]="d.date === selectedDate()"
+                      [class.bg-slate-50]="d.date !== selectedDate()"
+                      [class.text-slate-700]="d.date !== selectedDate()">
+                <span class="text-xs font-semibold">{{ d.label }}</span>
+                <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
+                <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
+                <span class="mt-1.5 rounded-full bg-slate-200 text-slate-600 px-2 py-0.5 text-[10px] font-bold">0 Events</span>
+              </button>
+            </ng-container>
+          </div>
+        </section>
 
-      <section class="satori-card">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">Recent Bookings</h2>
-            <p class="text-sm text-slate-600">Only active facility bookings are displayed. Deleted or unpublished facilities remain hidden.</p>
+        <!-- ── Stats cards ── -->
+        <div class="grid grid-cols-3 gap-4">
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100"><span class="material-icons-outlined text-indigo-600" style="font-size:20px">apartment</span></div>
+            <p class="text-2xl font-bold text-indigo-600">{{ dashStats()?.activeFacilities ?? 0 }}</p>
+            <p class="text-xs font-medium text-slate-500">Active Facilities</p>
           </div>
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">Total {{ bookings().length }}</span>
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100"><span class="material-icons-outlined text-emerald-600" style="font-size:20px">book_online</span></div>
+            <p class="text-2xl font-bold text-emerald-600">{{ dashStats()?.totalBookingsOnDate ?? 0 }}</p>
+            <p class="text-xs font-medium text-slate-500">Total Bookings</p>
+          </div>
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100"><span class="material-icons-outlined text-sky-600" style="font-size:20px">task_alt</span></div>
+            <p class="text-2xl font-bold text-sky-600">{{ dashStats()?.completedBookings ?? 0 }}</p>
+            <p class="text-xs font-medium text-slate-500">Completed</p>
+          </div>
         </div>
 
-        <div class="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-          <input
-            [(ngModel)]="bookingDate"
-            type="date"
-            class="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          />
-          <input
-            [(ngModel)]="bookingEmployeeId"
-            class="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Employee ID (Optional)"
-          />
-          <select [(ngModel)]="bookingStatus" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option value="">All statuses</option>
-            <option value="CONFIRMED">Confirmed</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-          <button class="satori-secondary" (click)="loadBookings()">Apply</button>
-        </div>
+        <!-- ── Office Locations table ── -->
+        <section class="rounded-2xl bg-white shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Office Locations</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Manage corporate offices. Click a row to view facility activity.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <ng-container *ngIf="!showAddForm()">
+                <button (click)="showAddForm.set(true)"
+                        class="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">
+                  + Add Location
+                </button>
+              </ng-container>
+              <ng-container *ngIf="showAddForm()">
+                <input type="text" [(ngModel)]="newLocationName" placeholder="e.g. Mumbai"
+                       class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                       (keydown.enter)="addLocation()" (keydown.escape)="cancelAdd()" />
+                <button (click)="addLocation()" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">Save</button>
+                <button (click)="cancelAdd()" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-500">Cancel</button>
+              </ng-container>
+            </div>
+          </div>
 
-        <div class="mt-4 overflow-x-auto" *ngIf="bookings().length > 0; else noBookings">
-          <table class="min-w-full text-left text-sm">
-            <thead class="text-xs uppercase tracking-[0.12em] text-slate-500">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
-                <th class="pb-2">Booking ID</th>
-                <th class="pb-2">Facility</th>
-                <th class="pb-2">Employee ID</th>
-                <th class="pb-2">Status</th>
-                <th class="pb-2">Booking Date</th>
-                <th class="pb-2">Created At</th>
-                <th class="pb-2 text-right">Action</th>
+                <th class="px-6 py-3">Office Location</th>
+                <th class="px-6 py-3">Employee Count</th>
+                <th class="px-6 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let booking of bookings()" class="border-t border-slate-100">
-                <td class="py-3 font-semibold text-slate-900">#{{ booking.bookingId }}</td>
-                <td class="py-3">{{ booking.facilityName }}</td>
-                <td class="py-3">{{ booking.employeeId }}</td>
-                <td class="py-3">
-                  <span class="rounded-full px-2 py-1 text-xs font-semibold" [ngClass]="booking.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'">
-                    {{ booking.status }}
-                  </span>
+              <tr *ngFor="let loc of locations()"
+                  class="border-t border-slate-100 cursor-pointer transition-colors hover:bg-slate-50"
+                  [class.bg-indigo-50]="selectedLocation()?.id === loc.id"
+                  (click)="selectLocation(loc)">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600">
+                      {{ loc.locationName.charAt(0) }}
+                    </span>
+                    <div>
+                      <p class="font-semibold text-slate-800">{{ loc.locationName }}</p>
+                      <p class="text-[11px] text-slate-400">Click to view facility stats</p>
+                    </div>
+                  </div>
                 </td>
-                <td class="py-3">{{ booking.bookingDate | date: 'mediumDate' }}</td>
-                <td class="py-3">{{ booking.createdAt | date: 'medium' }}</td>
-                <td class="py-3 text-right">
-                  <button
-                    class="rounded-md border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    [disabled]="booking.status === 'CANCELLED' || isDeleting(booking.bookingId)"
-                    (click)="deleteBooking(booking.bookingId)"
-                  >
-                    {{ isDeleting(booking.bookingId) ? 'Cancelling...' : 'Cancel Booking' }}
-                  </button>
+                <td class="px-6 py-4" (click)="$event.stopPropagation()">
+                  <span class="text-lg font-bold text-slate-700">{{ loc.employeeCount }}</span>
+                </td>
+                <td class="px-6 py-4" (click)="$event.stopPropagation()">
+                  <button (click)="deleteLocation(loc)" class="rounded-lg border border-rose-200 px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50">Remove</button>
+                </td>
+              </tr>
+              <tr *ngIf="locations().length === 0">
+                <td colspan="3" class="px-6 py-10 text-center text-slate-400 text-sm">
+                  No office locations yet. Click "+ Add Location" to create one.
                 </td>
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
 
-        <ng-template #noBookings>
-          <p class="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">No bookings were found for the selected filters.</p>
-        </ng-template>
-      </section>
+        <!-- ── Facility stats for selected location ── -->
+        <section *ngIf="selectedLocation() && locationStats()" class="rounded-2xl bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">
+                Facility Activity - {{ selectedLocation()!.locationName }}
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {{ selectedDate() | date:'mediumDate' }} | Counts increment when employees book. All start at zero.
+              </p>
+            </div>
+            <button (click)="selectedLocation.set(null); locationStats.set(null)"
+                    class="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+              <span class="material-icons-outlined" style="font-size:18px">close</span>
+            </button>
+          </div>
+
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="px-6 py-3">Facility</th>
+                <th class="px-6 py-3">Category</th>
+                <th class="px-6 py-3 text-center">Total Requested</th>
+                <th class="px-6 py-3 text-center">Acknowledged</th>
+                <th class="px-6 py-3 text-center">Pending</th>
+                <th class="px-6 py-3">Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of locationStats()!.facilityStats"
+                  class="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 font-semibold text-slate-800">{{ row.facilityName }}</td>
+                <td class="px-6 py-4">
+                  <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">{{ row.category || '—' }}</span>
+                </td>
+                <td class="px-6 py-4 text-center text-lg font-bold text-indigo-600">{{ row.totalRequested }}</td>
+                <td class="px-6 py-4 text-center text-lg font-bold text-emerald-600">{{ row.acknowledged }}</td>
+                <td class="px-6 py-4 text-center text-lg font-bold text-amber-600">{{ row.totalRequested - row.acknowledged }}</td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 rounded-full bg-slate-100 h-2 overflow-hidden min-w-[80px]">
+                      <div class="h-2 rounded-full bg-emerald-500 transition-all" [style.width]="getProgressWidth(row)"></div>
+                    </div>
+                    <span class="text-xs text-slate-400 w-8 text-right">{{ getProgressPct(row) }}%</span>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="locationStats()!.facilityStats.length === 0">
+                <td colspan="6" class="px-6 py-10 text-center text-slate-400 text-sm">
+                  No bookings found for this location on the selected date.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
     </div>
   `
 })
 export class AdminDashboardPageComponent implements OnInit {
-  readonly todayTotalBookings = signal(0);
-  readonly todayConfirmedBookings = signal(0);
-  readonly todayCancelledBookings = signal(0);
-  readonly pendingNotifications = signal(0);
-  readonly cancellationRate = signal(0);
-  readonly bookings = signal<AdminBookingSearchItem[]>([]);
-  readonly deletingBookingIds = signal<number[]>([]);
-  bookingEmployeeId = '';
-  bookingStatus = '';
-  bookingDate = this.todayIsoDate();
 
-  readonly summaryCards = computed(() => {
-    const facilities = this.state.facilities();
-    const published = facilities.filter((f) => f.published).length;
-    const draft = facilities.length - published;
+  selectedDate  = signal<string>(this.today());
+  dateStrip     = signal<DateEventCount[]>([]);
+  dashStats     = signal<DashboardStatsResponse | null>(null);
 
-    return [
-      { label: 'Total Facilities', value: facilities.length },
-      { label: 'Published Facilities', value: published },
-      { label: 'Draft Facilities', value: draft },
-      {
-        label: 'Cancellation Rate',
-        value: `${this.cancellationRate()}%`
-      },
-      {
-        label: 'Pending Notifications',
-        value: this.pendingNotifications()
-      }
-    ];
-  });
+  readonly fallbackStrip = this.buildFallbackStrip();
 
-  readonly recentlyPublished = computed(() =>
-    this.state
-      .facilities()
-      .filter((f) => f.published)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 4)
-  );
+  locations        = signal<LocationResponse[]>([]);
+  selectedLocation = signal<LocationResponse | null>(null);
+  locationStats    = signal<LocationStatsResponse | null>(null);
+
+  showAddForm     = signal(false);
+  newLocationName = '';
+
+  editingLocationId = signal<number | null>(null);
+  editCountValue    = 0;
 
   constructor(
-    private readonly state: FacilityBuilderStateService,
-    private readonly adminApi: AdminApiService,
-    private readonly toastService: ToastService,
-    private readonly router: Router,
-    private readonly dialog: MatDialog
+    private readonly locationApi: LocationApiService,
+    private readonly sessionService: SessionService,
+    private readonly authApi: AuthApiService,
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadDashboard();
-    this.loadBookings();
-  }
-
-  async loadBookings(): Promise<void> {
-    try {
-      const response = await firstValueFrom(this.adminApi.searchBookings({
-        bookingDate: this.bookingDate || null,
-        employeeId: this.bookingEmployeeId || null,
-        status: this.bookingStatus || null
-      }));
-
-      this.bookings.set(response ?? []);
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Bookings could not be loaded at this time.', 'error');
-    }
+    this.loadLocations();
   }
 
   private async loadDashboard(): Promise<void> {
     try {
-      await this.state.loadFromBackend();
-      const [summary, notificationSummary] = await Promise.all([
-        firstValueFrom(this.adminApi.getOperationalSummary()),
-        firstValueFrom(this.adminApi.getNotificationOpsSummary())
-      ]);
-
-      this.todayTotalBookings.set(summary.totalBookings ?? 0);
-      this.todayConfirmedBookings.set(summary.confirmedBookings ?? 0);
-      this.todayCancelledBookings.set(summary.cancelledBookings ?? 0);
-      this.cancellationRate.set(summary.cancellationRate ?? 0);
-      this.pendingNotifications.set(notificationSummary.pending ?? 0);
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Admin dashboard data could not be loaded at this time.', 'error');
-    }
+      const stats = await firstValueFrom(this.locationApi.getDashboardStats(this.selectedDate()));
+      this.dashStats.set(stats);
+      this.dateStrip.set(stats.dateStrip);
+    } catch { /* backend may not be ready */ }
   }
 
-  createFacility(): void {
-    this.state.createDraft();
-    this.router.navigateByUrl('/admin/form-builder');
+  selectDate(date: string): void {
+    this.selectedDate.set(date);
+    this.loadDashboard();
+    if (this.selectedLocation()) this.loadLocationStats(this.selectedLocation()!);
   }
 
-  openImportDialog(): void {
-    const dialogRef = this.dialog.open(SpecificationImportDialogComponent, {
-      width: '600px',
-      data: {}
-    });
-
-    dialogRef.afterClosed().subscribe(async (jsonText: string | undefined) => {
-      if (!jsonText) {
-        return;
-      }
-
-      try {
-        const jsonData = JSON.parse(jsonText);
-        const response = await firstValueFrom(this.adminApi.importFacilityFromJson(jsonData));
-        
-        this.toastService.show(`Facility "${response.facilityName}" imported successfully!`, 'success');
-        await this.loadDashboard();
-        await this.state.loadFromBackend();
-      } catch (error: any) {
-        if (error instanceof SyntaxError) {
-          this.toastService.show('Invalid JSON format. Please check your JSON syntax.', 'error');
-        } else {
-          this.toastService.show(error?.error?.message ?? 'Failed to import facility from JSON.', 'error');
-        }
-      }
-    });
+  onDatePick(event: Event): void {
+    const v = (event.target as HTMLInputElement).value;
+    if (v) this.selectDate(v);
   }
 
-  goReports(): void {
-    this.router.navigateByUrl('/admin/reports');
-  }
-
-  async deleteBooking(bookingId: number): Promise<void> {
-    const confirmed = window.confirm('Cancel this booking record? This action will set the booking status to cancelled.');
-    if (!confirmed) {
-      return;
-    }
-
-    this.deletingBookingIds.update((ids) => (ids.includes(bookingId) ? ids : [...ids, bookingId]));
+  private async loadLocations(): Promise<void> {
     try {
-      await firstValueFrom(this.adminApi.deleteBooking(bookingId));
-      this.toastService.show('Booking status has been updated to cancelled successfully.', 'success');
-      await this.loadBookings();
-      await this.loadDashboard();
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Booking status could not be updated.', 'error');
-    } finally {
-      this.deletingBookingIds.update((ids) => ids.filter((id) => id !== bookingId));
-    }
+      this.locations.set(await firstValueFrom(this.locationApi.getLocations()));
+    } catch { /* ignore */ }
   }
 
-  isDeleting(bookingId: number): boolean {
-    return this.deletingBookingIds().includes(bookingId);
+  async addLocation(): Promise<void> {
+    const name = this.newLocationName.trim();
+    if (!name) return;
+    try {
+      const created = await firstValueFrom(this.locationApi.createLocation(name));
+      this.locations.update(ls => [...ls, created]);
+      this.newLocationName = '';
+      this.showAddForm.set(false);
+    } catch (e: any) { alert(e?.error?.message ?? 'Failed to create location'); }
   }
 
-  private todayIsoDate(): string {
-    return new Date().toISOString().slice(0, 10);
+  cancelAdd(): void { this.newLocationName = ''; this.showAddForm.set(false); }
+
+  startEditCount(loc: LocationResponse): void {
+    this.editCountValue = loc.employeeCount;
+    this.editingLocationId.set(loc.id);
+  }
+
+  async saveCount(loc: LocationResponse): Promise<void> {
+    try {
+      const updated = await firstValueFrom(this.locationApi.updateEmployeeCount(loc.id, this.editCountValue));
+      this.locations.update(ls => ls.map(l => l.id === loc.id ? updated : l));
+      if (this.selectedLocation()?.id === loc.id) this.selectedLocation.set(updated);
+      this.editingLocationId.set(null);
+    } catch (e: any) { alert(e?.error?.message ?? 'Failed to update count'); }
+  }
+
+  async deleteLocation(loc: LocationResponse): Promise<void> {
+    if (!confirm(`Remove "${loc.locationName}"?`)) return;
+    try {
+      await firstValueFrom(this.locationApi.deleteLocation(loc.id));
+      this.locations.update(ls => ls.filter(l => l.id !== loc.id));
+      if (this.selectedLocation()?.id === loc.id) { this.selectedLocation.set(null); this.locationStats.set(null); }
+    } catch (e: any) { alert(e?.error?.message ?? 'Failed to delete location'); }
+  }
+
+  async selectLocation(loc: LocationResponse): Promise<void> {
+    if (this.selectedLocation()?.id === loc.id) { this.selectedLocation.set(null); this.locationStats.set(null); return; }
+    this.selectedLocation.set(loc);
+    await this.loadLocationStats(loc);
+  }
+
+  private async loadLocationStats(loc: LocationResponse): Promise<void> {
+    try {
+      this.locationStats.set(await firstValueFrom(this.locationApi.getLocationStats(loc.id, this.selectedDate())));
+    } catch { /* ignore */ }
+  }
+
+  getProgressWidth(row: { totalRequested: number; acknowledged: number }): string {
+    if (!row.totalRequested) return '0%';
+    return Math.round((row.acknowledged / row.totalRequested) * 100) + '%';
+  }
+
+  getProgressPct(row: { totalRequested: number; acknowledged: number }): number {
+    if (!row.totalRequested) return 0;
+    return Math.round((row.acknowledged / row.totalRequested) * 100);
+  }
+
+  private today(): string { return new Date().toISOString().split('T')[0]; }
+
+  private buildFallbackStrip(): { date: string; label: string }[] {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    return [-2, -1, 0, 1, 2].map(offset => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + offset);
+      return { date: d.toISOString().split('T')[0], label: days[d.getDay()] };
+    });
+  }
+
+  goFacilities(): void { this.router.navigateByUrl('/admin/facilities'); }
+
+  async logout(): Promise<void> {
+    const token = this.sessionService.getToken();
+    if (token) { try { await firstValueFrom(this.authApi.logout(token)); } catch { /* ignore */ } }
+    this.sessionService.clear();
+    this.router.navigateByUrl('/login');
   }
 }

@@ -10,6 +10,8 @@ export interface FacilityCreateRequest {
   category?: string;
   icon?: string;
   status: boolean;
+  isTemplate?: boolean;
+  isPublic?: boolean;
 }
 
 export interface FacilityUpdateRequest extends FacilityCreateRequest {}
@@ -23,6 +25,8 @@ export interface FacilitySummaryResponse {
   facilityId: number;
   facilityName: string;
   status: boolean;
+  isTemplate: boolean;
+  isPublic: boolean;
 }
 
 export interface FacilityDetailResponse {
@@ -33,6 +37,14 @@ export interface FacilityDetailResponse {
   icon?: string;
   status: boolean;
   published: boolean;
+  isTemplate: boolean;
+  isPublic: boolean;
+}
+
+export interface CreateFromTemplateResponse {
+  facilityId: number;
+  facilityName: string;
+  message: string;
 }
 
 export interface PublishResponse {
@@ -141,6 +153,31 @@ export class FacilityAdminApiService {
     return this.http.post<PublishResponse>(`${this.baseUrl}/facilities/${facilityId}/publish`, payload, {
       headers: this.authHeader()
     });
+  }
+
+  createFromTemplate(templateFacilityId: number, newName?: string): Observable<CreateFromTemplateResponse> {
+    const params = newName ? `?name=${encodeURIComponent(newName)}` : '';
+    return this.http.post<CreateFromTemplateResponse>(
+      `${this.baseUrl}/facilities/${templateFacilityId}/create-from-template${params}`,
+      {},
+      { headers: this.authHeader() }
+    );
+  }
+
+  updateTemplateVisibility(facilityId: number, isPublic: boolean): Observable<FacilityDetailResponse> {
+    return this.http.patch<FacilityDetailResponse>(
+      `${this.baseUrl}/facilities/${facilityId}/visibility`,
+      { isPublic },
+      { headers: this.authHeader() }
+    );
+  }
+
+  saveAsTemplate(facilityId: number): Observable<FacilityDetailResponse> {
+    return this.http.post<FacilityDetailResponse>(
+      `${this.baseUrl}/facilities/${facilityId}/save-as-template`,
+      {},
+      { headers: this.authHeader() }
+    );
   }
 
   addField(facilityId: number, payload: FieldRequest): Observable<FieldIdResponse> {

@@ -19,6 +19,12 @@ public interface FacilityService {
 
     FacilityDtos.PublishResponse publishFacility(Long facilityId, FacilityDtos.PublishRequest request);
 
+    FacilityDtos.CreateFromTemplateResponse createFromTemplate(Long templateFacilityId, String newFacilityName);
+
+    FacilityDtos.FacilityDetailResponse updateTemplateVisibility(Long facilityId, FacilityDtos.TemplateVisibilityRequest request);
+
+    FacilityDtos.FacilityDetailResponse saveAsTemplate(Long facilityId);
+
     EmployeeDtos.FacilitySpecificationResponse getFacilitySpecification(Long facilityId);
 
     FacilityDtos.FacilityDetailResponse importFacilityFromJson(Map<String, Object> jsonData);

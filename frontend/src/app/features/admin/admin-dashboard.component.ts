@@ -1,284 +1,389 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import {
-  AdminBookingSearchItem,
-  BookingSummaryResponse,
-  BookingTrendResponse,
-  FacilityUtilizationResponse,
-  NotificationOpsSummaryResponse,
-  OperationalSummaryResponse,
-  ProcessNotificationsResponse
-} from '../../core/models/admin.models';
-import { AdminApiService } from '../../core/services/admin-api.service';
 import { AuthApiService } from '../../core/services/auth-api.service';
 import { SessionService } from '../../core/services/session.service';
-import { ToastService } from '../../core/services/toast.service';
+import {
+  DateEventCount,
+  DashboardStatsResponse,
+  LocationResponse,
+  LocationStatsResponse,
+  LocationApiService
+} from '../../core/services/location-api.service';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="min-h-screen bg-[#f6f7f9] p-4 md:p-6">
-      <div class="mx-auto max-w-7xl space-y-6">
-        <header class="rounded-2xl bg-white p-5 shadow-sm md:p-6">
-          <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="min-h-screen bg-slate-50">
+
+      <!-- ── Top bar ── -->
+      <header class="sticky top-0 z-10 flex items-center justify-between bg-white px-6 py-3 shadow-sm">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">Admin Console</p>
+          <h1 class="text-xl font-bold text-slate-900">Dashboard</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                  (click)="goFacilities()">Facilities</button>
+          <button class="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"
+                  (click)="logout()">Logout</button>
+        </div>
+      </header>
+
+      <div class="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-6">
+
+        <!-- ── Date strip ── -->
+        <section class="rounded-2xl bg-white p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Select Date</h2>
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors">
+              📅 Today
+              <input type="date" class="sr-only" [value]="selectedDate()" (change)="onDatePick($event)" />
+            </label>
+          </div>
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            <button *ngFor="let d of dateStrip()"
+                    (click)="selectDate(d.date)"
+                    class="flex shrink-0 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
+                    [class.bg-indigo-600]="d.date === selectedDate()"
+                    [class.text-white]="d.date === selectedDate()"
+                    [class.shadow-md]="d.date === selectedDate()"
+                    [class.bg-slate-50]="d.date !== selectedDate()"
+                    [class.text-slate-700]="d.date !== selectedDate()">
+              <span class="text-xs font-semibold">{{ d.label }}</span>
+              <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
+              <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
+              <span class="mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    [class.bg-indigo-500]="d.date === selectedDate()"
+                    [class.text-white]="d.date === selectedDate()"
+                    [class.bg-slate-200]="d.date !== selectedDate()"
+                    [class.text-slate-600]="d.date !== selectedDate()">
+                {{ d.eventCount }} Events
+              </span>
+            </button>
+            <!-- Fallback strip if backend not loaded -->
+            <ng-container *ngIf="dateStrip().length === 0">
+              <button *ngFor="let d of fallbackStrip"
+                      (click)="selectDate(d.date)"
+                      class="flex shrink-0 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
+                      [class.bg-indigo-600]="d.date === selectedDate()"
+                      [class.text-white]="d.date === selectedDate()"
+                      [class.bg-slate-50]="d.date !== selectedDate()"
+                      [class.text-slate-700]="d.date !== selectedDate()">
+                <span class="text-xs font-semibold">{{ d.label }}</span>
+                <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
+                <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
+                <span class="mt-1.5 rounded-full bg-slate-200 text-slate-600 px-2 py-0.5 text-[10px] font-bold">0 Events</span>
+              </button>
+            </ng-container>
+          </div>
+        </section>
+
+        <!-- ── Stats cards ── -->
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-xl">📋</div>
+            <p class="text-2xl font-bold text-indigo-600">{{ dashStats()?.activeFacilities ?? 0 }}</p>
+            <p class="text-xs font-medium text-slate-500">Active Facilities</p>
+          </div>
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-xl">📱</div>
+            <p class="text-2xl font-bold text-emerald-600">{{ dashStats()?.totalBookingsOnDate ?? 0 }}</p>
+            <p class="text-xs font-medium text-slate-500">Total Bookings</p>
+          </div>
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 text-xl">✅</div>
+            <p class="text-2xl font-bold text-sky-600">{{ dashStats()?.completedBookings ?? 0 }}</p>
+            <p class="text-xs font-medium text-slate-500">Completed</p>
+          </div>
+          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-xl">⏰</div>
+            <p class="text-2xl font-bold text-rose-600">{{ dashStats()?.todaysDeadline ?? '—' }}</p>
+            <p class="text-xs font-medium text-slate-500">Today's Deadline</p>
+          </div>
+        </div>
+
+        <!-- ── Office Locations table ── -->
+        <section class="rounded-2xl bg-white shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4b5563]">Admin Console</p>
-              <h1 class="mt-1 text-3xl font-bold text-[#111827]">Platform Operations Dashboard</h1>
-              <p class="mt-2 text-sm text-[#6b7280]">Run booking analytics, inspect bookings, and operate notification pipelines.</p>
+              <h2 class="text-base font-bold text-slate-900">Office Locations</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Manage corporate offices. Click a row to view facility activity.</p>
             </div>
             <div class="flex items-center gap-2">
-              <button class="rounded-lg border border-[#d1d5db] px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-[#f3f4f6]" (click)="goEmployeeDashboard()">Employee View</button>
-              <button class="rounded-lg bg-[#b45309] px-4 py-2 text-sm font-semibold text-white hover:bg-[#92400e]" (click)="logout()">Logout</button>
+              <ng-container *ngIf="!showAddForm()">
+                <button (click)="showAddForm.set(true)"
+                        class="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">
+                  + Add Location
+                </button>
+              </ng-container>
+              <ng-container *ngIf="showAddForm()">
+                <input type="text" [(ngModel)]="newLocationName" placeholder="e.g. Mumbai"
+                       class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                       (keydown.enter)="addLocation()" (keydown.escape)="cancelAdd()" />
+                <button (click)="addLocation()" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">Save</button>
+                <button (click)="cancelAdd()" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-500">Cancel</button>
+              </ng-container>
             </div>
           </div>
-        </header>
 
-        <div class="grid gap-6 lg:grid-cols-2">
-          <section class="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-[#111827]">Booking Search</h2>
-            <div class="mt-4 grid gap-3 md:grid-cols-2">
-              <input type="number" [(ngModel)]="bookingSearchFacilityId" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" placeholder="Facility ID" />
-              <input type="text" [(ngModel)]="bookingSearchEmployeeId" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" placeholder="Employee ID" />
-              <select [(ngModel)]="bookingSearchStatus" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm">
-                <option value="">Any status</option>
-                <option value="CONFIRMED">CONFIRMED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </select>
-              <input type="date" [(ngModel)]="bookingSearchDate" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
-            </div>
-            <button class="mt-3 rounded-lg bg-[#1f2937] px-4 py-2 text-sm font-semibold text-white hover:bg-[#111827]" (click)="searchBookings()">Search</button>
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="px-6 py-3">Office Location</th>
+                <th class="px-6 py-3">Employee Count</th>
+                <th class="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let loc of locations()"
+                  class="border-t border-slate-100 cursor-pointer transition-colors hover:bg-slate-50"
+                  [class.bg-indigo-50]="selectedLocation()?.id === loc.id"
+                  (click)="selectLocation(loc)">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600">
+                      {{ loc.locationName.charAt(0) }}
+                    </span>
+                    <div>
+                      <p class="font-semibold text-slate-800">{{ loc.locationName }}</p>
+                      <p class="text-[11px] text-slate-400">Click to view facility stats →</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4" (click)="$event.stopPropagation()">
+                  <div class="flex items-center gap-2">
+                    <ng-container *ngIf="editingLocationId() !== loc.id">
+                      <span class="text-lg font-bold text-slate-700">{{ loc.employeeCount }}</span>
+                      <button (click)="startEditCount(loc)" class="rounded border border-indigo-200 px-2 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">Edit</button>
+                    </ng-container>
+                    <ng-container *ngIf="editingLocationId() === loc.id">
+                      <input type="number" [(ngModel)]="editCountValue" min="0"
+                             class="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                             (keydown.enter)="saveCount(loc)" (keydown.escape)="editingLocationId.set(null)" />
+                      <button (click)="saveCount(loc)" class="rounded-lg bg-emerald-600 px-2 py-1 text-xs text-white">✓</button>
+                      <button (click)="editingLocationId.set(null)" class="rounded-lg border border-slate-200 px-2 py-1 text-xs">✕</button>
+                    </ng-container>
+                  </div>
+                </td>
+                <td class="px-6 py-4" (click)="$event.stopPropagation()">
+                  <button (click)="deleteLocation(loc)" class="rounded-lg border border-rose-200 px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50">Remove</button>
+                </td>
+              </tr>
+              <tr *ngIf="locations().length === 0">
+                <td colspan="3" class="px-6 py-10 text-center text-slate-400 text-sm">
+                  No office locations yet. Click "+ Add Location" to create one.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
 
-            <div class="mt-4 max-h-72 overflow-auto rounded-lg border border-[#e5e7eb]">
-              <table class="min-w-full text-sm">
-                <thead class="bg-[#f9fafb] text-left text-[#374151]">
-                  <tr>
-                    <th class="px-3 py-2">Booking</th>
-                    <th class="px-3 py-2">Facility</th>
-                    <th class="px-3 py-2">Employee</th>
-                    <th class="px-3 py-2">Status</th>
-                    <th class="px-3 py-2">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let item of bookingSearchResults()" class="border-t border-[#f1f5f9]">
-                    <td class="px-3 py-2">#{{ item.bookingId }}</td>
-                    <td class="px-3 py-2">{{ item.facilityName }} ({{ item.facilityId }})</td>
-                    <td class="px-3 py-2">{{ item.employeeId }}</td>
-                    <td class="px-3 py-2">{{ item.status }}</td>
-                    <td class="px-3 py-2">{{ item.bookingDate }}</td>
-                  </tr>
-                  <tr *ngIf="bookingSearchResults().length === 0">
-                    <td class="px-3 py-3 text-[#6b7280]" colspan="5">No booking records loaded yet.</td>
-                  </tr>
-                </tbody>
-              </table>
+        <!-- ── Facility stats for selected location ── -->
+        <section *ngIf="selectedLocation() && locationStats()" class="rounded-2xl bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">
+                Facility Activity — {{ selectedLocation()!.locationName }}
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {{ selectedDate() | date:'mediumDate' }} · Counts increment when employees book. All start at zero.
+              </p>
             </div>
-          </section>
+            <button (click)="selectedLocation.set(null); locationStats.set(null)"
+                    class="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 text-lg">✕</button>
+          </div>
 
-          <section class="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-[#111827]">Booking Summary</h2>
-            <div class="mt-4 grid gap-3 md:grid-cols-2">
-              <input type="number" [(ngModel)]="summaryFacilityId" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" placeholder="Facility ID" />
-              <input type="date" [(ngModel)]="summaryBookingDate" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
-            </div>
-            <button class="mt-3 rounded-lg bg-[#1f2937] px-4 py-2 text-sm font-semibold text-white hover:bg-[#111827]" (click)="loadBookingSummary()">Load Summary</button>
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="px-6 py-3">Facility</th>
+                <th class="px-6 py-3">Category</th>
+                <th class="px-6 py-3 text-center">Total Requested</th>
+                <th class="px-6 py-3 text-center">Acknowledged</th>
+                <th class="px-6 py-3 text-center">Pending</th>
+                <th class="px-6 py-3">Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of locationStats()!.facilityStats"
+                  class="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 font-semibold text-slate-800">{{ row.facilityName }}</td>
+                <td class="px-6 py-4">
+                  <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">{{ row.category || '—' }}</span>
+                </td>
+                <td class="px-6 py-4 text-center text-lg font-bold text-indigo-600">{{ row.totalRequested }}</td>
+                <td class="px-6 py-4 text-center text-lg font-bold text-emerald-600">{{ row.acknowledged }}</td>
+                <td class="px-6 py-4 text-center text-lg font-bold text-amber-600">{{ row.totalRequested - row.acknowledged }}</td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 rounded-full bg-slate-100 h-2 overflow-hidden min-w-[80px]">
+                      <div class="h-2 rounded-full bg-emerald-500 transition-all" [style.width]="getProgressWidth(row)"></div>
+                    </div>
+                    <span class="text-xs text-slate-400 w-8 text-right">{{ getProgressPct(row) }}%</span>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="locationStats()!.facilityStats.length === 0">
+                <td colspan="6" class="px-6 py-10 text-center text-slate-400 text-sm">
+                  No published facilities. Publish a facility to see it tracked here.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
 
-            <div class="mt-4 rounded-xl bg-[#f9fafb] p-4" *ngIf="bookingSummary() as summary">
-              <p class="text-sm text-[#6b7280]">Facility: <strong class="text-[#111827]">{{ summary.facilityId }}</strong></p>
-              <p class="text-sm text-[#6b7280]">Date: <strong class="text-[#111827]">{{ summary.bookingDate }}</strong></p>
-              <div class="mt-3 grid grid-cols-3 gap-3 text-center">
-                <div class="rounded-lg bg-white p-3"><p class="text-xs text-[#6b7280]">Total</p><p class="text-lg font-bold">{{ summary.totalBookings }}</p></div>
-                <div class="rounded-lg bg-white p-3"><p class="text-xs text-[#6b7280]">Confirmed</p><p class="text-lg font-bold text-emerald-700">{{ summary.confirmedBookings }}</p></div>
-                <div class="rounded-lg bg-white p-3"><p class="text-xs text-[#6b7280]">Cancelled</p><p class="text-lg font-bold text-rose-700">{{ summary.cancelledBookings }}</p></div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-2">
-          <section class="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-[#111827]">Reports</h2>
-            <div class="mt-3 grid gap-3 md:grid-cols-2">
-              <input type="date" [(ngModel)]="reportDate" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
-              <button class="rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#115e59]" (click)="loadOperationalSummary()">Operational Summary</button>
-            </div>
-
-            <div class="mt-4 rounded-xl bg-[#f0fdfa] p-4" *ngIf="operationalSummary() as ops">
-              <p class="text-sm text-[#134e4a]">Booking Date: {{ ops.bookingDate }}</p>
-              <p class="text-sm text-[#134e4a]">Total: {{ ops.totalBookings }} | Confirmed: {{ ops.confirmedBookings }} | Cancelled: {{ ops.cancelledBookings }}</p>
-              <p class="text-sm text-[#134e4a]">Cancellation Rate: {{ ops.cancellationRate }}%</p>
-            </div>
-
-            <div class="mt-4 grid gap-3 md:grid-cols-3">
-              <input type="date" [(ngModel)]="trendFromDate" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
-              <input type="date" [(ngModel)]="trendToDate" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
-              <input type="number" [(ngModel)]="trendFacilityId" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" placeholder="Facility ID (optional)" />
-            </div>
-            <button class="mt-3 rounded-lg bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#115e59]" (click)="loadBookingTrend()">Load Trend</button>
-
-            <div class="mt-4 max-h-56 overflow-auto rounded-lg border border-[#e5e7eb]" *ngIf="bookingTrend() as trend">
-              <table class="min-w-full text-sm">
-                <thead class="bg-[#f9fafb]"><tr><th class="px-3 py-2">Date</th><th class="px-3 py-2">Total</th><th class="px-3 py-2">Confirmed</th><th class="px-3 py-2">Cancelled</th></tr></thead>
-                <tbody>
-                  <tr *ngFor="let point of trend.points" class="border-t border-[#f1f5f9]"><td class="px-3 py-2">{{ point.bookingDate }}</td><td class="px-3 py-2">{{ point.totalBookings }}</td><td class="px-3 py-2">{{ point.confirmedBookings }}</td><td class="px-3 py-2">{{ point.cancelledBookings }}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-[#111827]">Notification Ops</h2>
-            <div class="mt-3 grid gap-3 md:grid-cols-2">
-              <input type="number" [(ngModel)]="processBatchSize" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" placeholder="Batch size" />
-              <button class="rounded-lg bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6d28d9]" (click)="processNotifications()">Process Notifications</button>
-            </div>
-
-            <div class="mt-4 rounded-xl bg-[#faf5ff] p-4" *ngIf="processResult() as process">
-              <p class="text-sm text-[#581c87]">Attempted: {{ process.attempted }} | Sent: {{ process.sent }}</p>
-              <p class="text-sm text-[#581c87]">Retried: {{ process.retried }} | Escalated: {{ process.escalated }} | Failed: {{ process.failed }}</p>
-            </div>
-
-            <div class="mt-4 grid gap-3 md:grid-cols-2">
-              <input type="date" [(ngModel)]="opsReportDate" class="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
-              <button class="rounded-lg bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6d28d9]" (click)="loadNotificationOpsSummary()">Load Ops Summary</button>
-            </div>
-
-            <div class="mt-4 rounded-xl bg-[#faf5ff] p-4" *ngIf="opsSummary() as ops">
-              <p class="text-sm text-[#581c87]">Report Date: {{ ops.reportDate }}</p>
-              <p class="text-sm text-[#581c87]">Total: {{ ops.total }} | Pending: {{ ops.pending }} | Retrying: {{ ops.retrying }}</p>
-              <p class="text-sm text-[#581c87]">Sent: {{ ops.sent }} | Failed: {{ ops.failed }} | Escalated: {{ ops.escalated }}</p>
-            </div>
-          </section>
-        </div>
       </div>
-    </section>
+    </div>
   `
 })
-export class AdminDashboardComponent {
-  bookingSearchFacilityId: number | null = null;
-  bookingSearchEmployeeId = '';
-  bookingSearchStatus = '';
-  bookingSearchDate = '';
+export class AdminDashboardComponent implements OnInit {
 
-  summaryFacilityId: number | null = null;
-  summaryBookingDate = '';
+  // ── date state ────────────────────────────────────────────────────────────
+  selectedDate  = signal<string>(this.today());
+  dateStrip     = signal<DateEventCount[]>([]);
+  dashStats     = signal<DashboardStatsResponse | null>(null);
 
-  reportDate = '';
-  trendFromDate = '';
-  trendToDate = '';
-  trendFacilityId: number | null = null;
+  /** Fallback 5-day strip shown while backend loads */
+  readonly fallbackStrip = this.buildFallbackStrip();
 
-  processBatchSize: number | null = 100;
-  opsReportDate = '';
+  // ── locations state ───────────────────────────────────────────────────────
+  locations        = signal<LocationResponse[]>([]);
+  selectedLocation = signal<LocationResponse | null>(null);
+  locationStats    = signal<LocationStatsResponse | null>(null);
 
-  bookingSearchResults = signal<AdminBookingSearchItem[]>([]);
-  bookingSummary = signal<BookingSummaryResponse | null>(null);
-  operationalSummary = signal<OperationalSummaryResponse | null>(null);
-  bookingTrend = signal<BookingTrendResponse | null>(null);
-  facilityUtilization = signal<FacilityUtilizationResponse | null>(null);
-  processResult = signal<ProcessNotificationsResponse | null>(null);
-  opsSummary = signal<NotificationOpsSummaryResponse | null>(null);
+  // ── add location form ─────────────────────────────────────────────────────
+  showAddForm     = signal(false);
+  newLocationName = '';
+
+  // ── edit count ────────────────────────────────────────────────────────────
+  editingLocationId = signal<number | null>(null);
+  editCountValue    = 0;
 
   constructor(
-    private readonly adminApi: AdminApiService,
+    private readonly locationApi: LocationApiService,
     private readonly sessionService: SessionService,
     private readonly authApi: AuthApiService,
-    private readonly toastService: ToastService,
     private readonly router: Router
   ) {}
 
-  async searchBookings(): Promise<void> {
-    try {
-      const results = await firstValueFrom(this.adminApi.searchBookings({
-        facilityId: this.bookingSearchFacilityId,
-        employeeId: this.bookingSearchEmployeeId,
-        status: this.bookingSearchStatus,
-        bookingDate: this.bookingSearchDate
-      }));
-      this.bookingSearchResults.set(results);
-      this.toastService.show(`Loaded ${results.length} bookings`, 'success');
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Failed to search bookings', 'error');
-    }
+  ngOnInit(): void {
+    this.loadDashboard();
+    this.loadLocations();
   }
 
-  async loadBookingSummary(): Promise<void> {
-    if (!this.summaryFacilityId) {
-      this.toastService.show('Facility ID is required', 'error');
-      return;
-    }
+  // ── dashboard ─────────────────────────────────────────────────────────────
+
+  private async loadDashboard(): Promise<void> {
     try {
-      const summary = await firstValueFrom(this.adminApi.getBookingSummary(this.summaryFacilityId, this.summaryBookingDate || null));
-      this.bookingSummary.set(summary);
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Failed to load booking summary', 'error');
-    }
+      const stats = await firstValueFrom(this.locationApi.getDashboardStats(this.selectedDate()));
+      this.dashStats.set(stats);
+      this.dateStrip.set(stats.dateStrip);
+    } catch { /* backend may not be ready */ }
   }
 
-  async loadOperationalSummary(): Promise<void> {
-    try {
-      const summary = await firstValueFrom(this.adminApi.getOperationalSummary(this.reportDate || null));
-      this.operationalSummary.set(summary);
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Failed to load operational summary', 'error');
-    }
+  selectDate(date: string): void {
+    this.selectedDate.set(date);
+    this.loadDashboard();
+    if (this.selectedLocation()) this.loadLocationStats(this.selectedLocation()!);
   }
 
-  async loadBookingTrend(): Promise<void> {
-    if (!this.trendFromDate || !this.trendToDate) {
-      this.toastService.show('From and To dates are required for trend', 'error');
-      return;
-    }
-    try {
-      const trend = await firstValueFrom(this.adminApi.getBookingTrend(this.trendFromDate, this.trendToDate, this.trendFacilityId));
-      this.bookingTrend.set(trend);
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Failed to load booking trend', 'error');
-    }
+  onDatePick(event: Event): void {
+    const v = (event.target as HTMLInputElement).value;
+    if (v) this.selectDate(v);
   }
 
-  async processNotifications(): Promise<void> {
+  // ── locations ─────────────────────────────────────────────────────────────
+
+  private async loadLocations(): Promise<void> {
     try {
-      const result = await firstValueFrom(this.adminApi.processNotifications(this.processBatchSize));
-      this.processResult.set(result);
-      this.toastService.show('Notification processing completed', 'success');
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Failed to process notifications', 'error');
-    }
+      this.locations.set(await firstValueFrom(this.locationApi.getLocations()));
+    } catch { /* ignore */ }
   }
 
-  async loadNotificationOpsSummary(): Promise<void> {
+  async addLocation(): Promise<void> {
+    const name = this.newLocationName.trim();
+    if (!name) return;
     try {
-      const summary = await firstValueFrom(this.adminApi.getNotificationOpsSummary(this.opsReportDate || null));
-      this.opsSummary.set(summary);
-    } catch (error: any) {
-      this.toastService.show(error?.error?.message ?? 'Failed to load notification summary', 'error');
-    }
+      const created = await firstValueFrom(this.locationApi.createLocation(name));
+      this.locations.update(ls => [...ls, created]);
+      this.newLocationName = '';
+      this.showAddForm.set(false);
+    } catch (e: any) { alert(e?.error?.message ?? 'Failed to create location'); }
   }
 
-  goEmployeeDashboard(): void {
-    this.router.navigateByUrl('/employee/dashboard');
+  cancelAdd(): void { this.newLocationName = ''; this.showAddForm.set(false); }
+
+  startEditCount(loc: LocationResponse): void {
+    this.editCountValue = loc.employeeCount;
+    this.editingLocationId.set(loc.id);
   }
+
+  async saveCount(loc: LocationResponse): Promise<void> {
+    try {
+      const updated = await firstValueFrom(this.locationApi.updateEmployeeCount(loc.id, this.editCountValue));
+      this.locations.update(ls => ls.map(l => l.id === loc.id ? updated : l));
+      if (this.selectedLocation()?.id === loc.id) this.selectedLocation.set(updated);
+      this.editingLocationId.set(null);
+    } catch (e: any) { alert(e?.error?.message ?? 'Failed to update count'); }
+  }
+
+  async deleteLocation(loc: LocationResponse): Promise<void> {
+    if (!confirm(`Remove "${loc.locationName}"?`)) return;
+    try {
+      await firstValueFrom(this.locationApi.deleteLocation(loc.id));
+      this.locations.update(ls => ls.filter(l => l.id !== loc.id));
+      if (this.selectedLocation()?.id === loc.id) { this.selectedLocation.set(null); this.locationStats.set(null); }
+    } catch (e: any) { alert(e?.error?.message ?? 'Failed to delete location'); }
+  }
+
+  async selectLocation(loc: LocationResponse): Promise<void> {
+    if (this.selectedLocation()?.id === loc.id) { this.selectedLocation.set(null); this.locationStats.set(null); return; }
+    this.selectedLocation.set(loc);
+    await this.loadLocationStats(loc);
+  }
+
+  private async loadLocationStats(loc: LocationResponse): Promise<void> {
+    try {
+      this.locationStats.set(await firstValueFrom(this.locationApi.getLocationStats(loc.id, this.selectedDate())));
+    } catch { /* ignore */ }
+  }
+
+  // ── progress helpers ──────────────────────────────────────────────────────
+
+  getProgressWidth(row: { totalRequested: number; acknowledged: number }): string {
+    if (!row.totalRequested) return '0%';
+    return Math.round((row.acknowledged / row.totalRequested) * 100) + '%';
+  }
+
+  getProgressPct(row: { totalRequested: number; acknowledged: number }): number {
+    if (!row.totalRequested) return 0;
+    return Math.round((row.acknowledged / row.totalRequested) * 100);
+  }
+
+  // ── utils ─────────────────────────────────────────────────────────────────
+
+  private today(): string { return new Date().toISOString().split('T')[0]; }
+
+  private buildFallbackStrip(): { date: string; label: string }[] {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    return [-2, -1, 0, 1, 2].map(offset => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + offset);
+      return { date: d.toISOString().split('T')[0], label: days[d.getDay()] };
+    });
+  }
+
+  goFacilities(): void { this.router.navigateByUrl('/admin/facilities'); }
 
   async logout(): Promise<void> {
     const token = this.sessionService.getToken();
-    if (!token) {
-      this.sessionService.clear();
-      this.router.navigateByUrl('/login');
-      return;
-    }
-
-    try {
-      await firstValueFrom(this.authApi.logout(token));
-    } catch {
-      // ignore logout API failure and clear local session
-    }
-
+    if (token) { try { await firstValueFrom(this.authApi.logout(token)); } catch { /* ignore */ } }
     this.sessionService.clear();
     this.router.navigateByUrl('/login');
   }

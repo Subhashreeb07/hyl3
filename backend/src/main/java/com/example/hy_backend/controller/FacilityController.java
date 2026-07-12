@@ -93,4 +93,28 @@ public class FacilityController {
     public ResponseEntity<EmployeeDtos.FacilitySpecificationResponse> getSpecification(@PathVariable Long facilityId) {
         return ResponseEntity.ok(facilityService.getFacilitySpecification(facilityId));
     }
+
+    @PostMapping("/{facilityId}/create-from-template")
+    @Operation(summary = "Create a new facility from a template, pre-filled with all template fields and rules")
+    public ResponseEntity<FacilityDtos.CreateFromTemplateResponse> createFromTemplate(
+            @PathVariable Long facilityId,
+            @RequestParam(value = "name", required = false) String newFacilityName
+    ) {
+        return ResponseEntity.ok(facilityService.createFromTemplate(facilityId, newFacilityName));
+    }
+
+    @PostMapping("/{facilityId}/save-as-template")
+    @Operation(summary = "Mark an existing facility as a template")
+    public ResponseEntity<FacilityDtos.FacilityDetailResponse> saveAsTemplate(@PathVariable Long facilityId) {
+        return ResponseEntity.ok(facilityService.saveAsTemplate(facilityId));
+    }
+
+    @PatchMapping("/{facilityId}/visibility")
+    @Operation(summary = "Toggle a template's public / private visibility")
+    public ResponseEntity<FacilityDtos.FacilityDetailResponse> updateTemplateVisibility(
+            @PathVariable Long facilityId,
+            @Valid @RequestBody FacilityDtos.TemplateVisibilityRequest request
+    ) {
+        return ResponseEntity.ok(facilityService.updateTemplateVisibility(facilityId, request));
+    }
 }
