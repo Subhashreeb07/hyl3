@@ -14,6 +14,7 @@ import com.example.hy_backend.repository.NotificationRepository;
 import com.example.hy_backend.repository.NotificationTemplateRepository;
 import com.example.hy_backend.repository.NotificationTriggerRepository;
 import com.example.hy_backend.service.NotificationService;
+import com.example.hy_backend.service.NotificationScheduleService;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;

@@ -183,6 +183,21 @@ public class BookingServiceImpl implements BookingService {
             ));
         }
 
+        if (rule != null && rule.getReminderTime() != null) {
+            LocalDateTime reminderDateTime = LocalDateTime.of(saved.getBookingDate(), rule.getReminderTime());
+            if (reminderDateTime.isAfter(LocalDateTime.now())) {
+                notificationService.scheduleNotification(new NotificationDtos.CreateScheduledNotificationRequest(
+                    saved.getEmployeeId(),
+                    saved.getBookingId(),
+                    "BOOKING_REMINDER",
+                    "IN_APP",
+                    "Reminder: You have a booking for " + facility.getFacilityName() + " today. Please ensure you check in by " + rule.getReminderTime().toString(),
+                    reminderDateTime.toString(),
+                    3
+                ));
+            }
+        }
+
         auditService.logAction(
             saved.getEmployeeId(),
             "EMPLOYEE",

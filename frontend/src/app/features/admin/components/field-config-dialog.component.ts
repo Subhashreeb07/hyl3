@@ -96,6 +96,7 @@ export interface FieldDialogData {
             <label class="text-xs font-semibold text-slate-500">Label <span class="text-red-400">*</span></label>
             <input formControlName="label" type="text" placeholder="e.g. Full Name" class="field-input"
               [style.border-color]="form.get('label')?.invalid && form.get('label')?.touched ? '#f87171' : ''" />
+            <span *ngIf="form.get('label')?.invalid && form.get('label')?.touched" class="text-[10px] text-red-500 mt-0.5">Label is required</span>
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold text-slate-500">Order</label>
@@ -118,7 +119,7 @@ export interface FieldDialogData {
         <!-- Options (DROPDOWN / CHECKBOX / RADIO) -->
         <div *ngIf="usesOptions(form.value.fieldType)" class="flex flex-col gap-2">
           <label class="text-xs font-semibold text-slate-500">Options</label>
-          <div *ngFor="let opt of optionsList; let i = index" class="flex items-center gap-2">
+          <div *ngFor="let opt of optionsList; let i = index; trackBy: trackByIndex" class="flex items-center gap-2">
             <span class="material-icons-outlined text-slate-400" style="font-size:16px">{{ optionIcon(form.value.fieldType) }}</span>
             <input
               type="text"
@@ -138,6 +139,7 @@ export interface FieldDialogData {
             <span class="material-icons-outlined" style="font-size:15px">add</span>
             Add option
           </button>
+          <span *ngIf="showOptionsError" class="text-[10px] text-red-500 mt-0.5">At least one valid option is required</span>
         </div>
 
         <!-- Tree Editor (TREE_SELECT) -->
@@ -147,7 +149,7 @@ export interface FieldDialogData {
             <span class="text-slate-400 font-normal normal-case ml-1">(Routes → Stops)</span>
           </label>
 
-          <div *ngFor="let node of treeNodes; let ri = index"
+          <div *ngFor="let node of treeNodes; let ri = index; trackBy: trackByIndex"
                class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
             <!-- Route label row -->
             <div class="flex items-center gap-2 mb-2">
@@ -163,7 +165,7 @@ export interface FieldDialogData {
             </div>
             <!-- Stops -->
             <div class="ml-6 flex flex-col gap-1.5">
-              <div *ngFor="let stop of node.children; let si = index" class="flex items-center gap-2">
+              <div *ngFor="let stop of node.children; let si = index; trackBy: trackByIndex" class="flex items-center gap-2">
                 <span class="material-icons-outlined text-slate-400" style="font-size:13px">subdirectory_arrow_right</span>
                 <input type="text" [value]="stop" (input)="updateStop(ri, si, $event)"
                   placeholder="Stop name" class="field-input flex-1" style="font-size:0.8rem;" />
@@ -186,6 +188,7 @@ export interface FieldDialogData {
             <span class="material-icons-outlined" style="font-size:16px">add</span>
             Add Route
           </button>
+          <span *ngIf="showTreeError" class="text-[10px] text-red-500 mt-0.5">At least one valid route is required</span>
         </div>
 
         <!-- Required toggle -->
@@ -206,8 +209,8 @@ export interface FieldDialogData {
         class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
         Cancel
       </button>
-      <button (click)="save()" [disabled]="form.invalid"
-        class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+      <button (click)="save()"
+        class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">
         {{ data.field ? 'Save Changes' : 'Add Field' }}
       </button>
     </div>
@@ -258,6 +261,13 @@ export class FieldConfigDialogComponent {
     return type === 'DROPDOWN' || type === 'CHECKBOX' || type === 'RADIO_BUTTON';
   }
 
+  showOptionsError = false;
+  showTreeError = false;
+
+  trackByIndex(index: number): number {
+    return index;
+  }
+
   usesTree(type: FieldType | null | undefined): boolean {
     return type === 'TREE_SELECT';
   }
@@ -305,7 +315,31 @@ export class FieldConfigDialogComponent {
   }
 
   save(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    this.showOptionsError = false;
+    this.showTreeError = false;
+    let hasCustomError = false;
+
+    if (this.usesOptions(this.form.value.fieldType)) {
+      const validOptions = this.optionsList.map(s => s.trim()).filter(Boolean);
+      if (validOptions.length === 0) {
+        this.showOptionsError = true;
+        hasCustomError = true;
+      }
+    }
+
+    if (this.usesTree(this.form.value.fieldType)) {
+      const validRoutes = this.treeNodes.filter(n => n.label.trim() !== '');
+      if (validRoutes.length === 0) {
+        this.showTreeError = true;
+        hasCustomError = true;
+      }
+    }
+
+    if (this.form.invalid || hasCustomError) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    
     const v = this.form.getRawValue();
     const isTree = v.fieldType === 'TREE_SELECT';
     const field: FacilityField = {

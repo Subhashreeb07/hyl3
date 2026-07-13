@@ -8,48 +8,69 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
   imports: [CommonModule, ReactiveFormsModule],
   styles: [`
     .field-input {
-      width: 100%; border: 1px solid #e2e8f0; border-radius: 0.6rem;
-      padding: 0.5rem 0.75rem; font-size: 0.875rem; background: #fff; outline: none;
+      width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem;
+      padding: 0.65rem 0.875rem; font-size: 0.875rem; background: #fff; outline: none;
     }
     .field-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
     .pill {
       display: inline-flex; align-items: center; gap: 4px;
-      border-radius: 999px; border: 1.5px solid #e2e8f0;
-      background: #fff; padding: 0.35rem 0.9rem;
-      font-size: 0.8rem; font-weight: 600; color: #64748b;
+      border-radius: 6px; border: 1px solid #cbd5e1;
+      background: #fff; padding: 0.4rem 0.85rem;
+      font-size: 0.85rem; font-weight: 500; color: #475569;
       cursor: pointer; user-select: none; transition: all 0.15s;
     }
-    .pill:hover { border-color: #a5b4fc; color: #4f46e5; }
-    .pill.active { border-color: #6366f1; background: #eef2ff; color: #4338ca; }
+    .pill:hover { border-color: #94a3b8; background: #f8fafc; }
+    .pill.active { border-color: #4f46e5; background: #eef2ff; color: #4338ca; font-weight: 600; }
     .admin-field {
-      display: grid;
-      gap: 0.35rem;
-      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      color: #334155;
+      color: #1e293b;
     }
     .admin-field input,
     .admin-field textarea,
     .admin-field select {
       border: 1px solid #cbd5e1;
-      border-radius: 0.65rem;
-      padding: 0.55rem 0.7rem;
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.875rem;
       background: #ffffff;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
+      color: #0f172a;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
     .admin-field input:focus {
       outline: none;
-      border-color: #0f6cbd;
-      box-shadow: 0 0 0 2px rgba(15, 108, 189, 0.1);
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .rules-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .rules-card h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+    }
+    .rules-card p.subtitle {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-bottom: 1.25rem;
     }
   `],
   template: `
-    <form [formGroup]="form" class="space-y-4 py-4">
+    <form [formGroup]="form" class="space-y-6 py-4">
       <!-- Facility Availability Section -->
-      <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h4 class="text-sm font-semibold text-slate-900">Facility Availability</h4>
-        <p class="text-xs text-slate-500">Define the date range when this facility is open for bookings.</p>
-        <div class="mt-3 grid gap-4 md:grid-cols-2">
+      <section class="rules-card">
+        <h4>Facility Availability</h4>
+        <p class="subtitle">Define the date range when this facility is open for bookings.</p>
+        <div class="grid gap-6 md:grid-cols-2">
           <label class="admin-field">
             Available From Date
             <input type="date" formControlName="facilityAvailableFromDate" />
@@ -59,16 +80,16 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
             <input type="date" formControlName="facilityAvailableToDate" />
           </label>
         </div>
-        <p *ngIf="getDateRangeDisplay()" class="mt-2 text-xs text-[#0f6cbd]">
-          📅 {{ getDateRangeDisplay() }}
+        <p *ngIf="getDateRangeDisplay()" class="mt-4 text-sm text-[#4f46e5] font-medium flex items-center">
+          <span class="material-icons-outlined text-[1.2em] mr-1">calendar_today</span> {{ getDateRangeDisplay() }}
         </p>
       </section>
 
       <!-- Timing Rules Section -->
-      <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h4 class="text-sm font-semibold text-slate-900">Timing Rules</h4>
-        <p class="text-xs text-slate-500">Define when bookings can be created and when reminders trigger.</p>
-        <div class="mt-3 grid gap-4 md:grid-cols-3">
+      <section class="rules-card">
+        <h4>Timing Rules</h4>
+        <p class="subtitle">Define when bookings can be created and when reminders trigger.</p>
+        <div class="grid gap-6 md:grid-cols-3">
           <label class="admin-field">
             Booking Start Time *
             <input type="time" formControlName="bookingStartTime" required />
@@ -81,42 +102,34 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
             Reminder Time *
             <input type="time" formControlName="reminderTime" required />
           </label>
-          <label class="admin-field">
-            Cancellation Deadline *
-            <input type="time" formControlName="cancellationDeadline" required />
-          </label>
-          <label class="admin-field">
-            Booking Window (Days) *
-            <input type="number" formControlName="bookingWindowDays" placeholder="e.g. 10" min="0" required />
-          </label>
         </div>
       </section>
 
       <!-- Available Days Section -->
-      <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h4 class="text-sm font-semibold text-slate-900">Available Days</h4>
-        <p class="text-xs text-slate-550">Select which days of the week this facility is available for booking. If none are selected, the facility is available every day.</p>
-        <div class="mt-3 flex flex-wrap gap-2">
+      <section class="rules-card">
+        <h4>Available Days</h4>
+        <p class="subtitle">Select which days of the week this facility is available for booking. If none are selected, it defaults to every day.</p>
+        <div class="flex flex-wrap gap-2">
           <button 
             *ngFor="let day of weekDays"
             type="button"
-            class="rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer"
-            [ngClass]="isDaySelected(day.value) ? 'border-[#0f6cbd] bg-[#edf5ff] text-[#0f6cbd] shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
+            class="pill"
+            [class.active]="isDaySelected(day.value)"
             (click)="toggleDay(day.value)"
           >
             {{ day.label }}
           </button>
         </div>
-        <p *ngIf="selectedDays.length > 0" class="mt-2 text-xs text-[#0f6cbd]">
-          ✓ Available on: {{ selectedDaysLabel }}
+        <p *ngIf="selectedDays.length > 0" class="mt-3 text-sm text-[#4f46e5] font-medium flex items-center">
+          <span class="material-icons-outlined text-[1.2em] mr-1">check_circle</span> Available on: {{ selectedDaysLabel }}
         </p>
       </section>
 
       <!-- Employee Type -->
-      <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h4 class="text-sm font-semibold text-slate-900">Employee Type Access</h4>
-        <p class="text-xs text-slate-500">Which work modes can use this facility?</p>
-        <div class="mt-3 flex flex-wrap gap-2">
+      <section class="rules-card">
+        <h4>Employee Type Access</h4>
+        <p class="subtitle">Which work modes can use this facility?</p>
+        <div class="flex flex-wrap gap-2">
           <label class="pill" [class.active]="form.value.employeeTypeOnSite">
             <input type="checkbox" formControlName="employeeTypeOnSite" class="sr-only" /> On-site
           </label>
@@ -130,10 +143,10 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
       </section>
 
       <!-- Applicable Roles -->
-      <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h4 class="text-sm font-semibold text-slate-900">Applicable Roles</h4>
-        <p class="text-xs text-slate-500">Which job roles can access or book this facility?</p>
-        <div class="mt-3 flex flex-wrap gap-2">
+      <section class="rules-card">
+        <h4>Applicable Roles</h4>
+        <p class="subtitle">Which job roles can access or book this facility?</p>
+        <div class="flex flex-wrap gap-2">
           <label class="pill" [class.active]="form.value.roleHR">
             <input type="checkbox" formControlName="roleHR" class="sr-only" /> HR
           </label>

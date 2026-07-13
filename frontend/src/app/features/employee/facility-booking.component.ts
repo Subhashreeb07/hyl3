@@ -18,30 +18,33 @@ import { ToastService } from '../../core/services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, DynamicFieldRendererComponent],
   template: `
-    <section class="portal-panel p-6 shadow-none" *ngIf="spec() as data">
-      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <section class="mx-auto max-w-4xl py-6 px-4 md:px-0" *ngIf="spec() as data">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-3 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#0f6cbd]">Facility Request</p>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-brand-600">Facility Request</p>
           <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ data.facilityName }}</h2>
-          <p *ngIf="bookingDate" class="mt-1 text-sm font-medium text-slate-700">
-            📅 Booking for: <strong>{{ bookingDate | date: 'EEEE, MMMM d, y' }}</strong>
+          <p *ngIf="bookingDate" class="mt-2 text-sm font-medium text-slate-700 flex items-center bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg w-fit">
+            <span class="material-icons-outlined text-[1.1em] mr-1.5 text-slate-500">calendar_today</span> Booking for: <strong class="ml-1 text-slate-900">{{ bookingDate | date: 'EEEE, MMMM d, y' }}</strong>
           </p>
-          <p class="text-sm text-slate-600">Complete the form to submit your service request through the Hyland employee portal.</p>
         </div>
         <a routerLink="/employee/dashboard" class="satori-secondary">Return to Dashboard</a>
       </div>
+
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <p class="mb-6 text-sm text-slate-500">Complete the form below to submit your service request through the portal.</p>
 
       <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 md:grid-cols-2">
         <ng-container *ngFor="let field of orderedFields()">
           <app-dynamic-field-renderer [field]="field" [form]="form" [controlName]="controlName(field)" />
         </ng-container>
 
-        <div class="md:col-span-2 mt-2 flex items-center gap-3">
-          <button type="submit" class="rounded-full bg-[#183b63] px-5 py-2 text-sm font-semibold text-white hover:bg-[#11233f]">Submit Request</button>
-          <span *ngIf="message()" class="text-sm font-medium text-emerald-700">{{ message() }}</span>
-          <span *ngIf="error()" class="text-sm font-medium text-rose-700">{{ error() }}</span>
+        <div class="md:col-span-2 mt-4 pt-4 border-t border-slate-100 flex items-center gap-4">
+          <button type="submit" class="rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors shadow-sm">Submit Request</button>
+          <span *ngIf="message()" class="text-sm font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">{{ message() }}</span>
+          <span *ngIf="error()" class="text-sm font-medium text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg">{{ error() }}</span>
         </div>
       </form>
+      </div>
     </section>
   `
 })

@@ -72,6 +72,19 @@ public class SpecificationMapperImpl implements SpecificationMapper {
                 rulesNode.put("maximumCapacity", rule.getMaximumCapacity());
             }
             rulesNode.put("regularCommuteEnabled", Boolean.TRUE.equals(rule.getRegularCommuteEnabled()));
+            putNullableText(rulesNode, "availableDays", rule.getAvailableDays());
+            putNullableText(rulesNode, "cancellationDeadline", rule.getCancellationDeadline() == null ? null : rule.getCancellationDeadline().toString());
+            
+            putCsvAsArray(rulesNode, "employeeTypes", rule.getEmployeeTypes());
+            putCsvAsArray(rulesNode, "roles", rule.getRoles());
+
+            if (rule.getBookingWindowDays() == null) {
+                rulesNode.putNull("bookingWindowDays");
+            } else {
+                rulesNode.put("bookingWindowDays", rule.getBookingWindowDays());
+            }
+            putNullableText(rulesNode, "facilityAvailableFromDate", rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString());
+            putNullableText(rulesNode, "facilityAvailableToDate", rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString());
         } else {
             rulesNode.putNull("bookingStartTime");
             rulesNode.putNull("bookingDeadline");
@@ -80,6 +93,13 @@ public class SpecificationMapperImpl implements SpecificationMapper {
             rulesNode.put("allowCancellation", true);
             rulesNode.putNull("maximumCapacity");
             rulesNode.put("regularCommuteEnabled", false);
+            rulesNode.putNull("availableDays");
+            rulesNode.putNull("cancellationDeadline");
+            rulesNode.putArray("employeeTypes");
+            rulesNode.putArray("roles");
+            rulesNode.putNull("bookingWindowDays");
+            rulesNode.putNull("facilityAvailableFromDate");
+            rulesNode.putNull("facilityAvailableToDate");
         }
 
         return root;
@@ -91,5 +111,19 @@ public class SpecificationMapperImpl implements SpecificationMapper {
             return;
         }
         node.put(key, value);
+    }
+
+    private void putCsvAsArray(ObjectNode node, String key, String csv) {
+        if (csv == null || csv.isBlank()) {
+            node.putArray(key);
+            return;
+        }
+        ArrayNode arrayNode = node.putArray(key);
+        for (String item : csv.split(",")) {
+            String trimmed = item.trim();
+            if (!trimmed.isEmpty()) {
+                arrayNode.add(trimmed);
+            }
+        }
     }
 }

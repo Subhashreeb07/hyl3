@@ -194,12 +194,21 @@ public class NotificationScheduleServiceImpl implements NotificationScheduleServ
     private void sendScheduledNotification(NotificationSchedule schedule) {
         NotificationTemplate template = schedule.getTemplate();
 
+        String channelsStr = template.getChannels();
+        String primaryChannel = "IN_APP";
+        if (channelsStr != null && !channelsStr.isEmpty()) {
+            String[] parts = channelsStr.split(",");
+            if (parts.length > 0 && !parts[0].trim().isEmpty()) {
+                primaryChannel = parts[0].trim();
+            }
+        }
+
         NotificationDtos.CreateScheduledNotificationRequest request =
             new NotificationDtos.CreateScheduledNotificationRequest(
                 schedule.getEmployeeId(),
                 null,
                 template.getNotificationType(),
-                template.getChannels().isEmpty() ? "IN_APP" : template.getChannels().get(0),
+                primaryChannel,
                 template.getMessageTemplate(),
                 LocalDateTime.now().format(ISO_FORMATTER),
                 3

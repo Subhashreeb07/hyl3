@@ -23,7 +23,7 @@ import {
       <!-- ── Top bar ── -->
       <header class="sticky top-0 z-10 flex items-center justify-between bg-white px-6 py-3 shadow-sm">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">Admin Console</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Admin Console</p>
           <h1 class="text-xl font-bold text-slate-900">Dashboard</h1>
         </div>
         <div class="flex items-center gap-3">
@@ -40,17 +40,17 @@ import {
         <section class="rounded-2xl bg-white p-5 shadow-sm">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Select Date</h2>
-            <button (click)="datePicker.showPicker()" class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors">
+            <button (click)="datePicker.showPicker()" class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
               <span class="material-icons-outlined" style="font-size:18px">calendar_today</span>
               Pick Date
             </button>
             <input #datePicker type="date" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;" [value]="selectedDate()" (change)="onDatePick($event)" />
           </div>
-          <div class="flex gap-2 overflow-x-auto pb-1">
+          <div class="flex w-full justify-between gap-3 overflow-x-auto pb-1">
             <button *ngFor="let d of dateStrip()"
                     (click)="selectDate(d.date)"
-                    class="flex shrink-0 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
-                    [class.bg-indigo-600]="d.date === selectedDate()"
+                    class="flex flex-1 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
+                    [class.bg-slate-900]="d.date === selectedDate()"
                     [class.text-white]="d.date === selectedDate()"
                     [class.shadow-md]="d.date === selectedDate()"
                     [class.bg-slate-50]="d.date !== selectedDate()"
@@ -59,7 +59,7 @@ import {
               <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
               <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
               <span class="mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                    [class.bg-indigo-500]="d.date === selectedDate()"
+                    [class.bg-slate-700]="d.date === selectedDate()"
                     [class.text-white]="d.date === selectedDate()"
                     [class.bg-slate-200]="d.date !== selectedDate()"
                     [class.text-slate-600]="d.date !== selectedDate()">
@@ -69,8 +69,8 @@ import {
             <ng-container *ngIf="dateStrip().length === 0">
               <button *ngFor="let d of fallbackStrip"
                       (click)="selectDate(d.date)"
-                      class="flex shrink-0 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
-                      [class.bg-indigo-600]="d.date === selectedDate()"
+                      class="flex flex-1 flex-col items-center rounded-xl px-4 py-3 text-center transition-all min-w-[80px]"
+                      [class.bg-slate-900]="d.date === selectedDate()"
                       [class.text-white]="d.date === selectedDate()"
                       [class.bg-slate-50]="d.date !== selectedDate()"
                       [class.text-slate-700]="d.date !== selectedDate()">
@@ -84,21 +84,24 @@ import {
         </section>
 
         <!-- ── Stats cards ── -->
-        <div class="grid grid-cols-3 gap-4">
-          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
-          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100"><span class="material-icons-outlined text-indigo-600" style="font-size:20px">apartment</span></div>
-            <p class="text-2xl font-bold text-indigo-600">{{ dashStats()?.activeFacilities ?? 0 }}</p>
-            <p class="text-xs font-medium text-slate-500">Active Facilities</p>
+        <div class="grid grid-cols-3 gap-5">
+          <!-- Stat Card 1 -->
+          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
+            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">apartment</span></div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Facilities</p>
+            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.activeFacilities ?? 0 }}</p>
           </div>
-          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
-          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100"><span class="material-icons-outlined text-emerald-600" style="font-size:20px">book_online</span></div>
-            <p class="text-2xl font-bold text-emerald-600">{{ dashStats()?.totalBookingsOnDate ?? 0 }}</p>
-            <p class="text-xs font-medium text-slate-500">Total Bookings</p>
+          <!-- Stat Card 2 -->
+          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
+            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">book_online</span></div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Bookings</p>
+            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.totalBookingsOnDate ?? 0 }}</p>
           </div>
-          <div class="rounded-2xl bg-white p-5 shadow-sm flex flex-col gap-2">
-          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100"><span class="material-icons-outlined text-sky-600" style="font-size:20px">task_alt</span></div>
-            <p class="text-2xl font-bold text-sky-600">{{ dashStats()?.completedBookings ?? 0 }}</p>
-            <p class="text-xs font-medium text-slate-500">Completed</p>
+          <!-- Stat Card 3 -->
+          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
+            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">task_alt</span></div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Completed</p>
+            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.completedBookings ?? 0 }}</p>
           </div>
         </div>
 
@@ -112,36 +115,36 @@ import {
             <div class="flex items-center gap-2">
               <ng-container *ngIf="!showAddForm()">
                 <button (click)="showAddForm.set(true)"
-                        class="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">
+                        class="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 shadow-sm transition-colors">
                   + Add Location
                 </button>
               </ng-container>
               <ng-container *ngIf="showAddForm()">
                 <input type="text" [(ngModel)]="newLocationName" placeholder="e.g. Mumbai"
-                       class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                       class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-brand-400"
                        (keydown.enter)="addLocation()" (keydown.escape)="cancelAdd()" />
-                <button (click)="addLocation()" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white">Save</button>
+                <button (click)="addLocation()" class="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 shadow-sm transition-colors">Save</button>
                 <button (click)="cancelAdd()" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-500">Cancel</button>
               </ng-container>
             </div>
           </div>
 
           <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <thead class="data-table-header">
               <tr>
-                <th class="px-6 py-3">Office Location</th>
-                <th class="px-6 py-3">Employee Count</th>
-                <th class="px-6 py-3">Actions</th>
+                <th class="px-6 py-3 font-semibold">Office Location</th>
+                <th class="px-6 py-3 font-semibold">Employee Count</th>
+                <th class="px-6 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let loc of locations()"
-                  class="border-t border-slate-100 cursor-pointer transition-colors hover:bg-slate-50"
-                  [class.bg-indigo-50]="selectedLocation()?.id === loc.id"
+                  class="data-table-row cursor-pointer"
+                  [class.bg-brand-50]="selectedLocation()?.id === loc.id"
                   (click)="selectLocation(loc)">
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-2">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-800">
                       {{ loc.locationName.charAt(0) }}
                     </span>
                     <div>

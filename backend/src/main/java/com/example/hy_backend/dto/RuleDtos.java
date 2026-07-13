@@ -18,7 +18,10 @@ public final class RuleDtos {
             String availableDays,
             Integer bookingWindowDays,
             String facilityAvailableFromDate,
-            String facilityAvailableToDate
+            String facilityAvailableToDate,
+            String cancellationDeadline,
+            String employeeTypes,
+            String roles
     ) {
     }
 
@@ -33,7 +36,10 @@ public final class RuleDtos {
             String availableDays,
             Integer bookingWindowDays,
             String facilityAvailableFromDate,
-            String facilityAvailableToDate
+            String facilityAvailableToDate,
+            String cancellationDeadline,
+            String employeeTypes,
+            String roles
     ) {
     }
 }

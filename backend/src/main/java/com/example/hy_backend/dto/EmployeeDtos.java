@@ -108,7 +108,10 @@ public final class EmployeeDtos {
             Boolean allowCancellation,
             Integer maximumCapacity,
             Boolean regularCommuteEnabled,
-            String availableDays
+            String availableDays,
+            String cancellationDeadline,
+            String employeeTypes,
+            String roles
     ) {
     }
 }

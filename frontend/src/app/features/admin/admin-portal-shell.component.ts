@@ -7,12 +7,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { AuthApiService } from '../../core/services/auth-api.service';
 import { SessionService } from '../../core/services/session.service';
+import { FacilityBuilderStateService } from './state/facility-builder-state.service';
 
 @Component({
   selector: 'app-admin-portal-shell',
@@ -28,72 +30,99 @@ import { SessionService } from '../../core/services/session.service';
     MatInputModule,
     MatButtonModule,
     MatMenuModule,
-    MatBadgeModule
+    MatBadgeModule,
+    MatTooltipModule
   ],
   template: `
-    <mat-sidenav-container class="h-screen w-screen overflow-hidden bg-white">
-      <mat-sidenav #drawer mode="side" opened class="!w-[280px] !border-r !border-slate-200 !bg-white !text-slate-900">
-        <div class="flex h-full flex-col px-5 py-5">
-          <div class="mb-6">
-            <div class="portal-shell-strip mb-4"></div>
-            <img
-              class="hyland-logo hyland-logo-sidebar"
-              src="https://hyland.atlassian.net/s/-s1g255/b/0/23f31f9f9a8155235832888b764f7e4e/_/jira-logo-scaled.png"
-              alt="Hyland logo"
-            />
-            <p class="mt-3 text-base font-semibold text-slate-900">Admin Portal</p>
-            <p class="mt-4 text-sm text-slate-600">Manage operations, publishing, policy rules, and communication controls in one workspace.</p>
+    <mat-sidenav-container autosize class="h-screen w-screen overflow-hidden bg-slate-50">
+      <mat-sidenav #drawer mode="side" opened 
+                   class="transition-all duration-300 ease-in-out border-r border-slate-200"
+                   style="background: #ffffff; color: #1e293b;"
+                   [style.width]="isCollapsed() ? '80px' : '280px'">
+        <div class="flex h-full flex-col overflow-hidden" [ngClass]="isCollapsed() ? 'py-5' : 'px-5 py-5'">
+          <!-- Logo Header & Collapse Button next to Logo -->
+          <div class="mb-6 flex flex-col" [ngClass]="isCollapsed() ? 'px-4' : ''">
+            <!-- Accent Strip -->
+            <div *ngIf="!isCollapsed()" style="height:3px;border-radius:2px;background:linear-gradient(90deg,#818cf8 0% 34%,#14B8A6 34% 68%,#F59E0B 68% 100%);margin-bottom:1.25rem;"></div>
+
+            <div class="flex items-center justify-between w-full">
+              <!-- Logo -->
+              <img *ngIf="!isCollapsed()"
+                class="hyland-logo"
+                src="https://hyland.atlassian.net/s/-s1g255/b/0/23f31f9f9a8155235832888b764f7e4e/_/jira-logo-scaled.png"
+                alt="Hyland logo"
+                style="height: 24px; filter:brightness(0);opacity:0.9;"
+              />
+              <!-- Collapse Toggle -->
+              <button type="button" 
+                      (click)="toggleSidebar()" 
+                      class="flex items-center justify-center shrink-0 border-none bg-transparent cursor-pointer rounded-md transition-colors"
+                      [ngClass]="isCollapsed() ? 'w-8 h-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100' : 'w-7 h-7 text-slate-400 hover:text-slate-800 hover:bg-slate-100'"
+                      title="Toggle sidebar">
+                <mat-icon class="!text-[20px]">{{ isCollapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+              </button>
+            </div>
+            
+            <ng-container *ngIf="!isCollapsed()">
+              <p class="mt-4 text-[1.05rem] font-bold text-slate-800 tracking-wide">Admin Portal</p>
+              <p class="mt-2 text-[0.8rem] text-slate-500 leading-relaxed max-w-[220px]">Manage operations, policy rules, and communication feeds in one workspace.</p>
+            </ng-container>
           </div>
 
-          <nav class="space-y-1 text-sm">
+          <!-- Nav Items -->
+          <nav class="space-y-1.5 flex-1 mt-2" [ngClass]="isCollapsed() ? 'px-2' : ''">
             <a *ngFor="let item of navItems"
                [routerLink]="item.link"
-               routerLinkActive="bg-[#edf5ff] text-[#0f6cbd]"
-               class="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-600 transition hover:bg-slate-50">
-              <mat-icon class="!text-[20px]">{{ item.icon }}</mat-icon>
-              <span>{{ item.label }}</span>
+               routerLinkActive="!bg-brand-50 !text-brand-600 font-semibold"
+               class="flex items-center rounded-xl transition-all hover:bg-slate-100 hover:text-slate-900 text-slate-600"
+               [ngClass]="isCollapsed() ? 'justify-start gap-4 px-4 py-3' : 'gap-4 px-4 py-3'">
+              <mat-icon class="!text-[22px] shrink-0" [matTooltip]="isCollapsed() ? item.label : ''" matTooltipPosition="right">{{ item.icon }}</mat-icon>
+              <span *ngIf="!isCollapsed()" class="truncate text-[0.85rem]">{{ item.label }}</span>
             </a>
           </nav>
-
-          <div class="mt-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
-            <p class="font-semibold text-slate-900">Specification-driven platform</p>
-            <p class="mt-1">Manage published facilities, broadcasts, and operational telemetry with the same Hyland portal frame.</p>
-          </div>
         </div>
       </mat-sidenav>
 
-      <mat-sidenav-content class="bg-transparent">
-        <mat-toolbar class="!sticky !top-0 !z-30 !h-[76px] !bg-white/88 !px-4 !shadow-none md:!px-6">
-          <button mat-icon-button class="md:!hidden" (click)="drawer.toggle()"><mat-icon>menu</mat-icon></button>
-
+      <mat-sidenav-content class="bg-slate-50 flex flex-col h-screen">
+        <mat-toolbar class="!sticky !top-0 !z-30 !h-[76px] glass-panel !bg-white/80 !px-4 !shadow-sm md:!px-6 !border-t-0 !border-l-0 !border-r-0 !border-b !border-slate-200 shrink-0">
+          
           <div class="portal-search hidden w-[340px] items-center gap-2 px-3 py-2 md:flex">
             <mat-icon class="!text-[20px] text-slate-500">search</mat-icon>
-            <input class="w-full bg-transparent text-sm outline-none" placeholder="Search facilities, fields, and rules" />
+            <input class="w-full bg-transparent text-sm outline-none" 
+                   placeholder="Search facilities, fields, and rules"
+                   [value]="facilityState.searchTerm()"
+                   (input)="onSearchInput($event)" />
           </div>
 
           <span class="flex-1"></span>
 
           <button
             mat-icon-button
+            class="!text-slate-500 mr-2"
             [matBadge]="pendingNotifications()"
             [matBadgeHidden]="pendingNotifications() === 0"
             matBadgeColor="warn"
             matBadgeSize="small"
             (click)="goNotifications()"
-          ><mat-icon>notifications</mat-icon></button>
+          ><mat-icon>notifications_none</mat-icon></button>
 
-          <button mat-button [matMenuTriggerFor]="profileMenu" class="!ml-1 !rounded-full !border !border-slate-200 !bg-white !px-3">
-            <mat-icon>account_circle</mat-icon>
-            <span class="ml-1 hidden md:inline">{{ sessionService.state()?.user?.name || 'Admin' }}</span>
+          <button mat-button [matMenuTriggerFor]="profileMenu" class="!min-w-0 !p-0 !rounded-full">
+             <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 border border-slate-200 hover:bg-slate-200 transition shadow-sm">
+              {{ sessionService.state()?.user?.name?.charAt(0) || 'A' }}
+            </div>
           </button>
 
           <mat-menu #profileMenu="matMenu">
-            <button mat-menu-item (click)="goEmployeeView()"><mat-icon>dashboard</mat-icon><span>Employee Portal</span></button>
+            <div class="px-4 py-3 border-b border-slate-100 mb-1">
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Signed in as</p>
+              <p class="text-sm font-bold text-slate-800">{{ sessionService.state()?.user?.name || 'Admin' }}</p>
+            </div>
+
             <button mat-menu-item (click)="logout()"><mat-icon>logout</mat-icon><span>Sign Out</span></button>
           </mat-menu>
         </mat-toolbar>
 
-        <main class="p-4 md:p-6">
+        <main class="flex-1 overflow-auto p-4 md:p-6 lg:p-8 w-full">
           <router-outlet></router-outlet>
         </main>
       </mat-sidenav-content>
@@ -110,13 +139,15 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     { label: 'Notifications', icon: 'notifications_active', link: '/admin/notifications' }
   ];
   readonly pendingNotifications = signal(0);
+  readonly isCollapsed = signal(false);
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     private readonly adminApi: AdminApiService,
     public readonly sessionService: SessionService,
     private readonly authApi: AuthApiService,
-    private readonly router: Router
+    private readonly router: Router,
+    public readonly facilityState: FacilityBuilderStateService
   ) {}
 
   ngOnInit(): void {
@@ -125,6 +156,19 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     interval(20000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.loadPendingNotifications(true));
+  }
+
+  toggleSidebar(): void {
+    this.isCollapsed.update((c) => !c);
+  }
+
+  onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.facilityState.searchTerm.set(value);
+    
+    if (value.trim().length > 0 && !this.router.url.includes('/admin/facilities')) {
+      this.router.navigateByUrl('/admin/facilities');
+    }
   }
 
   ngOnDestroy(): void {

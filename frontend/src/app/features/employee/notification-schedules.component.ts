@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, Inject, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { NotificationScheduleApiService, ScheduleResponse, CreateScheduleRequest, UpdateScheduleRequest } from '../../core/services/notification-schedule-api.service';
@@ -147,7 +147,7 @@ export class NotificationSchedulesComponent implements OnInit {
         this.loading.set(false);
       },
       error: (error) => {
-        this.toastService.error('Failed to load schedules');
+        this.toastService.show('Failed to load schedules', 'error');
         this.loading.set(false);
       }
     });
@@ -180,11 +180,11 @@ export class NotificationSchedulesComponent implements OnInit {
     if (confirm('Are you sure you want to delete this schedule?')) {
       this.scheduleApi.deleteSchedule(scheduleId).subscribe({
         next: () => {
-          this.toastService.success('Schedule deleted successfully');
+          this.toastService.show('Schedule deleted successfully', 'success');
           this.loadSchedules();
         },
         error: (error) => {
-          this.toastService.error('Failed to delete schedule');
+          this.toastService.show('Failed to delete schedule', 'error');
         }
       });
     }
@@ -200,8 +200,7 @@ export class NotificationSchedulesComponent implements OnInit {
   }
 }
 
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { Inject, Optional } from '@angular/core';
+
 
 @Component({
   selector: 'app-create-schedule-dialog',
@@ -346,12 +345,12 @@ export class CreateScheduleDialogComponent implements OnInit {
 
     this.scheduleApi.createSchedule(request).subscribe({
       next: () => {
-        this.toastService.success('Schedule created successfully');
+        this.toastService.show('Schedule created successfully', 'success');
         this.loading.set(false);
         this.dialogRef.close(true);
       },
       error: (error) => {
-        this.toastService.error('Failed to create schedule');
+        this.toastService.show('Failed to create schedule', 'error');
         this.loading.set(false);
       }
     });
@@ -467,14 +466,15 @@ export class EditScheduleDialogComponent implements OnInit {
   frequency: string = 'ONCE';
   daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
   loading = signal(false);
+  data = inject(MAT_DIALOG_DATA);
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<EditScheduleDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any,
     private scheduleApi: NotificationScheduleApiService,
     private toastService: ToastService
   ) {
+    const data = this.data;
     this.form = this.fb.group({
       scheduleId: [data.scheduleId],
       templateId: [data.templateId, Validators.required],
@@ -489,6 +489,7 @@ export class EditScheduleDialogComponent implements OnInit {
       active: [data.active]
     });
   }
+
 
   ngOnInit(): void {
     this.frequency = this.form.get('frequency')?.value || 'ONCE';
@@ -518,12 +519,12 @@ export class EditScheduleDialogComponent implements OnInit {
 
     this.scheduleApi.updateSchedule(request).subscribe({
       next: () => {
-        this.toastService.success('Schedule updated successfully');
+        this.toastService.show('Schedule updated successfully', 'success');
         this.loading.set(false);
         this.dialogRef.close(true);
       },
       error: (error) => {
-        this.toastService.error('Failed to update schedule');
+        this.toastService.show('Failed to update schedule', 'error');
         this.loading.set(false);
       }
     });

@@ -11,7 +11,7 @@ import { BuilderLivePreviewComponent } from './builder-live-preview.component';
     <section class="grid gap-5 py-4 xl:grid-cols-[1fr_auto_1fr]">
 
       <!-- Phone preview -->
-      <div class="flex justify-center xl:justify-end">
+      <div class="flex justify-center">
         <app-builder-live-preview [facilityName]="facilityName" [fields]="fields" />
       </div>
 
@@ -23,10 +23,10 @@ import { BuilderLivePreviewComponent } from './builder-live-preview.component';
       </div>
 
       <!-- JSON panel -->
-      <article class="rounded-2xl border border-slate-200 bg-white p-4">
-        <h3 class="text-lg font-semibold text-slate-900">Specification JSON</h3>
-        <p class="text-sm text-slate-500">Exact payload sent to backend.</p>
-        <pre class="mt-4 max-h-[500px] overflow-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100">{{ generatedJson }}</pre>
+      <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-800">Specification JSON</h3>
+        <p class="text-[13px] text-slate-500 mt-1">Exact payload sent to backend.</p>
+        <pre class="mt-4 max-h-[500px] overflow-auto rounded-lg bg-slate-900 p-4 text-[13px] text-slate-100 shadow-inner">{{ generatedJson }}</pre>
       </article>
 
     </section>

@@ -50,6 +50,15 @@ public class FacilityRule {
     @Column(name = "facility_available_to_date")
     private LocalDate facilityAvailableToDate;
 
+    @Column(name = "cancellation_deadline")
+    private LocalTime cancellationDeadline;
+
+    @Column(name = "employee_types", columnDefinition = "TEXT")
+    private String employeeTypes;
+
+    @Column(name = "roles", columnDefinition = "TEXT")
+    private String roles;
+
     
     public Long getRuleId() {
         return ruleId;
@@ -153,5 +162,29 @@ public class FacilityRule {
 
     public void setBookingWindowDays(Integer bookingWindowDays) {
         this.bookingWindowDays = bookingWindowDays;
+    }
+
+    public LocalTime getCancellationDeadline() {
+        return cancellationDeadline;
+    }
+
+    public void setCancellationDeadline(LocalTime cancellationDeadline) {
+        this.cancellationDeadline = cancellationDeadline;
+    }
+
+    public String getEmployeeTypes() {
+        return employeeTypes;
+    }
+
+    public void setEmployeeTypes(String employeeTypes) {
+        this.employeeTypes = employeeTypes;
+    }
+
+    public String getRoles() {
+        return roles;
+    }
+
+    public void setRoles(String roles) {
+        this.roles = roles;
     }
 }

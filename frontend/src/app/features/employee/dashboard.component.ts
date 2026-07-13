@@ -9,252 +9,916 @@ import { EmployeeApiService } from '../../core/services/employee-api.service';
 import { SessionService } from '../../core/services/session.service';
 import { ToastService } from '../../core/services/toast.service';
 
+
 @Component({
   selector: 'app-employee-dashboard',
   standalone: true,
   imports: [CommonModule],
+
+  styles: [`
+    /* ── Hyland Employee Dashboard Design System ── */
+
+    .hy-page {
+      min-height: 100%;
+      background: #F4F6F9;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ── Page Header ── */
+    .hy-page-header {
+      background: #fff;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .hy-page-logo-area {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .hy-page-title-sm {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0A1628;
+      letter-spacing: -0.01em;
+    }
+    .hy-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ── Content Area ── */
+    .hy-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.75rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    @media (max-width: 640px) { .hy-content { padding: 1rem; } }
+
+    /* ── Welcome Banner ── */
+    .hy-welcome-banner {
+      background: #ffffff;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      color: #0A1628;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .hy-welcome-banner::before {
+      content: '';
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.02);
+    }
+    .hy-welcome-banner::after {
+      content: '';
+      position: absolute;
+      bottom: -50px;
+      right: 80px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.02);
+    }
+    .hy-welcome-kicker {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #0066CC;
+      margin-bottom: 0.4rem;
+    }
+    .hy-welcome-name {
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .hy-welcome-sub {
+      font-size: 0.9rem;
+      color: #64748B;
+      margin-top: 0.4rem;
+    }
+    .hy-accent-strip {
+      display: flex;
+      gap: 4px;
+      margin-top: 1.25rem;
+      position: relative;
+      z-index: 1;
+      width: 56px;
+    }
+    .hy-accent-strip span {
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #0A1628 0%, #14B8A6 50%, #F59E0B 100%);
+      flex: 1;
+    }
+
+    /* ── Card ── */
+    .hy-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      overflow: hidden;
+    }
+    .hy-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .hy-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0A1628;
+    }
+    .hy-card-desc {
+      font-size: 0.8rem;
+      color: #64748B;
+      margin-top: 2px;
+    }
+
+    /* ── Date Strip ── */
+    .hy-date-strip-wrap {
+      padding: 1rem 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .hy-date-strip-wrap::-webkit-scrollbar { display: none; }
+
+    .hy-date-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.15rem;
+      padding: 1.25rem 0.5rem;
+      border-radius: 12px;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      background: #F8FAFC;
+      flex: 0 0 calc((100% - 4rem) / 5);
+      min-width: 90px;
+      transition: all 0.18s ease;
+      font-family: inherit;
+    }
+    .hy-date-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .hy-date-btn.today-btn:not(.active) {
+      border-color: #CBD5E1;
+      background: #F8FAFC;
+    }
+    .hy-date-btn.active {
+      background: #0A1628;
+      border-color: #0A1628;
+      box-shadow: 0 4px 12px rgba(10,22,40,0.3);
+    }
+    .hy-date-btn .d-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #0A1628;
+    }
+    .hy-date-btn.active .d-label { color: #fff; }
+    .hy-date-btn .d-num {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #0A1628;
+      line-height: 1.1;
+      margin: 0.2rem 0;
+    }
+    .hy-date-btn.active .d-num { color: #fff; }
+    .hy-date-btn:disabled .d-num { color: #CBD5E1; }
+    .hy-date-btn .d-mon {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748B;
+    }
+    .hy-date-btn.active .d-mon { color: rgba(255,255,255,0.7); }
+    .hy-date-badge {
+      margin-top: 0.6rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: #E2E8F0;
+      color: #475569;
+    }
+    .hy-date-btn.active .hy-date-badge {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+
+    /* ── Jump to date btn ── */
+    .hy-jump-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #F8FAFC;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      position: relative;
+    }
+    .hy-jump-btn:hover { background: #EFF6FF; border-color: #93C5FD; color: #1E4D8C; }
+
+    /* ── Section heading ── */
+    .hy-section-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .hy-section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #64748B;
+    }
+    .hy-section-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #F1F5F9;
+      color: #475569;
+      border-radius: 20px;
+      padding: 1px 9px;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .hy-section-divider {
+      flex: 1;
+      height: 1px;
+      background: #F1F5F9;
+    }
+
+    /* ── Date heading ── */
+    .hy-date-heading {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #0A1628;
+      letter-spacing: -0.02em;
+    }
+    .hy-refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: transparent;
+      border: none;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #94A3B8;
+      cursor: pointer;
+      transition: color 0.15s;
+      font-family: inherit;
+      padding: 0;
+    }
+    .hy-refresh-btn:hover { color: #475569; }
+
+    /* ── Booking mini card ── */
+    .hy-booking-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .hy-booking-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .hy-booking-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #EFF6FF;
+      color: #1E4D8C;
+      flex-shrink: 0;
+    }
+
+    /* ── Status badge ── */
+    .hy-status {
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .hy-status.confirmed { background: #F0FDF4; color: #15803D; }
+    .hy-status.cancelled { background: #FEF2F2; color: #DC2626; }
+    .hy-status.pending   { background: #FFFBEB; color: #D97706; }
+    .hy-status.default   { background: #F1F5F9; color: #475569; }
+
+    /* ── Facility Grid ── */
+    .hy-facility-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Facility Card ── */
+    .hy-facility-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      transition: all 0.2s ease;
+      cursor: default;
+      position: relative;
+    }
+    .hy-facility-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+      transform: translateY(-1px);
+    }
+    .hy-facility-card.booked {
+      border-color: #A7F3D0;
+      background: linear-gradient(180deg, #fff 0%, #F0FDF4 100%);
+    }
+    .hy-facility-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 10px 10px 0 0;
+      background: linear-gradient(90deg, #0A1628, #1E4D8C);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .hy-facility-card:hover::before { opacity: 1; }
+    .hy-facility-card.booked::before { background: linear-gradient(90deg, #0D9488, #14B8A6); opacity: 1; }
+
+    .hy-facility-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .hy-facility-icon-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 1.5px solid #E2E8F0;
+      background: #F8FAFC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      transition: all 0.18s;
+    }
+    .hy-facility-card:hover .hy-facility-icon-wrap {
+      border-color: #CBD5E1;
+      background: #EFF6FF;
+      color: #1E4D8C;
+    }
+
+    /* availability badges */
+    .hy-avail-badge {
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+    .hy-avail-badge.open    { background: #EFF6FF; color: #1D4ED8; }
+    .hy-avail-badge.booked  { background: #F0FDF4; color: #15803D; }
+    .hy-avail-badge.closed  { background: #FEF2F2; color: #DC2626; }
+    .hy-avail-badge.ended   { background: #F1F5F9; color: #64748B; }
+
+    .hy-facility-category {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #94A3B8;
+      margin-bottom: 0.25rem;
+    }
+    .hy-facility-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0A1628;
+      line-height: 1.3;
+      margin-bottom: 0.35rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .hy-facility-desc {
+      font-size: 0.8rem;
+      color: #64748B;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
+    }
+    .hy-facility-window {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.78rem;
+      color: #64748B;
+      margin-top: 0.6rem;
+    }
+    .hy-facility-unavail-reason {
+      font-size: 0.78rem;
+      color: #DC2626;
+      margin-top: 0.5rem;
+    }
+
+    /* ── CTA Footer ── */
+    .hy-facility-cta {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #F1F5F9;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .hy-btn-book {
+      flex: 1;
+      background: #0A1628;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      letter-spacing: 0.02em;
+    }
+    .hy-btn-book:hover { background: #1E4D8C; box-shadow: 0 3px 10px rgba(30,77,140,0.3); }
+    .hy-btn-view {
+      flex: 1;
+      background: transparent;
+      color: #15803D;
+      border: 1.5px solid #A7F3D0;
+      border-radius: 8px;
+      padding: 0.65rem 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .hy-btn-view:hover { background: #F0FDF4; border-color: #6EE7B7; }
+    .hy-btn-again {
+      background: transparent;
+      color: #475569;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .hy-btn-again:hover { background: #F8FAFC; border-color: #CBD5E1; }
+    .hy-unavail-btn {
+      flex: 1;
+      background: #F8FAFC;
+      color: #94A3B8;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 0.65rem 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      text-align: center;
+      cursor: default;
+    }
+
+    /* ── Loading state ── */
+    .hy-loading-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 1rem;
+      gap: 0.75rem;
+    }
+    .hy-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #E2E8F0;
+      border-top-color: #0A1628;
+      border-radius: 50%;
+      animation: hy-spin 0.7s linear infinite;
+    }
+    @keyframes hy-spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty state ── */
+    .hy-empty-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 1rem;
+      text-align: center;
+    }
+    .hy-empty-icon-lg {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.35;
+    }
+    .hy-empty-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 0.25rem;
+    }
+    .hy-empty-sub {
+      font-size: 0.78rem;
+      color: #94A3B8;
+      max-width: 280px;
+    }
+
+    /* ── Icon buttons ── */
+    .hy-icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #64748B;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .hy-icon-btn:hover { background: #F1F5F9; color: #0A1628; }
+    .hy-notif-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #EF4444;
+      border: 1.5px solid #fff;
+    }
+
+    /* ── Avatar ── */
+    .hy-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0A1628, #1E4D8C);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Animate ── */
+    @keyframes hy-fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hy-animate { animation: hy-fade-in 0.3s ease both; }
+
+    .bookings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+    }
+  `],
   template: `
-    <section class="mx-auto w-full max-w-[1320px] space-y-6">
-      <!-- Dashboard Title Block -->
-      <header class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Hyland Employee Workspace</p>
-          <p class="mt-1 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Daily Service Dashboard</p>
+    <div class="hy-page">
+
+      <!-- ── Sticky Top Bar ── -->
+      <header class="hy-page-header">
+        <div class="hy-page-logo-area">
+          <div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#0A1628,#1E4D8C);display:flex;align-items:center;justify-content:center;">
+            <span class="material-icons-outlined" style="font-size:14px;color:#fff;">business_center</span>
+          </div>
+          <span class="hy-page-title-sm">Employee Workspace</span>
         </div>
-        <div class="flex flex-wrap gap-2 text-sm">
-          <button class="satori-secondary border border-slate-200 hover:bg-slate-50 rounded-md" (click)="goHistory()">Booking Records</button>
-          <button class="satori-secondary border border-slate-200 hover:bg-slate-50 rounded-md" (click)="goNotifications()">
-            Notifications
-            <span *ngIf="unreadNotifications() > 0" class="ml-1.5 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white font-bold">{{ unreadNotifications() }}</span>
+
+        <div class="hy-header-actions">
+          <button class="hy-icon-btn" (click)="goHistory()" title="Booking Records">
+            <span class="material-icons-outlined" style="font-size:20px">receipt_long</span>
           </button>
-          <button class="satori-secondary border border-slate-200 hover:bg-slate-50 rounded-md" (click)="goProfile()">Profile</button>
+          <button class="hy-icon-btn" (click)="goNotifications()" title="Notifications">
+            <span class="material-icons-outlined" style="font-size:20px">notifications_none</span>
+            <span *ngIf="unreadNotifications() > 0" class="hy-notif-dot"></span>
+          </button>
+          <div style="width:1px;height:20px;background:#E2E8F0;margin:0 2px;"></div>
+          <div class="hy-avatar" (click)="goProfile()" title="Profile">
+            {{ avatarInitials() }}
+          </div>
         </div>
       </header>
 
-      <!-- Main Layout Grid: Sidebar + Main Column -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        <!-- Left Sidebar: Calendar & Recent Bookings -->
-        <div class="space-y-6 lg:col-span-1">
-          <!-- CALENDAR DATE SELECTOR -->
-          <section class="border border-slate-200 bg-white shadow-sm rounded-lg overflow-hidden">
-            <div class="border-b border-slate-100 bg-slate-50/50 px-4 py-3">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">Select Date</p>
-                  <div class="flex items-center gap-1 mt-0.5">
-                    <select [value]="calendarMonth()" (change)="onMonthChange($event)" class="bg-transparent border-0 font-semibold text-slate-800 focus:ring-0 focus:outline-none cursor-pointer text-sm p-0 pr-4">
-                      <option *ngFor="let m of monthsList; let idx = index" [value]="idx" [selected]="idx === calendarMonth()">{{ m }}</option>
-                    </select>
-                    <select [value]="calendarYear()" (change)="onYearChange($event)" class="bg-transparent border-0 font-semibold text-slate-800 focus:ring-0 focus:outline-none cursor-pointer text-sm p-0">
-                      <option *ngFor="let y of yearsList()" [value]="y" [selected]="y === calendarYear()">{{ y }}</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="flex items-center gap-1">
-                  <button class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 transition" (click)="prevMonth()" aria-label="Previous Month">‹</button>
-                  <button class="rounded-full border border-slate-200 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-50 transition" (click)="goToToday()">Today</button>
-                  <button class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 transition" (click)="nextMonth()" aria-label="Next Month">›</button>
-                </div>
-              </div>
-            </div>
+      <!-- ── Main Content ── -->
+      <div class="hy-content">
 
-            <div class="p-3 bg-white">
-              <!-- Weekday headers -->
-              <div class="mb-1.5 grid grid-cols-7 text-center">
-                <div *ngFor="let d of ['S','M','T','W','T','F','S']" class="py-1 text-[10px] font-medium text-slate-400">{{ d }}</div>
-              </div>
-
-              <!-- Calendar grid -->
-              <div class="grid grid-cols-7 gap-1">
-                <button
-                  *ngFor="let cell of calendarCells()"
-                  [disabled]="!cell.date || cell.isPast"
-                  (click)="cell.date && !cell.isPast && selectDate(cell.isoDate)"
-                  class="relative flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold transition-all duration-150"
-                  [ngClass]="{
-                    'text-transparent cursor-default': !cell.date,
-                    'text-slate-300 cursor-not-allowed': cell.date && cell.isPast,
-                    'bg-slate-900 text-white shadow-sm font-bold scale-105': cell.isoDate === selectedDate(),
-                    'border border-slate-900 text-slate-900 font-bold': cell.isToday && cell.isoDate !== selectedDate(),
-                    'text-slate-700 hover:bg-slate-100': cell.date && !cell.isPast && cell.isoDate !== selectedDate() && !cell.isToday
-                  }"
-                >
-                  {{ cell.date || '' }}
-                  
-                  <!-- Today dot indicator (when not selected) -->
-                  <span *ngIf="cell.isToday && cell.isoDate !== selectedDate()" class="absolute bottom-1 w-1 h-1 rounded-full bg-slate-950"></span>
-                  
-                  <!-- Booking dot indicator -->
-                  <span *ngIf="cell.hasBooking" class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-white animate-pulse"></span>
-                </button>
-              </div>
-            </div>
-
-            <div *ngIf="selectedDate()" class="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
-              <p class="text-xs text-slate-600">
-                Selected: <strong class="text-slate-900">{{ formatLocalDate(selectedDate()) | date: 'MMM d, y' }}</strong>
-              </p>
-            </div>
-          </section>
-
-          <!-- RECENT BOOKINGS -->
-          <section class="border border-slate-200 bg-white shadow-sm rounded-lg p-4" *ngIf="bookingEvents().length > 0">
-            <div class="mb-3 flex items-center justify-between">
-              <h2 class="text-sm font-semibold text-slate-900">Bookings on this Date</h2>
-              <button class="text-xs font-semibold text-slate-500 hover:text-slate-900" (click)="goHistory()">View all</button>
-            </div>
-            <div class="space-y-2.5">
-              <div *ngIf="bookingsForSelectedDate().length === 0" class="py-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-md bg-slate-50/50">
-                No bookings for this date.
-              </div>
-              <article *ngFor="let event of bookingsForSelectedDate()" class="rounded-md border border-slate-200 bg-white p-3 text-xs shadow-sm">
-                <div class="flex items-start justify-between gap-2">
-                  <div>
-                    <p class="font-semibold text-slate-900">{{ event.facility }}</p>
-                    <p class="mt-0.5 text-[10px] text-slate-500">{{ formatLocalDate(event.bookingDate) | date: 'MMM d, y' }}</p>
-                  </div>
-                  <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                    [ngClass]="event.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : event.status === 'CANCELLED' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-50 text-slate-700 border border-slate-200'">
-                    {{ event.status }}
-                  </span>
-                </div>
-                <div class="mt-2 flex items-center justify-between border-t border-slate-100 pt-1.5">
-                  <button class="font-semibold text-slate-600 hover:text-slate-900" (click)="openBooking(event.bookingId)">View Details</button>
-                </div>
-              </article>
-            </div>
-          </section>
+        <!-- ── Welcome Banner ── -->
+        <div class="hy-welcome-banner hy-animate">
+          <p class="hy-welcome-kicker">Employee Portal</p>
+          <h1 class="hy-welcome-name">Good {{ timeOfDay() }}, {{ firstName() }}</h1>
+          <p class="hy-welcome-sub">
+            {{ selectedDate() ? 'Showing services & events for ' + (formatLocalDate(selectedDate()!) | date:'MMMM d, yyyy') : 'Select a date to explore available services.' }}
+          </p>
+          <div class="hy-accent-strip">
+            <span></span>
+          </div>
         </div>
 
-        <!-- Right Main Column: Available Services -->
-        <div class="space-y-6 lg:col-span-2">
-          
-          <!-- AVAILABLE SERVICES FOR SELECTED DATE -->
-          <section *ngIf="selectedDate()">
-            <div class="mb-4 flex items-center justify-between">
-              <div>
-                <h2 class="text-lg font-semibold text-slate-900">
-                  Available Services
-                  <span class="ml-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-800 border border-slate-200">{{ availableFacilities().length }}</span>
-                </h2>
-                <p class="text-xs text-slate-500 mt-0.5">Showing services for {{ formatLocalDate(selectedDate()) | date: 'EEEE, MMMM d, y' }}</p>
+        <!-- ── Date Navigator ── -->
+        <div class="hy-card hy-animate" style="animation-delay:0.05s; padding: 1.25rem 1.5rem; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border-radius: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <p style="font-size: 0.8rem; font-weight: 700; color: #64748B; letter-spacing: 0.08em; text-transform: uppercase;">SELECT DATE</p>
+            <label class="hy-jump-btn" style="background: #ffffff; border: 1px solid #E2E8F0; padding: 0.45rem 0.85rem; border-radius: 8px;">
+              <span class="material-icons-outlined" style="font-size:16px;">calendar_today</span>
+              Pick Date
+              <input #datePicker type="date" style="position:absolute;opacity:0;width:0;height:0;" [value]="selectedDate()" (change)="onDatePickerChange($event)" />
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 1rem; width: 100%; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.5rem;">
+            <button *ngFor="let day of calendarStrip()"
+                    class="hy-date-btn"
+                    [class.active]="day.isoDate === selectedDate()"
+                    [class.today-btn]="day.isToday"
+                    [disabled]="day.isPast"
+                    (click)="!day.isPast && selectDate(day.isoDate)">
+              <span class="d-label" style="text-transform: capitalize;">{{ day.dayOfWeek | slice:0:3 }}</span>
+              <span class="d-num">{{ day.dayOfMonth }}</span>
+              <span class="d-mon">{{ formatLocalDate(day.isoDate) | date:'MMM' }}</span>
+              <span class="hy-date-badge">{{ day.eventCount }} Events</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Content for selected date ── -->
+        <ng-container *ngIf="selectedDate()">
+
+          <!-- ── Date Heading ── -->
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;" class="hy-animate" style="animation-delay:0.08s">
+            <h2 class="hy-date-heading">{{ formatLocalDate(selectedDate()!) | date:'EEEE, MMMM d' }}</h2>
+            <div style="flex:1;height:1px;background:#E2E8F0;"></div>
+            <button class="hy-refresh-btn" (click)="loadAvailableForDate(selectedDate()!)">
+              <span class="material-icons-outlined" style="font-size:14px;">refresh</span>
+              Refresh
+            </button>
+          </div>
+
+          <!-- ── Your Bookings ── -->
+          <div *ngIf="bookingsForSelectedDate().length > 0" class="hy-card hy-animate" style="animation-delay:0.1s">
+            <div class="hy-card-header">
+              <div class="hy-section-heading">
+                <p class="hy-section-label">Your Bookings</p>
+                <span class="hy-section-count">{{ bookingsForSelectedDate().length }}</span>
               </div>
-              <button class="rounded-md border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1 transition" (click)="loadAvailableForDate(selectedDate()!)">
-                Refresh
+              <button style="font-size:0.75rem;font-weight:600;color:#0066CC;background:transparent;border:none;cursor:pointer;font-family:inherit;padding:0;" (click)="goHistory()">
+                View all →
               </button>
             </div>
-
-            <!-- Loading -->
-            <div *ngIf="loadingFacilities()" class="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center text-sm text-slate-500">
-              Loading available services...
+            <div class="bookings-grid">
+              <div *ngFor="let event of bookingsForSelectedDate()"
+                   class="hy-booking-card"
+                   (click)="openBooking(event.bookingId)">
+                <div class="hy-booking-icon">
+                  <span class="material-icons-outlined" style="font-size:18px">event_available</span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <p style="font-size:0.82rem;font-weight:700;color:#0A1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">{{ event.facility }}</p>
+                  <p style="font-size:0.7rem;color:#94A3B8;margin:0;margin-top:1px;">{{ formatLocalDate(event.bookingDate) | date:'MMM d' }}</p>
+                </div>
+                <span class="hy-status"
+                      [class.confirmed]="event.status === 'CONFIRMED' || event.status === 'ACTIVE' || event.status === 'COMPLETED'"
+                      [class.cancelled]="event.status === 'CANCELLED'"
+                      [class.pending]="event.status === 'PENDING'"
+                      [class.default]="event.status !== 'CONFIRMED' && event.status !== 'ACTIVE' && event.status !== 'COMPLETED' && event.status !== 'CANCELLED' && event.status !== 'PENDING'">
+                  {{ event.status }}
+                </span>
+              </div>
             </div>
+          </div>
 
-            <!-- No services -->
-            <div *ngIf="!loadingFacilities() && availableFacilities().length === 0" class="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center">
-              <p class="text-sm font-medium text-slate-600">No published services found.</p>
-              <p class="mt-1 text-xs text-slate-500">Contact an administrator to publish facility configurations.</p>
+          <!-- ── Loading ── -->
+          <div *ngIf="loadingFacilities()" class="hy-card hy-animate">
+            <div class="hy-loading-wrap">
+              <div class="hy-spinner"></div>
+              <p style="font-size:0.8rem;color:#94A3B8;margin:0;">Loading available options…</p>
             </div>
+          </div>
 
-            <!-- Service cards -->
-            <div *ngIf="!loadingFacilities() && availableFacilities().length > 0" class="grid gap-4 md:grid-cols-2">
-              <article
-                *ngFor="let facility of availableFacilities()"
-                class="group rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md border-slate-200"
-                [ngClass]="{
-                  'border-emerald-200 bg-emerald-50/10': facility.alreadyBooked
-                }"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-lg border border-slate-200">{{ iconEmoji(facility.icon || '') }}</span>
-                    <div>
-                      <h3 class="text-sm font-semibold text-slate-900">{{ facility.facilityName }}</h3>
-                      <p class="text-xs text-slate-500">{{ facility.category || 'Service' }}</p>
-                    </div>
+          <!-- ── Empty ── -->
+          <div *ngIf="!loadingFacilities() && availableFacilities().length === 0" class="hy-card hy-animate">
+            <div class="hy-empty-wrap">
+              <span class="material-icons-outlined hy-empty-icon-lg">inbox</span>
+              <p class="hy-empty-title">Nothing available for this date</p>
+              <p class="hy-empty-sub">No services or events have been published yet. Check back later or try another date.</p>
+            </div>
+          </div>
+
+          <!-- ── Services ── -->
+          <div *ngIf="!loadingFacilities() && servicesList().length > 0" class="hy-animate" style="animation-delay:0.12s">
+            <div class="hy-section-heading" style="margin-bottom:1rem;">
+              <p class="hy-section-label">Services</p>
+              <span class="hy-section-count">{{ servicesList().length }}</span>
+              <div class="hy-section-divider"></div>
+            </div>
+            <div class="hy-facility-grid">
+              <div *ngFor="let facility of servicesList()"
+                   class="hy-facility-card"
+                   [class.booked]="facility.alreadyBooked">
+                <div class="hy-facility-card-header">
+                  <div class="hy-facility-icon-wrap">
+                    <span class="material-icons-outlined" style="font-size:20px;">{{ getIcon(facility.icon || '') }}</span>
                   </div>
-                  <span
-                    class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                    [ngClass]="{
-                      'bg-emerald-100 text-emerald-700 border border-emerald-200': facility.alreadyBooked,
-                      'bg-slate-100 text-slate-700 border border-slate-200': !facility.alreadyBooked && facility.bookingAllowed,
-                      'bg-rose-50 text-rose-700 border border-rose-200': !facility.bookingAllowed
-                    }"
-                  >
-                    {{ facility.alreadyBooked ? 'Booked' : (facility.bookingAllowed ? 'Available' : 'Unavailable') }}
+                  <span class="hy-avail-badge"
+                        [class.booked]="facility.alreadyBooked"
+                        [class.open]="!facility.alreadyBooked && facility.bookingAllowed"
+                        [class.closed]="!facility.alreadyBooked && !facility.bookingAllowed">
+                    {{ facility.alreadyBooked ? 'Booked' : (facility.bookingAllowed ? 'Open' : 'Closed') }}
                   </span>
                 </div>
 
-                <p *ngIf="facility.description" class="mt-2.5 text-xs text-slate-500 line-clamp-2 leading-relaxed">{{ facility.description }}</p>
+                <p class="hy-facility-category">{{ facility.displayCategory }}</p>
+                <h4 class="hy-facility-name">{{ facility.facilityName }}</h4>
+                <p *ngIf="facility.description" class="hy-facility-desc">{{ facility.description }}</p>
 
-                <!-- Booking window -->
-                <div *ngIf="facility.bookingStartTime || facility.bookingDeadline" class="mt-2.5 flex items-center gap-1 text-[11px]"
-                  [ngClass]="facility.bookingAllowed ? 'text-emerald-700' : 'text-slate-500'">
-                  <span>🕐</span>
-                  <span>Booking window:
-                    {{ facility.bookingStartTime || '00:00' }} – {{ facility.bookingDeadline || '23:59' }}
+                <div *ngIf="facility.bookingStartTime || facility.bookingDeadline" class="hy-facility-window">
+                  <span class="material-icons-outlined" style="font-size:13px;">schedule</span>
+                  <span>{{ facility.bookingStartTime || '00:00' }} – {{ facility.bookingDeadline || '23:59' }}</span>
+                </div>
+
+                <p *ngIf="!facility.bookingAllowed && facility.unavailableReason" class="hy-facility-unavail-reason">
+                  {{ facility.unavailableReason }}
+                </p>
+
+                <div class="hy-facility-cta">
+                  <button *ngIf="!facility.alreadyBooked && facility.bookingAllowed"
+                          class="hy-btn-book"
+                          (click)="bookFacility(facility)">Book Now</button>
+                  <button *ngIf="facility.alreadyBooked && facility.bookingId"
+                          class="hy-btn-view"
+                          (click)="viewBooking(facility.bookingId!)">View Booking</button>
+                  <button *ngIf="facility.alreadyBooked"
+                          class="hy-btn-again"
+                          (click)="bookFacility(facility)">Again</button>
+                  <div *ngIf="!facility.bookingAllowed && !facility.alreadyBooked" class="hy-unavail-btn">
+                    Unavailable
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Divider ── -->
+          <div *ngIf="!loadingFacilities() && servicesList().length > 0 && eventsList().length > 0"
+               style="height:1px;background:#E2E8F0;"></div>
+
+          <!-- ── Events ── -->
+          <div *ngIf="!loadingFacilities() && eventsList().length > 0" class="hy-animate" style="animation-delay:0.15s">
+            <div class="hy-section-heading" style="margin-bottom:1rem;">
+              <p class="hy-section-label">Events</p>
+              <span class="hy-section-count">{{ eventsList().length }}</span>
+              <div class="hy-section-divider"></div>
+            </div>
+            <div class="hy-facility-grid">
+              <div *ngFor="let facility of eventsList()"
+                   class="hy-facility-card"
+                   [class.booked]="facility.alreadyBooked">
+                <div class="hy-facility-card-header">
+                  <div class="hy-facility-icon-wrap">
+                    <span class="material-icons-outlined" style="font-size:20px;">{{ getIcon(facility.icon || '') }}</span>
+                  </div>
+                  <span class="hy-avail-badge"
+                        [class.booked]="facility.alreadyBooked"
+                        [class.open]="!facility.alreadyBooked && facility.bookingAllowed"
+                        [class.ended]="!facility.alreadyBooked && !facility.bookingAllowed">
+                    {{ facility.alreadyBooked ? 'Registered' : (facility.bookingAllowed ? 'Open' : 'Ended') }}
                   </span>
                 </div>
 
-                <!-- Unavailable reason -->
-                <div *ngIf="!facility.bookingAllowed && facility.unavailableReason" class="mt-2.5 flex items-center gap-1.5 rounded bg-rose-50/50 px-2 py-1.5 text-[11px] text-rose-700 border border-rose-100">
-                  <span>🚫</span>
-                  <span>{{ facility.unavailableReason }}</span>
+                <p class="hy-facility-category">{{ facility.displayCategory }}</p>
+                <h4 class="hy-facility-name">{{ facility.facilityName }}</h4>
+                <p *ngIf="facility.description" class="hy-facility-desc">{{ facility.description }}</p>
+
+                <div *ngIf="facility.bookingStartTime || facility.bookingDeadline" class="hy-facility-window">
+                  <span class="material-icons-outlined" style="font-size:13px;">schedule</span>
+                  <span>{{ facility.bookingStartTime || '00:00' }} – {{ facility.bookingDeadline || '23:59' }}</span>
                 </div>
 
-                <div class="mt-3.5 flex gap-2">
-                  <button
-                    *ngIf="!facility.alreadyBooked && facility.bookingAllowed"
-                    class="flex-1 rounded-md bg-slate-900 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-                    (click)="bookFacility(facility)"
-                  >
-                    Book Now
-                  </button>
-                  <button
-                    *ngIf="facility.alreadyBooked && facility.bookingId"
-                    class="flex-1 rounded-md border border-emerald-300 bg-white py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                    (click)="viewBooking(facility.bookingId!)"
-                  >
-                    View Booking
-                  </button>
-                  <button
-                    *ngIf="facility.alreadyBooked"
-                    class="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                    (click)="bookFacility(facility)"
-                  >
-                    Book Again
-                  </button>
-                  <div *ngIf="!facility.bookingAllowed && !facility.alreadyBooked" class="flex-1 rounded-md border border-slate-100 bg-slate-50/50 py-2 text-center text-xs text-slate-400">
-                    Not bookable
+                <p *ngIf="!facility.bookingAllowed && facility.unavailableReason" class="hy-facility-unavail-reason">
+                  {{ facility.unavailableReason }}
+                </p>
+
+                <div class="hy-facility-cta">
+                  <button *ngIf="!facility.alreadyBooked && facility.bookingAllowed"
+                          class="hy-btn-book"
+                          (click)="bookFacility(facility)">Register</button>
+                  <button *ngIf="facility.alreadyBooked && facility.bookingId"
+                          class="hy-btn-view"
+                          (click)="viewBooking(facility.bookingId!)">View Registration</button>
+                  <div *ngIf="!facility.bookingAllowed && !facility.alreadyBooked" class="hy-unavail-btn">
+                    Registration Closed
                   </div>
                 </div>
-              </article>
+              </div>
             </div>
-          </section>
+          </div>
 
-          <!-- Default state -->
-          <section *ngIf="!selectedDate()" class="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/50 p-10 text-center">
-            <p class="text-xl">📅</p>
-            <p class="mt-2.5 text-sm font-semibold text-slate-700">Select a date on the calendar</p>
-            <p class="mt-0.5 text-xs text-slate-500">Available services for that date will appear here</p>
-          </section>
+        </ng-container>
+
+        <!-- ── No Date Selected ── -->
+        <div *ngIf="!selectedDate()" class="hy-card hy-animate">
+          <div class="hy-empty-wrap" style="padding:5rem 1rem;">
+            <span class="material-icons-outlined hy-empty-icon-lg">calendar_today</span>
+            <p class="hy-empty-title">Select a date to begin</p>
+            <p class="hy-empty-sub">Available services and events will appear once you choose a date from the navigator above.</p>
+          </div>
         </div>
 
       </div>
-    </section>
+    </div>
   `
 })
+
 export class DashboardComponent implements OnInit, OnDestroy {
+
   // Calendar state
   readonly selectedDate = signal<string | null>(null);
-  readonly calendarYear = signal(new Date().getFullYear());
-  readonly calendarMonth = signal(new Date().getMonth()); // 0-based
+  readonly calendarStartDate = signal<Date>(new Date());
 
   // Available facilities for selected date
   readonly availableFacilities = signal<AvailableFacility[]>([]);
   readonly loadingFacilities = signal(false);
 
-  // Other dashboard state
+  readonly servicesList = computed(() => {
+    return this.availableFacilities()
+      .filter(f => !(f.category || '').includes('[EVENT]'))
+      .map(f => ({
+        ...f,
+        displayCategory: f.category?.replace(' [EVENT]', '').replace('[EVENT]', '') || 'Service'
+      }));
+  });
+
+  readonly eventsList = computed(() => {
+    return this.availableFacilities()
+      .filter(f => (f.category || '').includes('[EVENT]'))
+      .map(f => ({
+        ...f,
+        displayCategory: f.category?.replace(' [EVENT]', '').replace('[EVENT]', '') || 'Event'
+      }));
+  });
+
   readonly facilities = signal<DashboardFacility[]>([]);
   readonly bookingEvents = signal<BookingHistoryItem[]>([]);
   readonly unreadNotifications = signal(0);
@@ -262,71 +926,58 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
 
-  readonly calendarMonthLabel = computed(() => {
-    const d = new Date(this.calendarYear(), this.calendarMonth(), 1);
-    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  });
-
   readonly bookingsForSelectedDate = computed(() => {
     const selected = this.selectedDate();
     if (!selected) return [];
     return this.bookingEvents().filter(event => event.bookingDate === selected);
   });
 
-  readonly monthsList = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  readonly calendarStrip = computed(() => {
+    const start = new Date(this.calendarStartDate());
+    start.setHours(0, 0, 0, 0);
 
-  readonly yearsList = computed(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 5 }, (_, i) => currentYear + i);
-  });
-
-  readonly calendarCells = computed(() => {
-    const year = this.calendarYear();
-    const month = this.calendarMonth();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
     const bookings = this.bookingEvents() || [];
 
-    const cells: { date: number | null; isoDate: string; isToday: boolean; isPast: boolean; hasBooking: boolean }[] = [];
+    const cells: {
+      dayOfWeek: string;
+      dayOfMonth: number;
+      month: string;
+      isoDate: string;
+      isToday: boolean;
+      isPast: boolean;
+      eventCount: number;
+    }[] = [];
 
-    for (let i = 0; i < firstDay; i++) {
-      cells.push({ date: null, isoDate: '', isToday: false, isPast: false, hasBooking: false });
-    }
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const cellDate = new Date(year, month, d);
-      cellDate.setHours(0, 0, 0, 0);
-      const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      
-      const dayHasBooking = bookings.some(b => b.bookingDate === iso && b.status === 'CONFIRMED');
+    for (let i = 0; i < 14; i++) {
+      const cellDate = new Date(start);
+      cellDate.setDate(start.getDate() + i);
+
+      const year = cellDate.getFullYear();
+      const month = cellDate.getMonth();
+      const date = cellDate.getDate();
+
+      const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+
+      const eventCount = bookings.filter(b => b.bookingDate === iso && (b.status === 'CONFIRMED' || b.status === 'ACTIVE' || b.status === 'PENDING' || b.status === 'COMPLETED')).length;
 
       cells.push({
-        date: d,
+        dayOfWeek: dayNames[cellDate.getDay()],
+        dayOfMonth: date,
+        month: monthNames[month],
         isoDate: iso,
         isToday: cellDate.getTime() === today.getTime(),
         isPast: cellDate.getTime() < today.getTime(),
-        hasBooking: dayHasBooking
+        eventCount: eventCount
       });
     }
     return cells;
   });
-
-  onMonthChange(event: Event): void {
-    const value = +(event.target as HTMLSelectElement).value;
-    this.calendarMonth.set(value);
-  }
-
-  onYearChange(event: Event): void {
-    const value = +(event.target as HTMLSelectElement).value;
-    this.calendarYear.set(value);
-  }
 
   constructor(
     private readonly bookingApi: BookingApiService,
@@ -345,8 +996,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadNotifications();
     this.loadEngagementSummary();
 
-    // Auto-select today
     const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 2);
+    this.calendarStartDate.set(startDate);
+
     const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     this.selectedDate.set(iso);
     this.loadAvailableForDate(iso);
@@ -357,32 +1011,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // ─── Calendar navigation ──────────────────────────────────────────────────
+  // ── Calendar navigation ───────────────────────────────────────────────────
 
-  prevMonth(): void {
-    if (this.calendarMonth() === 0) {
-      this.calendarMonth.set(11);
-      this.calendarYear.update(y => y - 1);
-    } else {
-      this.calendarMonth.update(m => m - 1);
+  onDatePickerChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.value) {
+      const newDate = this.formatLocalDate(input.value);
+      if (newDate) {
+        const startDate = new Date(newDate);
+        startDate.setDate(newDate.getDate() - 2);
+        this.calendarStartDate.set(startDate);
+      }
+      this.selectDate(input.value);
     }
-  }
-
-  nextMonth(): void {
-    if (this.calendarMonth() === 11) {
-      this.calendarMonth.set(0);
-      this.calendarYear.update(y => y + 1);
-    } else {
-      this.calendarMonth.update(m => m + 1);
-    }
-  }
-
-  goToToday(): void {
-    const today = new Date();
-    this.calendarYear.set(today.getFullYear());
-    this.calendarMonth.set(today.getMonth());
-    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    this.selectDate(iso);
   }
 
   selectDate(iso: string): void {
@@ -390,7 +1031,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadAvailableForDate(iso);
   }
 
-  // ─── Facilities for date ──────────────────────────────────────────────────
+  // ── Facilities for date ───────────────────────────────────────────────────
 
   loadAvailableForDate(date: string): void {
     const employeeId = this.sessionService.getEmployeeId();
@@ -426,7 +1067,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/employee/bookings', bookingId]);
   }
 
-  // ─── Notifications / history ──────────────────────────────────────────────
+  // ── Navigation & Notifications ─────────────────────────────────────────
+
+  goHistory(): void    { this.router.navigateByUrl('/employee/history'); }
+  goNotifications(): void { this.router.navigateByUrl('/employee/notifications'); }
+  goProfile(): void    { this.router.navigateByUrl('/employee/profile'); }
 
   loadNotifications(): void {
     const employeeId = this.sessionService.getEmployeeId();
@@ -451,7 +1096,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.bookingApi.getBookingHistory(employeeId).subscribe({
       next: (history) => {
         this.bookingCount.set(history.length ?? 0);
-        this.bookingEvents.set((history ?? []).slice(0, 6));
+        this.bookingEvents.set(history ?? []);
       },
       error: () => {
         this.bookingCount.set(0);
@@ -460,6 +1105,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ── UI helpers ────────────────────────────────────────────────────────────
+
   formatLocalDate(iso: string | null | undefined): Date | null {
     if (!iso) return null;
     const parts = iso.split('-');
@@ -467,18 +1114,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return new Date(+parts[0], +parts[1] - 1, +parts[2]);
   }
 
-  iconEmoji(icon: string): string {
-    const value = (icon ?? '').toLowerCase();
-    if (value.includes('utensils') || value.includes('restaurant') || value.includes('lunch') || value.includes('food')) return '🍽️';
-    if (value.includes('bus') || value.includes('cab') || value.includes('transport')) return '🚌';
-    if (value.includes('parking') || value.includes('car')) return '🚗';
-    if (value.includes('calendar')) return '📅';
-    if (value.includes('meeting') || value.includes('room')) return '🏛️';
-    if (value.includes('badge') || value.includes('visitor')) return '🪪';
-    return '🏢';
+  firstName(): string {
+    const name = this.sessionService.state()?.user?.name?.trim() ?? 'there';
+    return name.split(' ')[0] || 'there';
   }
 
-  goHistory(): void { this.router.navigateByUrl('/employee/history'); }
-  goProfile(): void { this.router.navigateByUrl('/employee/profile'); }
-  goNotifications(): void { this.router.navigateByUrl('/employee/notifications'); }
+  avatarInitials(): string {
+    const name = this.sessionService.state()?.user?.name?.trim() ?? 'E';
+    const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
+    return parts.map(p => p[0]?.toUpperCase() ?? '').join('') || 'E';
+  }
+
+  timeOfDay(): string {
+    const h = new Date().getHours();
+    if (h < 12) return 'morning';
+    if (h < 17) return 'afternoon';
+    return 'evening';
+  }
+
+  getIcon(iconValue?: string): string {
+    if (iconValue && iconValue.trim().length > 0) return iconValue.trim();
+    const val = (iconValue || '').toLowerCase();
+    if (val.includes('transport') || val.includes('commute') || val.includes('bus')) return 'directions_bus';
+    if (val.includes('food') || val.includes('meal') || val.includes('lunch') || val.includes('dining')) return 'restaurant';
+    if (val.includes('gym') || val.includes('fitness') || val.includes('sport')) return 'fitness_center';
+    if (val.includes('meeting') || val.includes('room') || val.includes('conference')) return 'meeting_room';
+    if (val.includes('event') || val.includes('celebration') || val.includes('party')) return 'celebration';
+    if (val.includes('calendar') || val.includes('schedule')) return 'calendar_month';
+    if (val.includes('desk') || val.includes('seat') || val.includes('workspace')) return 'desk';
+    if (val.includes('park')) return 'local_parking';
+    if (val.includes('library') || val.includes('book')) return 'menu_book';
+    return 'business';
+  }
 }

@@ -54,8 +54,12 @@ public class FacilityServiceImpl implements FacilityService {
 
     @Override
     public FacilityDtos.FacilityCreateResponse createFacility(FacilityDtos.FacilityCreateRequest request) {
+        String name = request.facilityName().trim();
+        if (facilityRepository.existsByFacilityNameIgnoreCase(name)) {
+            throw new BadRequestException("A facility named '" + name + "' already exists. Please choose a different name.");
+        }
         Facility facility = new Facility();
-        facility.setFacilityName(request.facilityName().trim());
+        facility.setFacilityName(name);
         facility.setDescription(request.description());
         facility.setCategory(request.category());
         facility.setIcon(request.icon());
@@ -90,7 +94,11 @@ public class FacilityServiceImpl implements FacilityService {
     @Override
     public FacilityDtos.FacilityDetailResponse updateFacility(Long facilityId, FacilityDtos.FacilityUpdateRequest request) {
         Facility facility = getFacilityOrThrow(facilityId);
-        facility.setFacilityName(request.facilityName().trim());
+        String name = request.facilityName().trim();
+        if (facilityRepository.existsByFacilityNameIgnoreCaseAndFacilityIdNot(name, facilityId)) {
+            throw new BadRequestException("A facility named '" + name + "' already exists. Please choose a different name.");
+        }
+        facility.setFacilityName(name);
         facility.setDescription(request.description());
         facility.setCategory(request.category());
         facility.setIcon(request.icon());
@@ -191,6 +199,13 @@ public class FacilityServiceImpl implements FacilityService {
             rule.setAllowCancellation(srcRule.getAllowCancellation());
             rule.setMaximumCapacity(srcRule.getMaximumCapacity());
             rule.setRegularCommuteEnabled(srcRule.getRegularCommuteEnabled());
+            rule.setAvailableDays(srcRule.getAvailableDays());
+            rule.setBookingWindowDays(srcRule.getBookingWindowDays());
+            rule.setFacilityAvailableFromDate(srcRule.getFacilityAvailableFromDate());
+            rule.setFacilityAvailableToDate(srcRule.getFacilityAvailableToDate());
+            rule.setCancellationDeadline(srcRule.getCancellationDeadline());
+            rule.setEmployeeTypes(srcRule.getEmployeeTypes());
+            rule.setRoles(srcRule.getRoles());
             facilityRuleRepository.save(rule);
         }
 
@@ -246,7 +261,7 @@ public class FacilityServiceImpl implements FacilityService {
                 .toList();
 
         EmployeeDtos.SpecificationRule specificationRule = rule == null
-                ? new EmployeeDtos.SpecificationRule(null, null, null, false, true, null, false, null)
+                ? new EmployeeDtos.SpecificationRule(null, null, null, false, true, null, false, null, null, null, null)
                 : new EmployeeDtos.SpecificationRule(
                         rule.getBookingDeadline() == null ? null : rule.getBookingDeadline().toString(),
                         rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString(),
@@ -255,7 +270,10 @@ public class FacilityServiceImpl implements FacilityService {
                         rule.getAllowCancellation(),
                         rule.getMaximumCapacity(),
                         rule.getRegularCommuteEnabled(),
-                        rule.getAvailableDays()
+                        rule.getAvailableDays(),
+                        rule.getCancellationDeadline() == null ? null : rule.getCancellationDeadline().toString(),
+                        rule.getEmployeeTypes(),
+                        rule.getRoles()
                 );
 
         return new EmployeeDtos.FacilitySpecificationResponse(

@@ -4,16 +4,20 @@ import com.example.hy_backend.dto.NotificationDtos;
 import com.example.hy_backend.model.Notification;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.EmployeeRepository;
+import com.example.hy_backend.repository.NotificationPreferenceRepository;
 import com.example.hy_backend.repository.NotificationRepository;
 import com.example.hy_backend.repository.NotificationTemplateRepository;
 import com.example.hy_backend.repository.NotificationTriggerRepository;
+import com.example.hy_backend.service.SseEmitterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +48,15 @@ class NotificationServiceImplTest {
     @Mock
     private NotificationTriggerRepository notificationTriggerRepository;
 
+    @Mock
+    private SseEmitterService sseEmitterService;
+
+    @Mock
+    private ObjectProvider<JavaMailSender> mailSenderProvider;
+
+    @Mock
+    private NotificationPreferenceRepository notificationPreferenceRepository;
+
     private NotificationServiceImpl notificationService;
 
     @BeforeEach
@@ -53,7 +66,11 @@ class NotificationServiceImplTest {
                 bookingRepository,
                 employeeRepository,
                 notificationTemplateRepository,
-                notificationTriggerRepository
+                notificationTriggerRepository,
+                sseEmitterService,
+                mailSenderProvider,
+                notificationPreferenceRepository,
+                false
         );
     }
 

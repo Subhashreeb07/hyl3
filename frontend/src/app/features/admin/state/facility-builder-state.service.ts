@@ -21,6 +21,7 @@ export interface FacilityBuilderRecord {
   updatedAt: string;
   fields: FacilityField[];
   rules: FacilityRules;
+  isLocal?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -35,13 +36,21 @@ export class FacilityBuilderStateService {
 
   readonly filteredFacilities = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
+    const visible = this.facilities().filter(f => !f.isLocal);
+    
     if (!term) {
-      return this.facilities();
+      return visible;
     }
 
-    return this.facilities().filter((f) =>
-      [f.facilityName, f.category, f.description].join(' ').toLowerCase().includes(term)
-    );
+    return visible.filter((f) => {
+      const basicMatch = [f.facilityName, f.category, f.description].join(' ').toLowerCase().includes(term);
+      if (basicMatch) return true;
+      
+      const fieldsMatch = f.fields?.some(field => field.label?.toLowerCase().includes(term) || field.fieldType?.toLowerCase().includes(term));
+      if (fieldsMatch) return true;
+      
+      return false;
+    });
   });
 
   readonly activeFacility = computed(() => {
@@ -138,7 +147,8 @@ export class FacilityBuilderStateService {
       rules: {
         employeeTypes: ['On-site', 'Remote', 'Hybrid'],
         roles: ['HR', 'Manager', 'Finance', 'Cloud', 'RD', 'Director', 'IS', 'NOC', 'Ops', 'Devops'],
-      }
+      },
+      isLocal: true
     };
 
     this.facilities.update((items) => [record, ...items]);

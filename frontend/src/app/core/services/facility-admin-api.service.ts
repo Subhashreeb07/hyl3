@@ -85,6 +85,7 @@ export interface FieldDetailResponse {
 export interface RuleRequest {
   bookingDeadline?: string | null;
   bookingStartTime?: string | null;
+  cancellationDeadline?: string | null;
   reminderTime?: string | null;
   qrRequired?: boolean;
   allowCancellation?: boolean;
@@ -94,11 +95,14 @@ export interface RuleRequest {
   bookingWindowDays?: number | null;
   facilityAvailableFromDate?: string | null;
   facilityAvailableToDate?: string | null;
+  employeeTypes?: string | null;
+  roles?: string | null;
 }
 
 export interface RuleResponse {
   bookingDeadline?: string | null;
   bookingStartTime?: string | null;
+  cancellationDeadline?: string | null;
   reminderTime?: string | null;
   qrRequired?: boolean;
   allowCancellation?: boolean;
@@ -108,6 +112,8 @@ export interface RuleResponse {
   bookingWindowDays?: number | null;
   facilityAvailableFromDate?: string | null;
   facilityAvailableToDate?: string | null;
+  employeeTypes?: string | null;
+  roles?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

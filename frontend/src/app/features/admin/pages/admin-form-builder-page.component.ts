@@ -46,21 +46,53 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
   ],
   template: `
     <div class="space-y-6">
-      <mat-stepper [linear]="false" class="rounded-2xl bg-white p-4 shadow-sm">
+      <mat-stepper [linear]="true" class="rounded-2xl bg-white p-4 shadow-sm">
         <mat-step [stepControl]="basicForm" label="Basic Information">
-          <form [formGroup]="basicForm" class="grid gap-4 py-4 md:grid-cols-2">
-            <label class="admin-field">Facility Name<input type="text" formControlName="facilityName" /></label>
+          <form [formGroup]="basicForm" class="grid gap-4 py-4 md:grid-cols-2 pb-48">
+            <label class="admin-field">
+              Facility Name
+              <input type="text" formControlName="facilityName" [class.border-red-500]="basicForm.get('facilityName')?.touched && basicForm.get('facilityName')?.hasError('required')" />
+              <span *ngIf="basicForm.get('facilityName')?.touched && basicForm.get('facilityName')?.hasError('required')" class="text-red-500 text-xs font-normal">Facility Name is required.</span>
+            </label>
 
             <!-- Custom category dropdown -->
+            <div class="admin-field">
+              Type
+              <div class="flex gap-3 mt-1 mb-2">
+                <label class="flex-1 flex items-center justify-center gap-2 rounded-xl border p-3 cursor-pointer transition-all hover:bg-slate-50"
+                       [class.border-brand-600]="basicForm.value.type === 'Service'"
+                       [class.bg-brand-50]="basicForm.value.type === 'Service'"
+                       [class.text-brand-700]="basicForm.value.type === 'Service'"
+                       [class.border-slate-200]="basicForm.value.type !== 'Service'">
+                  <input type="radio" formControlName="type" value="Service" class="sr-only" />
+                  <mat-icon class="!text-[20px] shrink-0 text-brand-600" *ngIf="basicForm.value.type === 'Service'">check_circle</mat-icon>
+                  <mat-icon class="!text-[20px] shrink-0 text-slate-400" *ngIf="basicForm.value.type !== 'Service'">radio_button_unchecked</mat-icon>
+                  <span class="font-semibold text-sm">Service / Facility</span>
+                </label>
+                <label class="flex-1 flex items-center justify-center gap-2 rounded-xl border p-3 cursor-pointer transition-all hover:bg-slate-50"
+                       [class.border-brand-600]="basicForm.value.type === 'Event'"
+                       [class.bg-brand-50]="basicForm.value.type === 'Event'"
+                       [class.text-brand-700]="basicForm.value.type === 'Event'"
+                       [class.border-slate-200]="basicForm.value.type !== 'Event'">
+                  <input type="radio" formControlName="type" value="Event" class="sr-only" />
+                  <mat-icon class="!text-[20px] shrink-0 text-brand-600" *ngIf="basicForm.value.type === 'Event'">check_circle</mat-icon>
+                  <mat-icon class="!text-[20px] shrink-0 text-slate-400" *ngIf="basicForm.value.type !== 'Event'">radio_button_unchecked</mat-icon>
+                  <span class="font-semibold text-sm">Event / Gathering</span>
+                </label>
+              </div>
+            </div>
+
             <div class="admin-field">
               Category
               <div *ngIf="showCategoryDropdown()" class="fixed inset-0 z-40" (click)="showCategoryDropdown.set(false); showAddCategoryInput.set(false)"></div>
               <div class="relative z-50">
                 <button type="button"
-                  (click)="showCategoryDropdown.set(!showCategoryDropdown())"
-                  class="w-full flex items-center justify-between rounded-[0.65rem] border bg-white px-3 py-[0.55rem] text-sm text-left transition-shadow"
-                  [style.border-color]="showCategoryDropdown() ? '#6366f1' : '#cbd5e1'"
-                  [style.box-shadow]="showCategoryDropdown() ? '0 0 0 3px rgba(99,102,241,0.12)' : 'none'">
+                  (click)="showCategoryDropdown.set(!showCategoryDropdown()); basicForm.get('category')?.markAsTouched()"
+                  class="w-full flex items-center justify-between rounded-xl border bg-slate-50 hover:bg-white px-3.5 py-3 text-sm text-left transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  [class.border-brand-500]="showCategoryDropdown() && !(basicForm.get('category')?.touched && basicForm.get('category')?.invalid)"
+                  [class.bg-white]="showCategoryDropdown()"
+                  [class.border-slate-200]="!showCategoryDropdown() && !(basicForm.get('category')?.touched && basicForm.get('category')?.invalid)"
+                  [class.border-red-500]="basicForm.get('category')?.touched && basicForm.get('category')?.invalid">
                   <span [class.text-slate-400]="!basicForm.value.category">
                     {{ basicForm.value.category || 'Select category...' }}
                   </span>
@@ -97,7 +129,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
                           placeholder="Category name"
                           class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
                         <button type="button" (click)="addCustomCategory(newCatInput.value)"
-                          class="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors">Add</button>
+                          class="rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors">Add</button>
                         <button type="button" (click)="showAddCategoryInput.set(false); newCategoryName.set('')"
                           class="rounded-full p-1 text-slate-400 hover:bg-slate-100 transition-colors">
                           <span class="material-icons-outlined" style="font-size:15px">close</span>
@@ -107,20 +139,22 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
                   </div>
                 </div>
               </div>
+              <span *ngIf="basicForm.get('category')?.touched && basicForm.get('category')?.hasError('required')" class="text-red-500 text-xs font-normal">Category is required.</span>
             </div>
 
             <label class="admin-field md:col-span-2">Description<textarea rows="3" formControlName="description" placeholder="Describe what this facility provides..."></textarea></label>
             <!-- Icon picker dropdown -->
             <div class="admin-field">
               Icon
-              <div *ngIf="showIconDropdown()" class="fixed inset-0 z-40" (click)="showIconDropdown.set(false)"></div>
+              <div *ngIf="showIconDropdown()" class="fixed inset-0 z-40" (click)="showIconDropdown.set(false); showAddIconInput.set(false)"></div>
               <div class="relative z-50">
                 <button type="button"
                   (click)="showIconDropdown.set(!showIconDropdown())"
-                  class="w-full flex items-center gap-2 rounded-[0.65rem] border bg-white px-3 py-[0.55rem] text-sm text-left transition-shadow"
-                  [style.border-color]="showIconDropdown() ? '#6366f1' : '#cbd5e1'"
-                  [style.box-shadow]="showIconDropdown() ? '0 0 0 3px rgba(99,102,241,0.12)' : 'none'">
-                  <span class="material-icons-outlined" style="font-size:18px;color:#4f46e5;">{{ basicForm.value.icon || 'inventory_2' }}</span>
+                  class="w-full flex items-center gap-3 rounded-xl border bg-slate-50 hover:bg-white px-3.5 py-3 text-sm text-left transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  [class.border-brand-500]="showIconDropdown()"
+                  [class.bg-white]="showIconDropdown()"
+                  [class.border-slate-200]="!showIconDropdown()">
+                  <span class="material-icons-outlined" style="font-size:18px;color:#2563eb;">{{ basicForm.value.icon || 'inventory_2' }}</span>
                   <span class="flex-1 text-slate-700">{{ iconLabel(basicForm.value.icon) }}</span>
                   <span class="material-icons-outlined text-slate-400" style="font-size:18px;">{{ showIconDropdown() ? 'expand_less' : 'expand_more' }}</span>
                 </button>
@@ -130,22 +164,49 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
                     <button *ngFor="let ic of iconChoices" type="button"
                       (click)="basicForm.patchValue({ icon: ic.value }); showIconDropdown.set(false)"
                       [title]="ic.label"
-                      class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-center transition-all hover:bg-indigo-50"
-                      [style.background]="basicForm.value.icon === ic.value ? '#4f46e5' : ''"
+                      class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-center transition-all hover:bg-brand-50"
+                      [style.background]="basicForm.value.icon === ic.value ? '#2563eb' : ''"
                       [style.color]="basicForm.value.icon === ic.value ? '#fff' : '#64748b'">
                       <span class="material-icons-outlined" style="font-size:18px;">{{ ic.value }}</span>
                       <span style="font-size:7.5px;font-weight:600;">{{ ic.label }}</span>
                     </button>
                   </div>
+                  <div class="border-t border-slate-100 px-2 py-2 mt-2">
+                    <ng-container *ngIf="!showAddIconInput()">
+                      <button type="button" (click)="showAddIconInput.set(true)"
+                        class="flex items-center justify-center w-full gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        <span class="material-icons-outlined" style="font-size:15px">add_circle</span> Add Custom Icon
+                      </button>
+                    </ng-container>
+                    <ng-container *ngIf="showAddIconInput()">
+                      <div class="flex gap-1.5 items-center">
+                        <input #newIconInp type="text"
+                          [value]="newIconName()"
+                          (input)="newIconName.set($any($event.target).value)"
+                          (keydown.enter)="addCustomIcon(newIconInp.value)"
+                          (keydown.escape)="showAddIconInput.set(false); newIconName.set('')"
+                          placeholder="Material icon name"
+                          class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                        <button type="button" (click)="addCustomIcon(newIconInp.value)"
+                          class="rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors">Add</button>
+                        <button type="button" (click)="showAddIconInput.set(false); newIconName.set('')"
+                          class="rounded-full p-1 text-slate-400 hover:bg-slate-100 transition-colors">
+                          <span class="material-icons-outlined" style="font-size:15px">close</span>
+                        </button>
+                      </div>
+                    </ng-container>
+                  </div>
                 </div>
               </div>
             </div>
           </form>
-          <div class="flex justify-end"><button mat-flat-button color="primary" matStepperNext>Next</button></div>
+          <div class="flex justify-end">
+            <button mat-flat-button color="primary" matStepperNext (click)="basicForm.markAllAsTouched()">Next</button>
+          </div>
         </mat-step>
 
         <mat-step label="Dynamic Form Builder">
-          <div class="grid gap-5 py-4 xl:grid-cols-[1fr_360px]">
+          <div class="grid gap-5 py-6 px-4 xl:grid-cols-[1fr_360px] bg-[#f0ebf8] rounded-xl -mx-4 mt-2 mb-4" style="min-height: 700px;">
             <app-builder-field-list
               [fields]="orderedFields()"
               (add)="addField()"
@@ -171,7 +232,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
           <app-builder-rules-form [form]="rulesForm" />
           <div class="flex justify-between">
             <button mat-button matStepperPrevious>Back</button>
-            <button mat-flat-button color="primary" matStepperNext>Next</button>
+            <button mat-flat-button color="primary" matStepperNext (click)="rulesForm.markAllAsTouched()">Next</button>
           </div>
         </mat-step>
 
@@ -206,7 +267,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
               class="shrink-0"
               (click)="saveAsTemplate()"
               [disabled]="!activeFacilityId()">
-              ⬡ Save as Template
+              <span class="material-icons-outlined text-[1.1em] mr-1">auto_awesome_mosaic</span> Save as Template
             </button>
           </div>
 
@@ -220,21 +281,42 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
   styles: [
     `
       .admin-field {
-        display: grid;
-        gap: 0.35rem;
-        font-size: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        font-size: 0.85rem;
         font-weight: 600;
-        color: #334155;
+        color: #1e293b;
       }
 
       .admin-field input,
       .admin-field textarea,
       .admin-field select {
         border: 1px solid #cbd5e1;
-        border-radius: 0.65rem;
-        padding: 0.55rem 0.7rem;
-        background: #ffffff;
-        font-size: 0.9rem;
+        border-radius: 0.5rem;
+        padding: 0.65rem 0.875rem;
+        background: #fff;
+        font-size: 0.875rem;
+        color: #0f172a;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .admin-field input:focus,
+      .admin-field textarea:focus,
+      .admin-field select:focus {
+        outline: none;
+        border-color: #6366f1; /* brand-500 */
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      }
+      .admin-field input.ng-invalid.ng-touched,
+      .admin-field textarea.ng-invalid.ng-touched,
+      .admin-field select.ng-invalid.ng-touched {
+        border-color: #ef4444; /* red-500 */
+      }
+      .admin-field input.ng-invalid.ng-touched:focus,
+      .admin-field textarea.ng-invalid.ng-touched:focus,
+      .admin-field select.ng-invalid.ng-touched:focus {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+        border-color: #ef4444;
       }
 
       .admin-inline {
@@ -277,6 +359,8 @@ export class AdminFormBuilderPageComponent {
   readonly showAddCategoryInput = signal(false);
   readonly newCategoryName = signal('');
   readonly showIconDropdown = signal(false);
+  readonly showAddIconInput = signal(false);
+  readonly newIconName = signal('');
   private openMode: 'new' | 'edit' = 'new';
 
   /** Only non-template facilities appear in the working-facility dropdown. */
@@ -288,6 +372,7 @@ export class AdminFormBuilderPageComponent {
   readonly optionSetCount = computed(() => this.orderedFields().filter((field) => (field.options ?? []).length > 0).length);
 
   readonly basicForm = this.fb.group({
+    type: ['Service', Validators.required],
     facilityName: ['', Validators.required],
     description: [''],
     category: ['', Validators.required],
@@ -363,6 +448,21 @@ export class AdminFormBuilderPageComponent {
     this.showCategoryDropdown.set(false);
     this.showAddCategoryInput.set(false);
     this.newCategoryName.set('');
+  }
+
+  addCustomIcon(name: string): void {
+    const val = name.trim();
+    if (val) {
+      // Check if it exists
+      if (!this.iconChoices.find(ic => ic.value === val)) {
+        // Add custom icon to choices
+        this.iconChoices.push({ value: val, label: val.charAt(0).toUpperCase() + val.slice(1).replace(/_/g, ' ') });
+      }
+      this.basicForm.patchValue({ icon: val });
+      this.newIconName.set('');
+      this.showAddIconInput.set(false);
+      this.showIconDropdown.set(false);
+    }
   }
 
   iconLabel(value: string | null | undefined): string {
@@ -471,6 +571,11 @@ export class AdminFormBuilderPageComponent {
   }
 
   async saveDraft(): Promise<void> {
+    if (this.basicForm.invalid) {
+      this.basicForm.markAllAsTouched();
+      this.toast('Please enter a facility name before saving a draft', 'Close', 3500);
+      return;
+    }
     try {
       const persisted = await this.persistBuilder(false);
       this.state.upsertFacility(persisted);
@@ -482,8 +587,13 @@ export class AdminFormBuilderPageComponent {
   }
 
   async saveAsTemplate(): Promise<void> {
+    if (this.basicForm.invalid) {
+      this.basicForm.markAllAsTouched();
+      this.toast('Please enter a facility name before saving as template', 'Close', 3500);
+      return;
+    }
     const id = this.activeFacilityId();
-    if (!id) {
+    if (!id || this.state.activeFacility()?.isLocal) {
       this.toast('Save a draft first before saving as template', 'Close', 3000);
       return;
     }
@@ -501,6 +611,11 @@ export class AdminFormBuilderPageComponent {
   }
 
   async publish(): Promise<void> {
+    if (this.basicForm.invalid) {
+      this.basicForm.markAllAsTouched();
+      this.toast('Please complete the Basic Information step', 'Close', 3000);
+      return;
+    }
     if (this.rulesForm.invalid) {
       this.rulesForm.markAllAsTouched();
       this.toast('Please fill all required Business Rules fields', 'Close', 3000);
@@ -619,7 +734,7 @@ export class AdminFormBuilderPageComponent {
         facilityAvailableFromDate: parsed.rules?.facilityAvailableFromDate ?? '',
         facilityAvailableToDate: parsed.rules?.facilityAvailableToDate ?? '',
         bookingStartTime: parsed.rules?.bookingStartTime ?? '',
-        bookingEndTime: parsed.rules?.bookingEndTime ?? '',
+        bookingEndTime: parsed.rules?.bookingDeadline ?? '',
         bookingDeadline: parsed.rules?.bookingDeadline ?? '',
         reminderTime: parsed.rules?.reminderTime ?? '',
         cancellationDeadline: parsed.rules?.cancellationDeadline ?? '',
@@ -677,6 +792,29 @@ export class AdminFormBuilderPageComponent {
     this.refreshJson();
   }
 
+  private validateDraftFields(fields: FacilityField[]): string | null {
+    for (const field of fields) {
+      const fieldNo = field.displayOrder || 1;
+      if (!field.label?.trim()) {
+        return `Field ${fieldNo}: label is required`;
+      }
+      if (this.fieldUsesOptions(field.fieldType) && (!field.options || field.options.length === 0)) {
+        return `Field ${fieldNo}: at least one option is required`;
+      }
+      if (field.validationJson && field.validationJson.trim()) {
+        try {
+          const parsed = JSON.parse(field.validationJson);
+          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            return `Field ${fieldNo}: validation JSON must be an object`;
+          }
+        } catch {
+          return `Field ${fieldNo}: validation JSON is invalid`;
+        }
+      }
+    }
+    return null;
+  }
+
   private validateImportedSpecification(spec: FacilitySpecification): void {
     if (!spec.facilityName?.trim()) {
       throw new Error('facilityName is required');
@@ -716,7 +854,7 @@ export class AdminFormBuilderPageComponent {
   }
 
   private clearForm(): void {
-    this.basicForm.reset({ facilityName: '', description: '', category: '', icon: 'inventory_2' });
+    this.basicForm.reset({ type: 'Service', facilityName: '', description: '', category: '', icon: 'inventory_2' });
     this.rulesForm.reset({
       facilityAvailableFromDate: '',
       facilityAvailableToDate: '',
@@ -760,14 +898,22 @@ export class AdminFormBuilderPageComponent {
   }
 
   private patchFromRecord(record: FacilityBuilderRecord): void {
-    if (record.category && !this.categoryOptions().includes(record.category)) {
-      this.categoryOptions.update(cats => [...cats, record.category]);
+    let cat = record.category || '';
+    let type = 'Service';
+    if (cat.endsWith(' [EVENT]')) {
+      cat = cat.replace(' [EVENT]', '');
+      type = 'Event';
+    }
+
+    if (cat && !this.categoryOptions().includes(cat)) {
+      this.categoryOptions.update(cats => [...cats, cat]);
     }
 
     this.basicForm.patchValue({
+      type: type,
       facilityName: record.facilityName,
       description: record.description,
-      category: record.category || '',
+      category: cat,
       icon: record.icon,
     });
 
@@ -775,7 +921,9 @@ export class AdminFormBuilderPageComponent {
       facilityAvailableFromDate: record.rules?.facilityAvailableFromDate ?? '',
       facilityAvailableToDate: record.rules?.facilityAvailableToDate ?? '',
       bookingStartTime: record.isTemplate ? this.currentTimeString() : (record.rules?.bookingStartTime || this.currentTimeString()),
-      bookingEndTime: record.rules?.bookingEndTime ?? '',
+      // Patch the visible bookingEndTime field. Also sync the hidden bookingDeadline control
+      // so both are in agreement immediately after load (prevents stale-value bug on save).
+      bookingEndTime: record.rules?.bookingDeadline ?? '',
       bookingDeadline: record.rules?.bookingDeadline ?? '',
       reminderTime: record.rules?.reminderTime ?? '',
       cancellationDeadline: record.rules?.cancellationDeadline ?? '',
@@ -821,8 +969,8 @@ export class AdminFormBuilderPageComponent {
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
         facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
-        bookingEndTime: this.rulesForm.value.bookingEndTime || null,
-        bookingDeadline: this.rulesForm.value.bookingDeadline || this.rulesForm.value.bookingEndTime || null,
+        // bookingEndTime is the visible UI input; bookingDeadline is a hidden shadow — prefer visible field.
+        bookingDeadline: this.rulesForm.value.bookingEndTime || this.rulesForm.value.bookingDeadline || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
         bookingWindowDays: this.rulesForm.value.bookingWindowDays || null,
@@ -874,7 +1022,7 @@ export class AdminFormBuilderPageComponent {
     const existing = this.state.activeFacility();
 
     let facilityId = existing?.id ?? 0;
-    if (!existing || existing.facilityName === 'Untitled Facility') {
+    if (!existing || existing.isLocal) {
       const created = await firstValueFrom(
         this.facilityAdminApi.createFacility({
           facilityName: base.facilityName,
@@ -899,7 +1047,7 @@ export class AdminFormBuilderPageComponent {
     }
 
     const draftFields = this.orderedFields();
-    if (!existing || existing.facilityName === 'Untitled Facility') {
+    if (!existing || existing.isLocal) {
       for (const field of draftFields) {
         const createdField = await firstValueFrom(this.facilityAdminApi.addField(facilityId, this.toFieldPayload(field)));
         if (this.fieldUsesOptions(field.fieldType) && (field.options ?? []).length > 0) {
@@ -943,7 +1091,9 @@ export class AdminFormBuilderPageComponent {
 
     await firstValueFrom(
       this.facilityAdminApi.saveRules(facilityId, {
-        bookingDeadline: this.rulesForm.value.bookingDeadline || this.rulesForm.value.bookingEndTime || null,
+        // bookingEndTime is the visible UI input; bookingDeadline is a hidden shadow control.
+        // Always prefer the visible field so user edits are not overridden by the stale patched value.
+        bookingDeadline: this.rulesForm.value.bookingEndTime || this.rulesForm.value.bookingDeadline || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
         qrRequired: false,
@@ -954,11 +1104,12 @@ export class AdminFormBuilderPageComponent {
         bookingWindowDays: this.rulesForm.value.bookingWindowDays ?? null,
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
         facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
+        cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
         employeeTypes: [
           this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
           this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
           this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
-        ].filter((v): v is string => v !== null),
+        ].filter((v): v is string => v !== null).join(','),
         roles: [
           this.rulesForm.value.roleHR ? 'HR' : null,
           this.rulesForm.value.roleManager ? 'Manager' : null,
@@ -970,7 +1121,7 @@ export class AdminFormBuilderPageComponent {
           this.rulesForm.value.roleNOC ? 'NOC' : null,
           this.rulesForm.value.roleOps ? 'Ops' : null,
           this.rulesForm.value.roleDevops ? 'Devops' : null,
-        ].filter((v): v is string => v !== null),
+        ].filter((v): v is string => v !== null).join(',')
       })
     );
 
@@ -1054,7 +1205,13 @@ export class AdminFormBuilderPageComponent {
   }
 
   private resolveCategoryValue(): string {
-    return (this.basicForm.value.category ?? '').trim() || 'General';
+    let cat = (this.basicForm.value.category ?? '').trim() || 'General';
+    if (this.basicForm.value.type === 'Event') {
+      if (!cat.endsWith(' [EVENT]')) {
+        cat += ' [EVENT]';
+      }
+    }
+    return cat;
   }
 
   private defaultLabelForFieldType(type: FacilityField['fieldType']): string {

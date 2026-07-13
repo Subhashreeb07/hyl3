@@ -62,17 +62,18 @@ public class RuleServiceImpl implements RuleService {
         LocalTime reminderTime = parseTime(request.reminderTime(), "reminderTime");
         LocalDate facilityAvailableFromDate = parseDate(request.facilityAvailableFromDate(), "facilityAvailableFromDate");
         LocalDate facilityAvailableToDate = parseDate(request.facilityAvailableToDate(), "facilityAvailableToDate");
+        LocalTime cancellationDeadline = parseTime(request.cancellationDeadline(), "cancellationDeadline");
 
         if (bookingStartTime != null && bookingDeadline != null && bookingStartTime.isAfter(bookingDeadline)) {
-            throw new BadRequestException("bookingStartTime must be before or equal to bookingDeadline");
+            throw new BadRequestException("booking Start Time must be before or equal to booking Deadline");
         }
 
         if (reminderTime != null && bookingDeadline != null && reminderTime.isAfter(bookingDeadline)) {
-            throw new BadRequestException("reminderTime cannot be after bookingDeadline");
+            throw new BadRequestException("reminder Time cannot be after booking Deadline");
         }
 
         if (request.maximumCapacity() != null && request.maximumCapacity() <= 0) {
-            throw new BadRequestException("maximumCapacity must be greater than zero");
+            throw new BadRequestException("maximum Capacity must be greater than zero");
         }
 
         if (request.bookingWindowDays() != null && request.bookingWindowDays() < 0) {
@@ -80,7 +81,7 @@ public class RuleServiceImpl implements RuleService {
         }
 
         if (facilityAvailableFromDate != null && facilityAvailableToDate != null && facilityAvailableFromDate.isAfter(facilityAvailableToDate)) {
-            throw new BadRequestException("facilityAvailableFromDate must be before or equal to facilityAvailableToDate");
+            throw new BadRequestException("facility Available From Date must be before or equal to facility Available To Date");
         }
 
         rule.setBookingDeadline(bookingDeadline);
@@ -94,6 +95,9 @@ public class RuleServiceImpl implements RuleService {
         rule.setBookingWindowDays(request.bookingWindowDays());
         rule.setFacilityAvailableFromDate(facilityAvailableFromDate);
         rule.setFacilityAvailableToDate(facilityAvailableToDate);
+        rule.setCancellationDeadline(cancellationDeadline);
+        rule.setEmployeeTypes(request.employeeTypes());
+        rule.setRoles(request.roles());
     }
 
     private RuleDtos.RuleResponse toResponse(FacilityRule rule) {
@@ -108,7 +112,10 @@ public class RuleServiceImpl implements RuleService {
                 rule.getAvailableDays(),
                 rule.getBookingWindowDays(),
                 rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString(),
-                rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString()
+                rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString(),
+                rule.getCancellationDeadline() == null ? null : rule.getCancellationDeadline().toString(),
+                rule.getEmployeeTypes(),
+                rule.getRoles()
         );
     }
 
