@@ -139,7 +139,34 @@ Frontend runs at:
 ## Employee Flow Routes
 
 - /login
-- /employee/dashboard
+- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - /employee/workday-setup
 - /employee/facility/:facilityId/book
 - /employee/history
