@@ -171,11 +171,11 @@ import { MatIconModule } from '@angular/material/icon';
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-5">
           <h3 class="text-lg font-bold text-slate-900">Daily and Weekly Usage</h3>
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-              <input type="date" [(ngModel)]="fromDate" class="h-10 w-36 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <input type="date" [(ngModel)]="fromDate" class="h-10 w-36 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
               <span class="text-sm font-semibold text-slate-400">to</span>
-              <input type="date" [(ngModel)]="toDate" class="h-10 w-36 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+              <input type="date" [(ngModel)]="toDate" class="h-10 w-36 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
             </div>
             <button class="flex h-10 items-center gap-1.5 rounded-xl bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-900" (click)="loadTrend()">
               <mat-icon class="!text-[18px]">insights</mat-icon> Generate

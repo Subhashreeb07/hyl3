@@ -5,14 +5,13 @@ import com.example.hy_backend.model.Booking;
 import com.example.hy_backend.model.BookingStatus;
 import com.example.hy_backend.model.Employee;
 import com.example.hy_backend.model.Facility;
+import com.example.hy_backend.model.FacilityRule;
 import com.example.hy_backend.model.Notification;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.EmployeeRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.repository.NotificationRepository;
-import com.example.hy_backend.model.FacilityRule;
-import java.time.LocalTime;
 import com.example.hy_backend.service.EmployeeService;
 import org.springframework.stereotype.Service;
 
@@ -53,12 +52,14 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<EmployeeDtos.DashboardFacilityResponse> getDashboardFacilities(String employeeId) {
         String normalizedEmployeeId = normalizeEmployeeId(employeeId);
-        String officeLocation = employeeRepository.findById(normalizedEmployeeId)
+        Optional<Employee> employeeOpt = employeeRepository.findById(normalizedEmployeeId);
+        String officeLocation = employeeOpt
                 .map(employee -> normalizeLocation(employee.getOfficeLocation()))
                 .orElse(null);
 
         return facilityRepository.findByPublishedTrueAndStatusTrue().stream()
                 .filter(facility -> facilityVisibleForOffice(facility, officeLocation))
+                .filter(facility -> facilityAllowedForEmployee(facility, employeeOpt.orElse(null)))
                 .map(f -> new EmployeeDtos.DashboardFacilityResponse(
                         f.getFacilityId(),
                         f.getFacilityName(),
@@ -72,6 +73,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         String normalizedEmployeeId = normalizeEmployeeId(employeeId);
         List<Facility> facilities = facilityRepository.findByPublishedTrueAndStatusTrue();
 
+        Optional<Employee> employeeOpt = employeeRepository.findById(normalizedEmployeeId);
+        String officeLocation = employeeOpt.map(e -> normalizeLocation(e.getOfficeLocation())).orElse(null);
+        Employee employee = employeeOpt.orElse(null);
+
         LocalDate today = LocalDate.now();
         List<Booking> todaysBookings = bookingRepository.findByEmployeeIdAndBookingDateOrderByCreatedAtDesc(normalizedEmployeeId, today);
 
@@ -83,6 +88,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 ));
 
         List<EmployeeDtos.HomeServiceCard> services = facilities.stream()
+                .filter(f -> facilityVisibleForOffice(f, officeLocation))
+                .filter(f -> facilityAllowedForEmployee(f, employee))
                 .map(facility -> {
                     Booking booking = bookingByFacility.get(facility.getFacilityId());
                     boolean booked = booking != null && booking.getStatus() == BookingStatus.CONFIRMED;
@@ -237,6 +244,69 @@ public class EmployeeServiceImpl implements EmployeeService {
                 return normalized.charAt(0) + normalized.substring(1).toLowerCase(Locale.ROOT);
         }
 
+    /**
+     * Returns true when the employee's work mode and role satisfy the facility's
+     * configured employee-type and role restrictions.  If no rule exists or the
+     * restriction lists are empty, the facility is visible to everyone.
+     * ADMIN role always bypasses role/type restrictions.
+     */
+    private boolean facilityAllowedForEmployee(Facility facility, Employee employee) {
+        if (employee == null) return true; // no employee info → show everything
+        if ("ADMIN".equalsIgnoreCase(employee.getRoleCode())) return true;
+
+        FacilityRule rule = facilityRuleRepository
+                .findByFacilityFacilityId(facility.getFacilityId())
+                .orElse(null);
+        if (rule == null) return true;
+
+        // Check employee types (work mode)
+        String empTypesCsv = rule.getEmployeeTypes();
+        if (empTypesCsv != null && !empTypesCsv.isBlank()) {
+            String normalized = normalizeWorkMode(employee.getWorkMode());
+            boolean typeMatch = Arrays.stream(empTypesCsv.split(","))
+                    .map(String::trim)
+                    .anyMatch(t -> t.equalsIgnoreCase(normalized));
+            if (!typeMatch) return false;
+        }
+
+        // Check roles
+        String rolesCsv = rule.getRoles();
+        if (rolesCsv != null && !rolesCsv.isBlank()) {
+            String normalized = normalizeRoleCode(employee.getRoleCode());
+            boolean roleMatch = Arrays.stream(rolesCsv.split(","))
+                    .map(String::trim)
+                    .anyMatch(r -> r.equalsIgnoreCase(normalized));
+            if (!roleMatch) return false;
+        }
+
+        return true;
+    }
+
+    /** Converts DB work_mode value to the display string stored in FacilityRule.employeeTypes. */
+    private String normalizeWorkMode(String workMode) {
+        if (workMode == null) return "Hybrid";
+        return switch (workMode.trim().toUpperCase(Locale.ROOT)) {
+            case "ON_SITE", "ONSITE" -> "On-site";
+            case "REMOTE"            -> "Remote";
+            default                  -> "Hybrid";
+        };
+    }
+
+    /** Maps DB role_code to the display string stored in FacilityRule.roles. */
+    private String normalizeRoleCode(String roleCode) {
+        if (roleCode == null) return "";
+        return switch (roleCode.trim().toUpperCase(Locale.ROOT)) {
+            case "MANAGER"           -> "Manager";
+            case "FINANCE"           -> "Finance";
+            case "CLOUD"             -> "Cloud";
+            case "DIRECTOR"          -> "Director";
+            case "OPS"               -> "Ops";
+            case "DEVOPS"            -> "Devops";
+            // HR, RD, IS, NOC stay uppercase as stored
+            default                  -> roleCode.trim().toUpperCase(Locale.ROOT);
+        };
+    }
+
     @Override
     public List<EmployeeDtos.AvailableFacilityResponse> getAvailableFacilitiesForDate(
             String employeeId, java.time.LocalDate date) {
@@ -249,13 +319,14 @@ public class EmployeeServiceImpl implements EmployeeService {
             return List.of();
         }
 
-        String officeLocation = employeeRepository.findById(normalizedEmployeeId)
-                .map(employee -> normalizeLocation(employee.getOfficeLocation()))
-                .orElse(null);
+        Optional<Employee> empOpt = employeeRepository.findById(normalizedEmployeeId);
+        String officeLocation = empOpt.map(e -> normalizeLocation(e.getOfficeLocation())).orElse(null);
+        Employee employee = empOpt.orElse(null);
 
         List<Facility> publishedFacilities = facilityRepository.findByPublishedTrueAndStatusTrue()
                 .stream()
                 .filter(f -> facilityVisibleForOffice(f, officeLocation))
+                .filter(f -> facilityAllowedForEmployee(f, employee))
                 .toList();
 
         LocalTime now = LocalTime.now();

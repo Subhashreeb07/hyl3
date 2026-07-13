@@ -21,12 +21,12 @@ import {
     <div class="min-h-screen bg-slate-50">
 
       <!-- ── Top bar ── -->
-      <header class="sticky top-0 z-10 flex items-center justify-between bg-white px-6 py-3 shadow-sm">
+      <header class="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 shadow-sm sm:px-6">
         <div>
           <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Admin Console</p>
           <h1 class="text-xl font-bold text-slate-900">Dashboard</h1>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
           <button class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
                   (click)="goFacilities()">Facilities</button>
           <button class="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"
@@ -40,11 +40,76 @@ import {
         <section class="rounded-2xl bg-white p-5 shadow-sm">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Select Date</h2>
-            <button (click)="datePicker.showPicker()" class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">
-              <span class="material-icons-outlined" style="font-size:18px">calendar_today</span>
-              Pick Date
-            </button>
-            <input #datePicker type="date" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;" [value]="selectedDate()" (change)="onDatePick($event)" />
+
+            <!-- ── Modern Calendar Picker ── -->
+            <div class="relative">
+              <button (click)="toggleCalendar()"
+                      class="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:shadow-md">
+                <span class="material-icons-outlined text-indigo-600 transition-colors group-hover:text-indigo-700" style="font-size:18px">calendar_month</span>
+                <span>{{ selectedDate() | date:'MMM d, yyyy' }}</span>
+                <span class="material-icons-outlined text-slate-400 transition-transform duration-200" [style.transform]="showCalendar() ? 'rotate(180deg)' : 'rotate(0deg)'" style="font-size:16px">keyboard_arrow_down</span>
+              </button>
+
+              <!-- Backdrop -->
+              <div *ngIf="showCalendar()" (click)="showCalendar.set(false)" class="fixed inset-0 z-40"></div>
+
+              <!-- Calendar Panel -->
+              <div *ngIf="showCalendar()"
+                   class="absolute right-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                   style="width:min(320px,calc(100vw - 100px));box-shadow:0 25px 50px -12px rgba(0,0,0,0.18),0 0 0 1px rgba(0,0,0,0.04);">
+
+                <!-- Header -->
+                <div class="flex items-center justify-between px-5 py-4"
+                     style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1e4d8c 100%)">
+                  <button (click)="prevMonth(); $event.stopPropagation()"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 transition-all hover:bg-white/10 hover:text-white">
+                    <span class="material-icons-outlined" style="font-size:20px">chevron_left</span>
+                  </button>
+                  <div class="text-center">
+                    <p class="text-base font-bold tracking-tight text-white">{{ calendarMonthLabel() }}</p>
+                  </div>
+                  <button (click)="nextMonth(); $event.stopPropagation()"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 transition-all hover:bg-white/10 hover:text-white">
+                    <span class="material-icons-outlined" style="font-size:20px">chevron_right</span>
+                  </button>
+                </div>
+
+                <!-- Weekday Labels -->
+                <div class="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
+                  <span *ngFor="let wd of weekDayLabels"
+                        class="py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">{{ wd }}</span>
+                </div>
+
+                <!-- Days Grid -->
+                <div class="grid grid-cols-7 gap-0.5 p-3">
+                  <ng-container *ngFor="let cell of calendarDays()">
+                    <div *ngIf="cell.date === null" class="h-9 w-full"></div>
+                    <button *ngIf="cell.date !== null"
+                            (click)="selectCalendarDate(cell.date); $event.stopPropagation()"
+                            class="relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium transition-all duration-150"
+                            [ngClass]="{
+                              'bg-slate-900 text-white shadow font-bold': cell.date === selectedDate(),
+                              'bg-indigo-50 text-indigo-700 font-bold ring-1 ring-inset ring-indigo-200 hover:bg-indigo-100': isToday(cell.date) && cell.date !== selectedDate(),
+                              'text-slate-700 hover:bg-slate-100': !isToday(cell.date) && cell.date !== selectedDate()
+                            }">
+                      {{ cell.num }}
+                      <span *ngIf="isToday(cell.date) && cell.date !== selectedDate()"
+                            class="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-indigo-500"
+                            style="transform:translateX(-50%)"></span>
+                    </button>
+                  </ng-container>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-3">
+                  <button (click)="selectToday(); $event.stopPropagation()"
+                          class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700">
+                    Today
+                  </button>
+                  <p class="text-xs font-medium text-slate-500">{{ selectedDate() | date:'EEE, MMM d' }}</p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="flex w-full justify-between gap-3 overflow-x-auto pb-1">
             <button *ngFor="let d of dateStrip()"
@@ -83,28 +148,6 @@ import {
           </div>
         </section>
 
-        <!-- ── Stats cards ── -->
-        <div class="grid grid-cols-3 gap-5">
-          <!-- Stat Card 1 -->
-          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
-            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">apartment</span></div>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Facilities</p>
-            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.activeFacilities ?? 0 }}</p>
-          </div>
-          <!-- Stat Card 2 -->
-          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
-            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">book_online</span></div>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Bookings</p>
-            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.totalBookingsOnDate ?? 0 }}</p>
-          </div>
-          <!-- Stat Card 3 -->
-          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
-            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">task_alt</span></div>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Completed</p>
-            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.completedBookings ?? 0 }}</p>
-          </div>
-        </div>
-
         <!-- ── Office Locations table ── -->
         <section class="rounded-2xl bg-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
@@ -129,6 +172,7 @@ import {
             </div>
           </div>
 
+          <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
             <thead class="data-table-header">
               <tr>
@@ -167,6 +211,7 @@ import {
               </tr>
             </tbody>
           </table>
+          </div>
         </section>
 
         <!-- ── Facility stats for selected location ── -->
@@ -177,7 +222,7 @@ import {
                 Facility Activity - {{ selectedLocation()!.locationName }}
               </h2>
               <p class="text-xs text-slate-400 mt-0.5">
-                {{ selectedDate() | date:'mediumDate' }} | Counts increment when employees book. All start at zero.
+                {{ selectedDate() | date:'mediumDate' }}
               </p>
             </div>
             <button (click)="selectedLocation.set(null); locationStats.set(null)"
@@ -186,6 +231,7 @@ import {
             </button>
           </div>
 
+          <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
             <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
@@ -223,6 +269,7 @@ import {
               </tr>
             </tbody>
           </table>
+          </div>
         </section>
 
       </div>
@@ -246,6 +293,12 @@ export class AdminDashboardPageComponent implements OnInit {
 
   editingLocationId = signal<number | null>(null);
   editCountValue    = 0;
+
+  // ── Custom Calendar Picker ────────────────────────────────────────────────
+  readonly weekDayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  showCalendar      = signal(false);
+  calendarViewYear  = signal(new Date().getFullYear());
+  calendarViewMonth = signal(new Date().getMonth());
 
   constructor(
     private readonly locationApi: LocationApiService,
@@ -353,6 +406,62 @@ export class AdminDashboardPageComponent implements OnInit {
       return { date: d.toISOString().split('T')[0], label: days[d.getDay()] };
     });
   }
+
+  // ── Calendar Picker Methods ───────────────────────────────────────────────
+
+  toggleCalendar(): void {
+    if (!this.showCalendar()) {
+      const d = new Date(this.selectedDate() + 'T00:00:00');
+      this.calendarViewYear.set(d.getFullYear());
+      this.calendarViewMonth.set(d.getMonth());
+    }
+    this.showCalendar.update(v => !v);
+  }
+
+  prevMonth(): void {
+    if (this.calendarViewMonth() === 0) { this.calendarViewMonth.set(11); this.calendarViewYear.update(y => y - 1); }
+    else { this.calendarViewMonth.update(m => m - 1); }
+  }
+
+  nextMonth(): void {
+    if (this.calendarViewMonth() === 11) { this.calendarViewMonth.set(0); this.calendarViewYear.update(y => y + 1); }
+    else { this.calendarViewMonth.update(m => m + 1); }
+  }
+
+  calendarMonthLabel(): string {
+    return new Date(this.calendarViewYear(), this.calendarViewMonth(), 1)
+      .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+
+  calendarDays(): Array<{ date: string | null; num: number | null }> {
+    const year  = this.calendarViewYear();
+    const month = this.calendarViewMonth();
+    const firstDay   = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: Array<{ date: string | null; num: number | null }> = [];
+    for (let i = 0; i < firstDay; i++) { days.push({ date: null, num: null }); }
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push({
+        date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+        num: d
+      });
+    }
+    return days;
+  }
+
+  selectCalendarDate(date: string): void {
+    this.selectDate(date);
+    this.showCalendar.set(false);
+  }
+
+  selectToday(): void {
+    const d = new Date();
+    this.calendarViewYear.set(d.getFullYear());
+    this.calendarViewMonth.set(d.getMonth());
+    this.selectCalendarDate(this.today());
+  }
+
+  isToday(date: string): boolean { return date === this.today(); }
 
   goFacilities(): void { this.router.navigateByUrl('/admin/facilities'); }
 

@@ -5,10 +5,12 @@ import { employeeGuard } from './core/employee.guard';
 import { AdminPortalShellComponent } from './features/admin/admin-portal-shell.component';
 import { AdminDashboardPageComponent } from './features/admin/pages/admin-dashboard-page.component';
 import { AdminFacilitiesPageComponent } from './features/admin/pages/admin-facilities-page.component';
+import { AdminFacilityBookingsPageComponent } from './features/admin/pages/admin-facility-bookings-page.component';
 import { AdminFormBuilderPageComponent } from './features/admin/pages/admin-form-builder-page.component';
 import { AdminNotificationsPageComponent } from './features/admin/pages/admin-notifications-page.component';
 import { AdminReportsPageComponent } from './features/admin/pages/admin-reports-page.component';
 import { AdminRulesPageComponent } from './features/admin/pages/admin-rules-page.component';
+import { AdminEmployeesPageComponent } from './features/admin/pages/admin-employees-page.component';
 import { BookingDetailComponent } from './features/employee/booking-detail.component';
 import { BookingHistoryComponent } from './features/employee/booking-history.component';
 import { DashboardComponent } from './features/employee/dashboard.component';
@@ -44,6 +46,10 @@ export const routes: Routes = [
         component: AdminFacilitiesPageComponent
       },
       {
+        path: 'facilities/:facilityId/bookings',
+        component: AdminFacilityBookingsPageComponent
+      },
+      {
         path: 'form-builder',
         component: AdminFormBuilderPageComponent
       },
@@ -58,6 +64,10 @@ export const routes: Routes = [
       {
         path: 'notifications',
         component: AdminNotificationsPageComponent
+      },
+      {
+        path: 'employees',
+        component: AdminEmployeesPageComponent
       },
       {
         path: '',

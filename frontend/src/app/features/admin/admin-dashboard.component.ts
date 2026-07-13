@@ -82,11 +82,9 @@ import {
     /* ── Stat Cards ── */
     .hy-stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1rem;
     }
-    @media (max-width: 900px) { .hy-stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 540px) { .hy-stats-grid { grid-template-columns: 1fr; } }
 
     .hy-stat-card {
       background: #fff;
@@ -506,45 +504,6 @@ import {
 
         <!-- ── KPI Stats Row ── -->
         <div class="hy-stats-grid hy-animate">
-          <div class="hy-stat-card navy">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="hy-stat-icon navy">
-                <span class="material-icons-outlined" style="font-size:19px">apartment</span>
-              </div>
-              <span style="font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;">LIVE</span>
-            </div>
-            <div>
-              <p class="hy-stat-value navy">{{ dashStats()?.activeFacilities ?? 0 }}</p>
-              <p class="hy-stat-label">Active Facilities</p>
-            </div>
-          </div>
-
-          <div class="hy-stat-card teal">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="hy-stat-icon teal">
-                <span class="material-icons-outlined" style="font-size:19px">event_available</span>
-              </div>
-              <span style="font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;">TODAY</span>
-            </div>
-            <div>
-              <p class="hy-stat-value teal">{{ dashStats()?.totalBookingsOnDate ?? 0 }}</p>
-              <p class="hy-stat-label">Total Bookings</p>
-            </div>
-          </div>
-
-          <div class="hy-stat-card sky">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="hy-stat-icon sky">
-                <span class="material-icons-outlined" style="font-size:19px">check_circle</span>
-              </div>
-              <span style="font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;">DONE</span>
-            </div>
-            <div>
-              <p class="hy-stat-value sky">{{ dashStats()?.completedBookings ?? 0 }}</p>
-              <p class="hy-stat-label">Completed</p>
-            </div>
-          </div>
-
           <div class="hy-stat-card gold">
             <div style="display:flex;align-items:center;justify-content:space-between;">
               <div class="hy-stat-icon gold">
@@ -690,7 +649,7 @@ import {
                 Facility Activity — {{ selectedLocation()!.locationName }}
               </p>
               <p class="hy-card-desc">
-                {{ selectedDate() | date:'MMMM d, yyyy' }} · Counts increment when employees book
+                {{ selectedDate() | date:'MMMM d, yyyy' }}
               </p>
             </div>
             <button class="hy-close-btn"

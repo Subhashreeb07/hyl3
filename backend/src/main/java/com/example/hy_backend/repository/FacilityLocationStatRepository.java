@@ -17,4 +17,6 @@ public interface FacilityLocationStatRepository extends JpaRepository<FacilityLo
     List<FacilityLocationStat> findByLocationIdAndBookingDate(Long locationId, LocalDate bookingDate);
 
     List<FacilityLocationStat> findByLocationId(Long locationId);
+
+    void deleteByFacilityId(Long facilityId);
 }

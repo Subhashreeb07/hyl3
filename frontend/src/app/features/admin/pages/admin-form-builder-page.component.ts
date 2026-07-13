@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -23,6 +23,20 @@ import { FacilityBuilderRecord, FacilityBuilderStateService } from '../state/fac
 import { FacilityField, FacilitySpecification } from '../../../core/models/specification.models';
 import { FacilityAdminApiService } from '../../../core/services/facility-admin-api.service';
 import { SpecificationApiService } from '../../../core/services/specification-api.service';
+
+/** Cross-field validator: start < end, reminder before end, cancellation before end. */
+function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | null {
+  const start  = group.get('bookingStartTime')?.value as string | null;
+  const end    = group.get('bookingEndTime')?.value   as string | null;
+  const reminder = group.get('reminderTime')?.value   as string | null;
+  const cancel = group.get('cancellationDeadline')?.value as string | null;
+
+  const errors: Record<string, boolean> = {};
+  if (start && end && start >= end)         errors['startAfterEnd']        = true;
+  if (reminder && end && reminder >= end)   errors['reminderAfterEnd']     = true;
+  if (cancel  && end && cancel  >= end)     errors['cancellationAfterEnd'] = true;
+  return Object.keys(errors).length ? errors : null;
+}
 
 @Component({
   selector: 'app-admin-form-builder-page',
@@ -54,33 +68,6 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
               <input type="text" formControlName="facilityName" [class.border-red-500]="basicForm.get('facilityName')?.touched && basicForm.get('facilityName')?.hasError('required')" />
               <span *ngIf="basicForm.get('facilityName')?.touched && basicForm.get('facilityName')?.hasError('required')" class="text-red-500 text-xs font-normal">Facility Name is required.</span>
             </label>
-
-            <!-- Custom category dropdown -->
-            <div class="admin-field">
-              Type
-              <div class="flex gap-3 mt-1 mb-2">
-                <label class="flex-1 flex items-center justify-center gap-2 rounded-xl border p-3 cursor-pointer transition-all hover:bg-slate-50"
-                       [class.border-brand-600]="basicForm.value.type === 'Service'"
-                       [class.bg-brand-50]="basicForm.value.type === 'Service'"
-                       [class.text-brand-700]="basicForm.value.type === 'Service'"
-                       [class.border-slate-200]="basicForm.value.type !== 'Service'">
-                  <input type="radio" formControlName="type" value="Service" class="sr-only" />
-                  <mat-icon class="!text-[20px] shrink-0 text-brand-600" *ngIf="basicForm.value.type === 'Service'">check_circle</mat-icon>
-                  <mat-icon class="!text-[20px] shrink-0 text-slate-400" *ngIf="basicForm.value.type !== 'Service'">radio_button_unchecked</mat-icon>
-                  <span class="font-semibold text-sm">Service / Facility</span>
-                </label>
-                <label class="flex-1 flex items-center justify-center gap-2 rounded-xl border p-3 cursor-pointer transition-all hover:bg-slate-50"
-                       [class.border-brand-600]="basicForm.value.type === 'Event'"
-                       [class.bg-brand-50]="basicForm.value.type === 'Event'"
-                       [class.text-brand-700]="basicForm.value.type === 'Event'"
-                       [class.border-slate-200]="basicForm.value.type !== 'Event'">
-                  <input type="radio" formControlName="type" value="Event" class="sr-only" />
-                  <mat-icon class="!text-[20px] shrink-0 text-brand-600" *ngIf="basicForm.value.type === 'Event'">check_circle</mat-icon>
-                  <mat-icon class="!text-[20px] shrink-0 text-slate-400" *ngIf="basicForm.value.type !== 'Event'">radio_button_unchecked</mat-icon>
-                  <span class="font-semibold text-sm">Event / Gathering</span>
-                </label>
-              </div>
-            </div>
 
             <div class="admin-field">
               Category
@@ -372,7 +359,6 @@ export class AdminFormBuilderPageComponent {
   readonly optionSetCount = computed(() => this.orderedFields().filter((field) => (field.options ?? []).length > 0).length);
 
   readonly basicForm = this.fb.group({
-    type: ['Service', Validators.required],
     facilityName: ['', Validators.required],
     description: [''],
     category: ['', Validators.required],
@@ -385,8 +371,8 @@ export class AdminFormBuilderPageComponent {
     bookingStartTime: ['', Validators.required],
     bookingEndTime: ['', Validators.required],
     bookingDeadline: [''],
-    reminderTime: ['', Validators.required],
-    cancellationDeadline: ['', Validators.required],
+    reminderTime: [''],
+    cancellationDeadline: [''],
     bookingWindowDays: [null as number | null],
     availableDays: [''],
     employeeTypeOnSite: [true],
@@ -402,7 +388,7 @@ export class AdminFormBuilderPageComponent {
     roleNOC: [true],
     roleOps: [true],
     roleDevops: [true]
-  });
+  }, { validators: rulesTimeValidator });
 
   readonly draftFields = signal<FacilityField[]>([]);
   readonly generatedJson = signal('');
@@ -854,7 +840,7 @@ export class AdminFormBuilderPageComponent {
   }
 
   private clearForm(): void {
-    this.basicForm.reset({ type: 'Service', facilityName: '', description: '', category: '', icon: 'inventory_2' });
+    this.basicForm.reset({ facilityName: '', description: '', category: '', icon: 'inventory_2' });
     this.rulesForm.reset({
       facilityAvailableFromDate: '',
       facilityAvailableToDate: '',
@@ -898,19 +884,13 @@ export class AdminFormBuilderPageComponent {
   }
 
   private patchFromRecord(record: FacilityBuilderRecord): void {
-    let cat = record.category || '';
-    let type = 'Service';
-    if (cat.endsWith(' [EVENT]')) {
-      cat = cat.replace(' [EVENT]', '');
-      type = 'Event';
-    }
+    let cat = (record.category || '').replace(' [EVENT]', '').trim();
 
     if (cat && !this.categoryOptions().includes(cat)) {
       this.categoryOptions.update(cats => [...cats, cat]);
     }
 
     this.basicForm.patchValue({
-      type: type,
       facilityName: record.facilityName,
       description: record.description,
       category: cat,
@@ -978,23 +958,29 @@ export class AdminFormBuilderPageComponent {
         allowCancellation: true,
         qrRequired: false,
         regularCommuteEnabled: false,
-        employeeTypes: [
-          this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
-          this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
-          this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
-        ].filter((v): v is string => v !== null),
-        roles: [
-          this.rulesForm.value.roleHR ? 'HR' : null,
-          this.rulesForm.value.roleManager ? 'Manager' : null,
-          this.rulesForm.value.roleFinance ? 'Finance' : null,
-          this.rulesForm.value.roleCloud ? 'Cloud' : null,
-          this.rulesForm.value.roleRD ? 'RD' : null,
-          this.rulesForm.value.roleDirector ? 'Director' : null,
-          this.rulesForm.value.roleIS ? 'IS' : null,
-          this.rulesForm.value.roleNOC ? 'NOC' : null,
-          this.rulesForm.value.roleOps ? 'Ops' : null,
-          this.rulesForm.value.roleDevops ? 'Devops' : null,
-        ].filter((v): v is string => v !== null),
+        employeeTypes: (() => {
+          const t = [
+            this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
+            this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
+            this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
+          ].filter((v): v is string => v !== null);
+          return t.length === 3 ? [] : t; // all selected = no restriction
+        })(),
+        roles: (() => {
+          const r = [
+            this.rulesForm.value.roleHR ? 'HR' : null,
+            this.rulesForm.value.roleManager ? 'Manager' : null,
+            this.rulesForm.value.roleFinance ? 'Finance' : null,
+            this.rulesForm.value.roleCloud ? 'Cloud' : null,
+            this.rulesForm.value.roleRD ? 'RD' : null,
+            this.rulesForm.value.roleDirector ? 'Director' : null,
+            this.rulesForm.value.roleIS ? 'IS' : null,
+            this.rulesForm.value.roleNOC ? 'NOC' : null,
+            this.rulesForm.value.roleOps ? 'Ops' : null,
+            this.rulesForm.value.roleDevops ? 'Devops' : null,
+          ].filter((v): v is string => v !== null);
+          return r.length === 10 ? [] : r; // all selected = no restriction
+        })(),
       }
     };
   }
@@ -1105,23 +1091,29 @@ export class AdminFormBuilderPageComponent {
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
         facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
-        employeeTypes: [
-          this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
-          this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
-          this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
-        ].filter((v): v is string => v !== null).join(','),
-        roles: [
-          this.rulesForm.value.roleHR ? 'HR' : null,
-          this.rulesForm.value.roleManager ? 'Manager' : null,
-          this.rulesForm.value.roleFinance ? 'Finance' : null,
-          this.rulesForm.value.roleCloud ? 'Cloud' : null,
-          this.rulesForm.value.roleRD ? 'RD' : null,
-          this.rulesForm.value.roleDirector ? 'Director' : null,
-          this.rulesForm.value.roleIS ? 'IS' : null,
-          this.rulesForm.value.roleNOC ? 'NOC' : null,
-          this.rulesForm.value.roleOps ? 'Ops' : null,
-          this.rulesForm.value.roleDevops ? 'Devops' : null,
-        ].filter((v): v is string => v !== null).join(',')
+        employeeTypes: (() => {
+          const t = [
+            this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
+            this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
+            this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
+          ].filter((v): v is string => v !== null);
+          return t.length === 3 ? '' : t.join(','); // all selected = no restriction
+        })(),
+        roles: (() => {
+          const r = [
+            this.rulesForm.value.roleHR ? 'HR' : null,
+            this.rulesForm.value.roleManager ? 'Manager' : null,
+            this.rulesForm.value.roleFinance ? 'Finance' : null,
+            this.rulesForm.value.roleCloud ? 'Cloud' : null,
+            this.rulesForm.value.roleRD ? 'RD' : null,
+            this.rulesForm.value.roleDirector ? 'Director' : null,
+            this.rulesForm.value.roleIS ? 'IS' : null,
+            this.rulesForm.value.roleNOC ? 'NOC' : null,
+            this.rulesForm.value.roleOps ? 'Ops' : null,
+            this.rulesForm.value.roleDevops ? 'Devops' : null,
+          ].filter((v): v is string => v !== null);
+          return r.length === 10 ? '' : r.join(','); // all selected = no restriction
+        })()
       })
     );
 
@@ -1205,13 +1197,7 @@ export class AdminFormBuilderPageComponent {
   }
 
   private resolveCategoryValue(): string {
-    let cat = (this.basicForm.value.category ?? '').trim() || 'General';
-    if (this.basicForm.value.type === 'Event') {
-      if (!cat.endsWith(' [EVENT]')) {
-        cat += ' [EVENT]';
-      }
-    }
-    return cat;
+    return (this.basicForm.value.category ?? '').trim() || 'General';
   }
 
   private defaultLabelForFieldType(type: FacilityField['fieldType']): string {

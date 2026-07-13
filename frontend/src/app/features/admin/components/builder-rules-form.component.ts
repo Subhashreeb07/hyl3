@@ -92,15 +92,35 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
         <div class="grid gap-6 md:grid-cols-3">
           <label class="admin-field">
             Booking Start Time *
-            <input type="time" formControlName="bookingStartTime" required />
+            <input type="time" formControlName="bookingStartTime" required
+                   [class.border-red-500]="(form.get('bookingStartTime')?.touched || form.get('bookingEndTime')?.touched) && form.hasError('startAfterEnd')" />
+            <span *ngIf="(form.get('bookingStartTime')?.touched || form.get('bookingEndTime')?.touched) && form.hasError('startAfterEnd')"
+                  class="text-red-500 text-xs font-normal">Start time must be before end time.</span>
           </label>
           <label class="admin-field">
             Booking End Time *
-            <input type="time" formControlName="bookingEndTime" required />
+            <input type="time" formControlName="bookingEndTime" required
+                   [class.border-red-500]="(form.get('bookingStartTime')?.touched || form.get('bookingEndTime')?.touched) && form.hasError('startAfterEnd')" />
           </label>
           <label class="admin-field">
-            Reminder Time *
-            <input type="time" formControlName="reminderTime" required />
+            Reminder Time
+            <input type="time" formControlName="reminderTime"
+                   [class.border-red-500]="form.get('reminderTime')?.touched && form.hasError('reminderAfterEnd')" />
+            <span *ngIf="form.get('reminderTime')?.touched && form.hasError('reminderAfterEnd')"
+                  class="text-red-500 text-xs font-normal">Reminder must be before booking end time.</span>
+          </label>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2 mt-4">
+          <label class="admin-field">
+            Cancellation Deadline
+            <input type="time" formControlName="cancellationDeadline"
+                   [class.border-red-500]="form.get('cancellationDeadline')?.touched && form.hasError('cancellationAfterEnd')" />
+            <span *ngIf="form.get('cancellationDeadline')?.touched && form.hasError('cancellationAfterEnd')"
+                  class="text-red-500 text-xs font-normal">Cancellation deadline must be before booking end time.</span>
+          </label>
+          <label class="admin-field">
+            Booking Deadline
+            <input type="time" formControlName="bookingDeadline" />
           </label>
         </div>
       </section>
@@ -130,6 +150,12 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
         <h4>Employee Type Access</h4>
         <p class="subtitle">Which work modes can use this facility?</p>
         <div class="flex flex-wrap gap-2">
+          <button type="button" class="pill font-bold"
+                  [class.active]="allTypesSelected"
+                  style="border-color:#4f46e5;background:#eef2ff;color:#4338ca;"
+                  (click)="toggleAllTypes()">
+            ✦ Everyone
+          </button>
           <label class="pill" [class.active]="form.value.employeeTypeOnSite">
             <input type="checkbox" formControlName="employeeTypeOnSite" class="sr-only" /> On-site
           </label>
@@ -147,6 +173,12 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
         <h4>Applicable Roles</h4>
         <p class="subtitle">Which job roles can access or book this facility?</p>
         <div class="flex flex-wrap gap-2">
+          <button type="button" class="pill font-bold"
+                  [class.active]="allRolesSelected"
+                  style="border-color:#4f46e5;background:#eef2ff;color:#4338ca;"
+                  (click)="toggleAllRoles()">
+            ✦ Everyone
+          </button>
           <label class="pill" [class.active]="form.value.roleHR">
             <input type="checkbox" formControlName="roleHR" class="sr-only" /> HR
           </label>
@@ -184,6 +216,36 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 })
 export class BuilderRulesFormComponent {
   @Input({ required: true }) form!: FormGroup;
+
+  get allTypesSelected(): boolean {
+    const v = this.form.value;
+    return !!(v.employeeTypeOnSite && v.employeeTypeRemote && v.employeeTypeHybrid);
+  }
+
+  toggleAllTypes(): void {
+    const all = this.allTypesSelected;
+    this.form.patchValue({
+      employeeTypeOnSite: !all,
+      employeeTypeRemote: !all,
+      employeeTypeHybrid: !all
+    });
+  }
+
+  get allRolesSelected(): boolean {
+    const v = this.form.value;
+    return !!(v.roleHR && v.roleManager && v.roleFinance && v.roleCloud &&
+              v.roleRD && v.roleDirector && v.roleIS && v.roleNOC &&
+              v.roleOps && v.roleDevops);
+  }
+
+  toggleAllRoles(): void {
+    const all = this.allRolesSelected;
+    this.form.patchValue({
+      roleHR: !all, roleManager: !all, roleFinance: !all,
+      roleCloud: !all, roleRD: !all, roleDirector: !all,
+      roleIS: !all, roleNOC: !all, roleOps: !all, roleDevops: !all
+    });
+  }
 
   readonly weekDays = [
     { label: 'Monday', value: 'MONDAY' },

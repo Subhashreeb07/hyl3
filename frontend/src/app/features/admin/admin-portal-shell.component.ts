@@ -1,16 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Subject, interval } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { AuthApiService } from '../../core/services/auth-api.service';
 import { SessionService } from '../../core/services/session.service';
@@ -35,49 +34,58 @@ import { FacilityBuilderStateService } from './state/facility-builder-state.serv
   ],
   template: `
     <mat-sidenav-container autosize class="h-screen w-screen overflow-hidden bg-slate-50">
-      <mat-sidenav #drawer mode="side" opened 
+      <mat-sidenav #drawer
+                   [mode]="isMobile() ? 'over' : 'side'"
+                   [opened]="!isMobile()"
                    class="transition-all duration-300 ease-in-out border-r border-slate-200"
                    style="background: #ffffff; color: #1e293b;"
-                   [style.width]="isCollapsed() ? '80px' : '280px'">
-        <div class="flex h-full flex-col overflow-hidden" [ngClass]="isCollapsed() ? 'py-5' : 'px-5 py-5'">
-          <!-- Logo Header & Collapse Button next to Logo -->
-          <div class="mb-6 flex flex-col" [ngClass]="isCollapsed() ? 'px-4' : ''">
+                   [style.width]="isMobile() ? '280px' : (isCollapsed() ? '80px' : '280px')">
+        <div class="flex h-full flex-col overflow-hidden" [ngClass]="(!isMobile() && isCollapsed()) ? 'py-5' : 'px-5 py-5'">
+          <!-- Logo Header -->
+          <div class="mb-6 flex flex-col" [ngClass]="(!isMobile() && isCollapsed()) ? 'px-4' : ''">
             <!-- Accent Strip -->
-            <div *ngIf="!isCollapsed()" style="height:3px;border-radius:2px;background:linear-gradient(90deg,#818cf8 0% 34%,#14B8A6 34% 68%,#F59E0B 68% 100%);margin-bottom:1.25rem;"></div>
+            <div *ngIf="isMobile() || !isCollapsed()" style="height:3px;border-radius:2px;background:linear-gradient(90deg,#818cf8 0% 34%,#14B8A6 34% 68%,#F59E0B 68% 100%);margin-bottom:1.25rem;"></div>
 
             <div class="flex items-center justify-between w-full">
               <!-- Logo -->
-              <img *ngIf="!isCollapsed()"
+              <img *ngIf="isMobile() || !isCollapsed()"
                 class="hyland-logo"
                 src="https://hyland.atlassian.net/s/-s1g255/b/0/23f31f9f9a8155235832888b764f7e4e/_/jira-logo-scaled.png"
                 alt="Hyland logo"
                 style="height: 24px; filter:brightness(0);opacity:0.9;"
               />
-              <!-- Collapse Toggle -->
-              <button type="button" 
-                      (click)="toggleSidebar()" 
+              <!-- Desktop collapse toggle -->
+              <button *ngIf="!isMobile()" type="button"
+                      (click)="toggleSidebar()"
                       class="flex items-center justify-center shrink-0 border-none bg-transparent cursor-pointer rounded-md transition-colors"
                       [ngClass]="isCollapsed() ? 'w-8 h-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100' : 'w-7 h-7 text-slate-400 hover:text-slate-800 hover:bg-slate-100'"
                       title="Toggle sidebar">
                 <mat-icon class="!text-[20px]">{{ isCollapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
               </button>
+              <!-- Mobile close button -->
+              <button *ngIf="isMobile()" type="button"
+                      (click)="closeMobileDrawer()"
+                      class="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                      title="Close menu">
+                <mat-icon class="!text-[20px]">close</mat-icon>
+              </button>
             </div>
             
-            <ng-container *ngIf="!isCollapsed()">
+            <ng-container *ngIf="isMobile() || !isCollapsed()">
               <p class="mt-4 text-[1.05rem] font-bold text-slate-800 tracking-wide">Admin Portal</p>
               <p class="mt-2 text-[0.8rem] text-slate-500 leading-relaxed max-w-[220px]">Manage operations, policy rules, and communication feeds in one workspace.</p>
             </ng-container>
           </div>
 
           <!-- Nav Items -->
-          <nav class="space-y-1.5 flex-1 mt-2" [ngClass]="isCollapsed() ? 'px-2' : ''">
+          <nav class="space-y-1.5 flex-1 mt-2" [ngClass]="(!isMobile() && isCollapsed()) ? 'px-2' : ''">
             <a *ngFor="let item of navItems"
                [routerLink]="item.link"
                routerLinkActive="!bg-brand-50 !text-brand-600 font-semibold"
-               class="flex items-center rounded-xl transition-all hover:bg-slate-100 hover:text-slate-900 text-slate-600"
-               [ngClass]="isCollapsed() ? 'justify-start gap-4 px-4 py-3' : 'gap-4 px-4 py-3'">
-              <mat-icon class="!text-[22px] shrink-0" [matTooltip]="isCollapsed() ? item.label : ''" matTooltipPosition="right">{{ item.icon }}</mat-icon>
-              <span *ngIf="!isCollapsed()" class="truncate text-[0.85rem]">{{ item.label }}</span>
+               class="flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-slate-100 hover:text-slate-900 text-slate-600"
+               (click)="closeMobileDrawer()">
+              <mat-icon class="!text-[22px] shrink-0" [matTooltip]="(!isMobile() && isCollapsed()) ? item.label : ''" matTooltipPosition="right">{{ item.icon }}</mat-icon>
+              <span *ngIf="isMobile() || !isCollapsed()" class="truncate text-[0.85rem]">{{ item.label }}</span>
             </a>
           </nav>
         </div>
@@ -86,6 +94,11 @@ import { FacilityBuilderStateService } from './state/facility-builder-state.serv
       <mat-sidenav-content class="bg-slate-50 flex flex-col h-screen">
         <mat-toolbar class="!sticky !top-0 !z-30 !h-[76px] glass-panel !bg-white/80 !px-4 !shadow-sm md:!px-6 !border-t-0 !border-l-0 !border-r-0 !border-b !border-slate-200 shrink-0">
           
+          <!-- Mobile hamburger ☰ (phones only) -->
+          <button type="button" (click)="toggleMobileDrawer()" class="flex md:hidden items-center justify-center w-9 h-9 mr-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0">
+            <mat-icon class="!text-[22px]">menu</mat-icon>
+          </button>
+
           <div class="portal-search hidden w-[340px] items-center gap-2 px-3 py-2 md:flex">
             <mat-icon class="!text-[20px] text-slate-500">search</mat-icon>
             <input class="w-full bg-transparent text-sm outline-none" 
@@ -95,16 +108,6 @@ import { FacilityBuilderStateService } from './state/facility-builder-state.serv
           </div>
 
           <span class="flex-1"></span>
-
-          <button
-            mat-icon-button
-            class="!text-slate-500 mr-2"
-            [matBadge]="pendingNotifications()"
-            [matBadgeHidden]="pendingNotifications() === 0"
-            matBadgeColor="warn"
-            matBadgeSize="small"
-            (click)="goNotifications()"
-          ><mat-icon>notifications_none</mat-icon></button>
 
           <button mat-button [matMenuTriggerFor]="profileMenu" class="!min-w-0 !p-0 !rounded-full">
              <div class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 border border-slate-200 hover:bg-slate-200 transition shadow-sm">
@@ -136,9 +139,10 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     { label: 'Form Builder', icon: 'construction', link: '/admin/form-builder' },
     { label: 'Rules', icon: 'rule', link: '/admin/rules' },
     { label: 'Reports', icon: 'bar_chart', link: '/admin/reports' },
-    { label: 'Notifications', icon: 'notifications_active', link: '/admin/notifications' }
+    { label: 'Employees', icon: 'group', link: '/admin/employees' }
   ];
-  readonly pendingNotifications = signal(0);
+  @ViewChild('drawer') private drawerRef!: MatSidenav;
+  readonly isMobile = signal(typeof window !== 'undefined' && window.innerWidth < 768);
   readonly isCollapsed = signal(false);
   private readonly destroy$ = new Subject<void>();
 
@@ -151,15 +155,32 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.loadPendingNotifications();
-
-    interval(20000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.loadPendingNotifications(true));
   }
 
   toggleSidebar(): void {
     this.isCollapsed.update((c) => !c);
+  }
+
+  toggleMobileDrawer(): void {
+    void this.drawerRef.toggle();
+  }
+
+  closeMobileDrawer(): void {
+    if (this.isMobile()) {
+      void this.drawerRef.close();
+    }
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    const mobile = window.innerWidth < 768;
+    const wasMobile = this.isMobile();
+    this.isMobile.set(mobile);
+    if (mobile && !wasMobile) {
+      void this.drawerRef.close();
+    } else if (!mobile && wasMobile) {
+      void this.drawerRef.open();
+    }
   }
 
   onSearchInput(event: Event): void {
@@ -178,10 +199,6 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
 
   goEmployeeView(): void {
     this.router.navigateByUrl('/employee/dashboard');
-  }
-
-  goNotifications(): void {
-    this.router.navigateByUrl('/admin/notifications');
   }
 
   logout(): void {
@@ -204,16 +221,4 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadPendingNotifications(silent = false): void {
-    this.adminApi.getNotificationOpsSummary().subscribe({
-      next: (summary) => {
-        this.pendingNotifications.set(summary.pending ?? 0);
-      },
-      error: () => {
-        if (!silent) {
-          this.pendingNotifications.set(0);
-        }
-      }
-    });
-  }
 }

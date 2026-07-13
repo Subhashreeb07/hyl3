@@ -173,19 +173,38 @@ export class FacilityBuilderStateService {
   async createFromTemplate(templateId: number): Promise<FacilityBuilderRecord> {
     const resp = await firstValueFrom(this.facilityAdminApi.createFromTemplate(templateId));
     const detail = await firstValueFrom(this.facilityAdminApi.getFacility(resp.facilityId));
-    const record = this.fromSpecification({
-      facilityId: detail.facilityId,
-      facilityName: detail.facilityName,
-      description: detail.description,
-      category: detail.category,
-      icon: detail.icon,
-      status: detail.status,
-      published: detail.published,
-      fields: [],
-      rules: {}
-    });
+
+    let generated: FacilitySpecification | null = null;
+    try {
+      generated = await firstValueFrom(this.specificationApi.getGeneratedSpecification(resp.facilityId));
+    } catch {
+      generated = null;
+    }
+
+    const record = generated
+      ? this.fromSpecification(generated)
+      : this.fromSpecification({
+          facilityId: detail.facilityId,
+          facilityName: detail.facilityName,
+          description: detail.description,
+          category: detail.category,
+          icon: detail.icon,
+          status: detail.status,
+          published: detail.published,
+          fields: [],
+          rules: {}
+        });
+
+    record.id = detail.facilityId;
+    record.facilityName = detail.facilityName;
+    record.description = detail.description ?? '';
+    record.category = detail.category ?? 'General';
+    record.icon = detail.icon ?? 'inventory_2';
+    record.status = detail.status;
+    record.published = detail.published;
     record.isTemplate = false;
     record.isPublic = detail.isPublic ?? true;
+
     this.facilities.update((items) => [record, ...items]);
     this.activeFacilityId.set(record.id);
     return record;

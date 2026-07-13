@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { FacilityBuilderStateService, FacilityBuilderRecord } from '../state/facility-builder-state.service';
 import { ConfirmDialogComponent } from '../components/confirm-dialog.component';
+import { FacilityMobilePreviewDialogComponent } from '../components/facility-mobile-preview-dialog.component';
 import { FacilityAdminApiService } from '../../../core/services/facility-admin-api.service';
 import { PublishLocationsDialogComponent } from '../components/publish-locations-dialog.component';
 import { firstValueFrom } from 'rxjs';
@@ -89,7 +90,7 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
                     [class.text-slate-600]="!t.isPublic && selectedTemplate()?.id !== t.id"
                     [class.bg-brand-200]="selectedTemplate()?.id === t.id"
                     [class.text-brand-800]="selectedTemplate()?.id === t.id">
-                <mat-icon class="!text-[12px]">{{ t.isPublic ? 'public' : 'lock' }}</mat-icon>
+                <span class="material-icons-outlined" style="font-size:12px;line-height:1;">{{ t.isPublic ? 'public' : 'lock' }}</span>
                 {{ t.isPublic ? 'Public' : 'Private' }}
               </span>
             </button>
@@ -97,7 +98,7 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
         </section>
 
       <!-- ── Main split area ── -->
-      <div class="flex gap-6 flex-1 min-h-0">
+      <div class="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
 
         <!-- LEFT: Regular facilities -->
         <div class="flex flex-col gap-4 flex-1 overflow-y-auto min-w-0">
@@ -234,9 +235,9 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
               <!-- Visibility toggle -->
               <div class="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
                 <div>
-                  <p class="text-sm font-semibold text-slate-700">Visibility</p>
+                  <p class="text-sm font-semibold text-slate-700">Admin Visibility</p>
                   <p class="text-xs text-slate-400">
-                    {{ selectedTemplate()!.isPublic ? 'Employees can see this template' : 'Hidden from employees' }}
+                    {{ selectedTemplate()!.isPublic ? 'Other admins can see this template' : 'Hidden from other admins' }}
                   </p>
                 </div>
                 <!-- Toggle switch -->
@@ -250,17 +251,6 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
                   </span>
                 </button>
               </div>
-              
-              <!-- What gets pre-filled notice -->
-              <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-                <p class="text-xs font-semibold text-amber-700 mb-2">What happens when you use this template?</p>
-                <ul class="text-xs text-amber-700 space-y-1.5">
-                  <li>✓ All {{ selectedTemplate()!.fields?.length || 0 }} fields are pre-created</li>
-                  <li>✓ All rules are pre-configured</li>
-                  <li>✓ You can edit any field before publishing</li>
-                  <li>✓ Original template stays unchanged</li>
-                </ul>
-              </div>
             </div>
             
             <!-- Footer actions -->
@@ -273,6 +263,9 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
               </button>
               <button class="satori-primary flex-1" (click)="useTemplate(selectedTemplate()!.id)">
                 <span class="material-icons-outlined text-[1.1em]">add_circle</span> Use Template
+              </button>
+              <button class="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors" (click)="deleteTemplate(selectedTemplate()!.id)">
+                <span class="material-icons-outlined text-[1.1em]">delete_outline</span> Delete
               </button>
             </div>
             
@@ -361,10 +354,8 @@ export class AdminFacilitiesPageComponent {
       this.snackBar.open('Only published facilities have bookings.', 'Close', { duration: 3000 });
       return;
     }
-    this.dialog.open(FacilityBookingsDialogComponent, {
-      width: '700px',
-      data: { facilityId: facility.id, facilityName: facility.facilityName },
-      autoFocus: false
+    this.router.navigate(['/admin/facilities', facility.id, 'bookings'], {
+      state: { facilityName: facility.facilityName }
     });
   }
 
@@ -380,8 +371,14 @@ export class AdminFacilitiesPageComponent {
   }
 
   previewFacility(id: number): void {
-    this.state.setActiveFacility(id);
-    this.router.navigate(['/admin/form-builder'], { state: { editMode: true } });
+    const facility = this.state.facilities().find(f => f.id === id);
+    if (!facility) return;
+    this.dialog.open(FacilityMobilePreviewDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      panelClass: 'preview-dialog-panel',
+      data: { facility }
+    });
   }
 
   async useTemplate(templateId: number): Promise<void> {
@@ -442,6 +439,32 @@ export class AdminFacilitiesPageComponent {
 
   duplicateFacility(id: number): void {
     this.state.duplicateFacility(id);
+  }
+
+  deleteTemplate(id: number): void {
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Delete Template',
+          message: 'Are you sure you want to delete this template? This cannot be undone.',
+          confirmText: 'Delete'
+        }
+      })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.facilityAdminApi.deleteFacility(id).subscribe({
+            next: () => {
+              this.state.deleteFacility(id);
+              this.clearTemplate();
+              this.snackBar.open('Template deleted', 'OK', { duration: 2000 });
+            },
+            error: (err) => {
+              this.snackBar.open(err?.error?.message ?? 'Delete failed', 'Close', { duration: 3000 });
+            }
+          });
+        }
+      });
   }
 
   deleteFacility(id: number): void {

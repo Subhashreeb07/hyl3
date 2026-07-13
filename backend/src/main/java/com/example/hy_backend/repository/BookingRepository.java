@@ -85,6 +85,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
 
     long countByFacilityFacilityIdAndBookingDate(Long facilityId, LocalDate bookingDate);
 
+    void deleteByFacilityFacilityId(Long facilityId);
+
     long countByBookingDate(LocalDate bookingDate);
 
     long countByBookingDateAndStatus(LocalDate bookingDate, BookingStatus status);

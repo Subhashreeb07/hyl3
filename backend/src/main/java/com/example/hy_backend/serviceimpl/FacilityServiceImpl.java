@@ -115,9 +115,6 @@ public class FacilityServiceImpl implements FacilityService {
     @Transactional
     public void deleteFacility(Long facilityId) {
         Facility facility = getFacilityOrThrow(facilityId);
-        if (Boolean.TRUE.equals(facility.getIsTemplate())) {
-            throw new BadRequestException("Template facilities cannot be deleted. Use 'Create from Template' to make a new facility.");
-        }
         facilityRepository.delete(facility);
     }
 
@@ -170,7 +167,7 @@ public class FacilityServiceImpl implements FacilityService {
         copy.setIsPublic(template.getIsPublic());
         Facility savedCopy = facilityRepository.save(copy);
 
-        // Deep-copy fields
+        // Deep-copy fields (including their options)
         List<FieldDefinition> sourceFields =
                 fieldDefinitionRepository.findByFacilityFacilityIdWithOptions(templateFacilityId);
         for (FieldDefinition src : sourceFields) {
@@ -183,6 +180,16 @@ public class FacilityServiceImpl implements FacilityService {
             fd.setDefaultValue(src.getDefaultValue());
             fd.setValidationJson(src.getValidationJson());
             fd.setDisplayOrder(src.getDisplayOrder());
+
+            // Copy each option so dropdowns/radio/checkbox choices are preserved
+            for (FieldOption srcOpt : src.getOptions()) {
+                FieldOption opt = new FieldOption();
+                opt.setField(fd);
+                opt.setOptionValue(srcOpt.getOptionValue());
+                opt.setDisplayOrder(srcOpt.getDisplayOrder());
+                fd.getOptions().add(opt);
+            }
+
             fieldDefinitionRepository.save(fd);
         }
 
