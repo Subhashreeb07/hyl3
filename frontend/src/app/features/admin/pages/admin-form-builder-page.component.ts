@@ -193,21 +193,46 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
         </mat-step>
 
         <mat-step label="Dynamic Form Builder">
-          <div class="grid gap-5 py-6 px-4 xl:grid-cols-[1fr_360px] bg-[#f0ebf8] rounded-xl -mx-4 mt-2 mb-4" style="min-height: 700px;">
-            <app-builder-field-list
-              [fields]="orderedFields()"
-              (add)="addField()"
-              (addWithType)="addFieldWithType($event)"
-              (edit)="editField($event)"
-              (duplicate)="duplicateField($event)"
-              (remove)="deleteField($event)"
-              (move)="moveField($event.index, $event.direction)"
-            />
+          <!-- Mobile tab toggle -->
+          <div class="flex xl:hidden gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 mt-3 mb-4">
+            <button type="button" (click)="showMobilePreview.set(false)"
+                    class="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all"
+                    [class.bg-white]="!showMobilePreview()"
+                    [class.text-indigo-700]="!showMobilePreview()"
+                    [class.shadow-sm]="!showMobilePreview()"
+                    [class.text-slate-500]="showMobilePreview()">
+              <span class="material-icons-outlined" style="font-size:15px">dynamic_form</span> Fields
+            </button>
+            <button type="button" (click)="showMobilePreview.set(true)"
+                    class="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all"
+                    [class.bg-white]="showMobilePreview()"
+                    [class.text-indigo-700]="showMobilePreview()"
+                    [class.shadow-sm]="showMobilePreview()"
+                    [class.text-slate-500]="!showMobilePreview()">
+              <span class="material-icons-outlined" style="font-size:15px">preview</span> Preview
+            </button>
+          </div>
 
-            <app-builder-live-preview
-              [facilityName]="basicForm.value.facilityName || ''"
-              [fields]="orderedFields()"
-            />
+          <div class="grid gap-5 py-2 xl:grid-cols-[1fr_340px]" style="min-height: 500px;">
+            <div class="builder-fields-panel rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                 [class.preview-active]="showMobilePreview()">
+              <app-builder-field-list
+                [fields]="orderedFields()"
+                (add)="addField()"
+                (addWithType)="addFieldWithType($event)"
+                (edit)="editField($event)"
+                (duplicate)="duplicateField($event)"
+                (remove)="deleteField($event)"
+                (move)="moveField($event.index, $event.direction)"
+              />
+            </div>
+            <div class="builder-preview-panel rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                 [class.preview-active]="showMobilePreview()">
+              <app-builder-live-preview
+                [facilityName]="basicForm.value.facilityName || ''"
+                [fields]="orderedFields()"
+              />
+            </div>
           </div>
           <div class="flex justify-between">
             <button mat-button matStepperPrevious>Back</button>
@@ -240,7 +265,7 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
             (publish)="publish()"
             (editJson)="applyJsonEdit($event)"
             (downloadJson)="downloadJson()"
-            (importJson)="openImportPrompt()"
+
           />
 
           <!-- Save as Template button -->
@@ -313,6 +338,11 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
         gap: 0.45rem;
         font-size: 0.86rem;
         color: #334155;
+      }
+
+      @media (max-width: 1279px) {
+        .builder-fields-panel.preview-active { display: none; }
+        .builder-preview-panel:not(.preview-active) { display: none; }
       }
     `
   ]
@@ -392,6 +422,7 @@ export class AdminFormBuilderPageComponent {
     roleDevops: [true]
   }, { validators: rulesTimeValidator });
 
+  readonly showMobilePreview = signal(false);
   readonly draftFields = signal<FacilityField[]>([]);
   readonly generatedJson = signal('');
   readonly persistInFlight = signal(false);
@@ -1254,8 +1285,7 @@ export class AdminFormBuilderPageComponent {
       PHONE: 'Phone Number',
       NUMBER: 'Numeric Value',
       FILE_UPLOAD: 'Upload File',
-      QR_SCANNER: 'QR Code',
-      SIGNATURE: 'Signature'
+      QR_SCANNER: 'QR Code'
     };
     return map[type] ?? 'Field';
   }

@@ -19,7 +19,7 @@ import { ToastService } from '../../core/services/toast.service';
         <div class="flex gap-2">
           <a routerLink="/employee/history" class="satori-secondary">Return to History</a>
           <button
-            *ngIf="d.status !== 'CANCELLED'"
+            *ngIf="d.status !== 'CANCELLED' && !isPastDeadline(d.bookingDate)"
             class="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
             (click)="cancel(d.bookingId)"
           >
@@ -80,6 +80,11 @@ export class BookingDetailComponent implements OnInit {
     }
 
     this.load(bookingId);
+  }
+
+  isPastDeadline(bookingDate: string): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    return bookingDate < today;
   }
 
   cancel(bookingId: number): void {
