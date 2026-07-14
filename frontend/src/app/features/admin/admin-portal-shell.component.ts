@@ -139,6 +139,7 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     { label: 'Form Builder', icon: 'construction', link: '/admin/form-builder' },
     { label: 'Rules', icon: 'rule', link: '/admin/rules' },
     { label: 'Reports', icon: 'bar_chart', link: '/admin/reports' },
+    { label: 'Data Store', icon: 'database', link: '/admin/data-store' },
     { label: 'Employees', icon: 'group', link: '/admin/employees' }
   ];
   @ViewChild('drawer') private drawerRef!: MatSidenav;

@@ -36,20 +36,23 @@ type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'fi
         [type]="inputType()"
         [formControlName]="controlName"
         [placeholder]="field.placeholder ?? ''"
-        class="rounded-xl border border-slate-300 px-3 py-2"
+        class="rounded-xl border px-3 py-2"
+        [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'"
       />
 
       <textarea
         *ngIf="renderKind() === 'textarea'"
         [formControlName]="controlName"
         [placeholder]="field.placeholder ?? ''"
-        class="min-h-28 rounded-xl border border-slate-300 px-3 py-2"
+        class="min-h-28 rounded-xl border px-3 py-2"
+        [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'"
       ></textarea>
 
       <select
         *ngIf="renderKind() === 'dropdown'"
         [formControlName]="controlName"
-        class="rounded-xl border border-slate-300 px-3 py-2"
+        class="rounded-xl border px-3 py-2"
+        [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'"
       >
         <option value="">Select</option>
         <option *ngFor="let option of field.options || []" [value]="option">{{ option }}</option>
@@ -70,7 +73,7 @@ type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'fi
       </div>
 
       <div *ngIf="renderKind() === 'file'" class="grid gap-2">
-        <input type="file" (change)="onFileSelected($event)" class="rounded-xl border border-slate-300 px-3 py-2" />
+        <input type="file" (change)="onFileSelected($event)" class="rounded-xl border px-3 py-2" [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'" />
         <p *ngIf="form.get(controlName)?.value" class="text-xs text-slate-500">Selected: {{ form.get(controlName)?.value }}</p>
       </div>
 
@@ -79,14 +82,16 @@ type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'fi
         type="text"
         [formControlName]="controlName"
         [placeholder]="field.placeholder || 'Scan QR value'"
-        class="rounded-xl border border-slate-300 px-3 py-2"
+        class="rounded-xl border px-3 py-2"
+        [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'"
       />
 
       <div *ngIf="renderKind() === 'signature'" class="grid gap-2">
         <textarea
           [formControlName]="controlName"
           [placeholder]="field.placeholder || 'Provide signature text or encoded signature data'"
-          class="min-h-24 rounded-xl border border-slate-300 px-3 py-2"
+          class="min-h-24 rounded-xl border px-3 py-2"
+          [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'"
         ></textarea>
       </div>
 
@@ -151,7 +156,9 @@ type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'fi
         Unsupported field type {{ field.type }}. Add a new renderer mapping in DynamicFieldRendererComponent.
       </p>
 
-      <p *ngIf="field.validationJson && renderKind() !== 'tree-select'" class="text-xs text-slate-500">Validation: {{ field.validationJson }}</p>
+      <p *ngIf="field.validationJson && renderKind() !== 'tree-select'" class="text-[10px] text-slate-400">Validation: {{ field.validationJson }}</p>
+
+      <span *ngIf="isInvalid()" class="text-[11px] text-red-500 font-medium">{{ getErrorMessage() }}</span>
     </div>
   `
 })
@@ -263,5 +270,23 @@ export class DynamicFieldRendererComponent implements OnInit {
     const file = input.files?.[0];
     this.form.get(this.controlName)?.setValue(file ? file.name : '');
     this.form.get(this.controlName)?.markAsDirty();
+  }
+
+  isInvalid(): boolean {
+    const ctrl = this.form.get(this.controlName);
+    return !!ctrl && ctrl.invalid && (ctrl.touched || ctrl.dirty);
+  }
+
+  getErrorMessage(): string {
+    const ctrl = this.form.get(this.controlName);
+    if (!ctrl || !ctrl.errors) return '';
+    if (ctrl.errors['required']) return 'This field is required';
+    if (ctrl.errors['email']) return 'Please enter a valid email address';
+    if (ctrl.errors['minlength']) return `Minimum length is ${ctrl.errors['minlength'].requiredLength}`;
+    if (ctrl.errors['maxlength']) return `Maximum length is ${ctrl.errors['maxlength'].requiredLength}`;
+    if (ctrl.errors['min']) return `Minimum value is ${ctrl.errors['min'].min}`;
+    if (ctrl.errors['max']) return `Maximum value is ${ctrl.errors['max'].max}`;
+    if (ctrl.errors['pattern']) return 'Invalid format';
+    return 'Invalid input';
   }
 }

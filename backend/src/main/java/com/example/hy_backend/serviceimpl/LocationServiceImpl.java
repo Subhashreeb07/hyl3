@@ -82,7 +82,7 @@ public class LocationServiceImpl implements LocationService {
         LocalDate date = dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now();
 
         List<LocationDtos.FacilityStatRow> rows = facilityRepository.findAll().stream()
-                .filter(f -> Boolean.TRUE.equals(f.getStatus()) && Boolean.TRUE.equals(f.getPublished()))
+                .filter(f -> Boolean.TRUE.equals(f.getPublished()))
                 .map(facility -> {
                     var stat = statRepository.findByFacilityIdAndLocationIdAndBookingDate(
                             facility.getFacilityId(), locationId, date);
@@ -114,14 +114,16 @@ public class LocationServiceImpl implements LocationService {
     public LocationDtos.DashboardStatsResponse getDashboardStats(String dateStr) {
         LocalDate date = dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now();
 
-        long activeFacilities = facilityRepository.findAll().stream()
-                .filter(f -> Boolean.TRUE.equals(f.getStatus()) && Boolean.TRUE.equals(f.getPublished()))
-                .count();
 
-        long totalBookings = bookingRepository.count();
-        long completedBookings = bookingRepository.findAll().stream()
+
+        long totalBookings = bookingRepository.findAll().stream()
                 .filter(b -> b.getBookingDate().equals(date))
                 .count();
+
+        long pendingRequests = statRepository.findAll().stream()
+                .filter(s -> s.getBookingDate().equals(date))
+                .mapToLong(s -> (long) s.getTotalRequested() - s.getAcknowledged())
+                .sum();
 
         // Build 5-day strip centred on the chosen date
         List<LocationDtos.DateEventCount> strip = new ArrayList<>();
@@ -136,9 +138,8 @@ public class LocationServiceImpl implements LocationService {
         }
 
         return new LocationDtos.DashboardStatsResponse(
-                activeFacilities,
                 totalBookings,
-                completedBookings,
+                pendingRequests,
                 "06:00 PM",          // placeholder; extend with FacilityRule lookup if needed
                 strip
         );

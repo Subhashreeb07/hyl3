@@ -7,36 +7,24 @@ import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.service.RuleEngineService;
-import org.springframework.beans.factory.annotation.Value;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Base64;
-import java.util.Objects;
-import java.util.UUID;
 
 @Service
 public class RuleEngineServiceImpl implements RuleEngineService {
 
-    private static final String QR_PREFIX = "HYQR";
-    private static final String QR_VERSION = "v1";
-    private static final String HMAC_ALGORITHM = "HmacSHA256";
-
     private final BookingRepository bookingRepository;
+    private final ObjectMapper objectMapper;
     private final Clock clock = Clock.systemDefaultZone();
-    private final String qrSecret;
 
-    public RuleEngineServiceImpl(
-            BookingRepository bookingRepository,
-            @Value("${app.qr.secret:hy-platform-qr-secret}") String qrSecret
-    ) {
+    public RuleEngineServiceImpl(BookingRepository bookingRepository, ObjectMapper objectMapper) {
         this.bookingRepository = bookingRepository;
-        this.qrSecret = qrSecret;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -54,31 +42,16 @@ public class RuleEngineServiceImpl implements RuleEngineService {
             return;
         }
 
-        LocalDate today = LocalDate.now(clock);
-        if (bookingDate.equals(today)) {
-            validateBookingWindow(rule, LocalTime.now(clock));
-        }
+        validateFacilityDateWindow(rule, bookingDate);
 
-        if (rule.getMaximumCapacity() != null && rule.getMaximumCapacity() > 0) {
-            long confirmed = bookingRepository.countByFacilityFacilityIdAndBookingDateAndStatus(
-                    facility.getFacilityId(),
-                    bookingDate,
-                    BookingStatus.CONFIRMED
-            );
-            if (confirmed >= rule.getMaximumCapacity()) {
-                throw new BadRequestException("Maximum capacity reached for this facility on " + bookingDate);
-            }
-        }
+        LocalDate today = LocalDate.now(clock);
+        validateBookingWindowForDate(rule, bookingDate, today, LocalTime.now(clock));
     }
 
     @Override
     public void validateBookingCancellation(Booking booking, FacilityRule rule) {
         if (rule == null) {
             return;
-        }
-
-        if (Boolean.FALSE.equals(rule.getAllowCancellation())) {
-            throw new BadRequestException("Cancellation is not allowed for this facility");
         }
 
         LocalDate today = LocalDate.now(clock);
@@ -91,43 +64,7 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         }
     }
 
-    @Override
-    public String generateQrCodeIfRequired(FacilityRule rule, Booking booking) {
-        if (rule != null && Boolean.TRUE.equals(rule.getQrRequired()) && booking != null && booking.getBookingId() != null) {
-            String nonce = UUID.randomUUID().toString().replace("-", "");
-            String bookingId = String.valueOf(booking.getBookingId());
-            String payload = buildPayload(booking, nonce);
-            String signature = sign(payload);
-            return QR_PREFIX + "." + QR_VERSION + "." + bookingId + "." + nonce + "." + signature;
-        }
-        return null;
-    }
 
-    @Override
-    public boolean isQrCodeValid(String qrCode, Booking booking) {
-        if (qrCode == null || qrCode.isBlank() || booking == null || booking.getBookingId() == null) {
-            return false;
-        }
-
-        String[] parts = qrCode.split("\\.");
-        if (parts.length != 5) {
-            return false;
-        }
-
-        if (!QR_PREFIX.equals(parts[0]) || !QR_VERSION.equals(parts[1])) {
-            return false;
-        }
-
-        if (!Objects.equals(parts[2], String.valueOf(booking.getBookingId()))) {
-            return false;
-        }
-
-        String nonce = parts[3];
-        String providedSignature = parts[4];
-        String expectedSignature = sign(buildPayload(booking, nonce));
-
-        return constantTimeEquals(providedSignature, expectedSignature);
-    }
 
     private void validateBookingWindow(FacilityRule rule, LocalTime now) {
         if (rule.getBookingStartTime() != null && now.isBefore(rule.getBookingStartTime())) {
@@ -139,37 +76,136 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         }
     }
 
-    private String buildPayload(Booking booking, String nonce) {
-        return booking.getBookingId() + "|"
-                + booking.getFacility().getFacilityId() + "|"
-                + booking.getEmployeeId() + "|"
-                + booking.getBookingDate() + "|"
-                + nonce;
+    private void validateBookingWindowForDate(FacilityRule rule, LocalDate bookingDate, LocalDate today, LocalTime now) {
+        LocalTime start = rule.getBookingStartTime();
+
+        if (bookingDate.isAfter(today)) {
+            if (start != null) {
+                throw new BadRequestException(
+                        "Booking for " + bookingDate + " opens at " + start + " on that date"
+                );
+            }
+            return;
+        }
+
+        if (bookingDate.equals(today)) {
+            validateBookingWindow(rule, now);
+        }
     }
 
-    private String sign(String payload) {
+    private void validateFacilityDateWindow(FacilityRule rule, LocalDate bookingDate) {
+        LocalDate[] window = resolveFacilityDateWindow(rule);
+        LocalDate availableFrom = window[0];
+        LocalDate availableTo = window[1];
+
+        if (availableFrom == null && availableTo == null) {
+            return;
+        }
+
+        if (availableFrom == null) {
+            availableFrom = availableTo;
+        }
+        if (availableTo == null) {
+            availableTo = availableFrom;
+        }
+
+        if (bookingDate.isBefore(availableFrom) || bookingDate.isAfter(availableTo)) {
+            throw new BadRequestException(
+                    "Facility is accessible only from " + availableFrom + " to " + availableTo
+            );
+        }
+    }
+
+    private LocalDate[] resolveFacilityDateWindow(FacilityRule rule) {
+        LocalDate availableFromDate = rule.getFacilityAvailableFromDate();
+        LocalDate availableToDate = rule.getFacilityAvailableToDate();
+
+        if ((availableFromDate == null || availableToDate == null)
+                && rule.getRulesJson() != null && !rule.getRulesJson().isBlank()) {
+            try {
+                JsonNode rulesNode = objectMapper.readTree(rule.getRulesJson());
+
+                LocalDate jsonFrom = firstDate(rulesNode,
+                        "facilityAvailableFromDate",
+                        "facilityAvailableDateFrom",
+                        "availableFromDate",
+                        "availableFrom",
+                        "startDate");
+                LocalDate jsonTo = firstDate(rulesNode,
+                        "facilityAvailableToDate",
+                        "facilityAvailableDateTo",
+                        "availableToDate",
+                        "availableTo",
+                        "endDate");
+                LocalDate singleDate = firstDate(rulesNode,
+                        "facilityAvailableDate",
+                        "availableDate",
+                        "date");
+
+                if (availableFromDate == null) {
+                    availableFromDate = jsonFrom;
+                }
+                if (availableToDate == null) {
+                    availableToDate = jsonTo;
+                }
+                if (availableFromDate == null && availableToDate == null && singleDate != null) {
+                    availableFromDate = singleDate;
+                    availableToDate = singleDate;
+                }
+            } catch (Exception ignored) {
+                // Ignore malformed rules_json and fall back to typed columns only.
+            }
+        }
+
+        if (availableFromDate == null && availableToDate != null) {
+            availableFromDate = availableToDate;
+        }
+        if (availableToDate == null && availableFromDate != null) {
+            availableToDate = availableFromDate;
+        }
+
+        return new LocalDate[]{availableFromDate, availableToDate};
+    }
+
+    private LocalDate firstDate(JsonNode node, String... keys) {
+        JsonNode rulesNode = node.has("rules") && node.get("rules").isObject() ? node.get("rules") : null;
+        for (String key : keys) {
+            if (node.hasNonNull(key)) {
+                LocalDate parsed = parseFlexibleDate(node.get(key).asText(null));
+                if (parsed != null) {
+                    return parsed;
+                }
+            }
+
+            if (rulesNode != null && rulesNode.hasNonNull(key)) {
+                LocalDate parsed = parseFlexibleDate(rulesNode.get(key).asText(null));
+                if (parsed != null) {
+                    return parsed;
+                }
+            }
+        }
+        return null;
+    }
+
+    private LocalDate parseFlexibleDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
         try {
-            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            SecretKeySpec secretKeySpec = new SecretKeySpec(qrSecret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM);
-            mac.init(secretKeySpec);
-            byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
-        } catch (Exception ex) {
-            throw new IllegalStateException("Unable to sign QR payload", ex);
+            return LocalDate.parse(trimmed);
+        } catch (Exception ignored) {
+            // Try ISO date-time by taking the date part.
         }
+        if (trimmed.length() >= 10) {
+            try {
+                return LocalDate.parse(trimmed.substring(0, 10));
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
-    private boolean constantTimeEquals(String left, String right) {
-        byte[] leftBytes = left.getBytes(StandardCharsets.UTF_8);
-        byte[] rightBytes = right.getBytes(StandardCharsets.UTF_8);
-        if (leftBytes.length != rightBytes.length) {
-            return false;
-        }
 
-        int result = 0;
-        for (int i = 0; i < leftBytes.length; i++) {
-            result |= leftBytes[i] ^ rightBytes[i];
-        }
-        return result == 0;
-    }
 }

@@ -97,7 +97,6 @@ public class ReportServiceImpl implements ReportService {
         Map<String, Long> daily = getDailyReport();
         return new ReportDtos.AnalyticsResponse(
                 facilityRepository.count(),
-                facilityRepository.countByStatusTrue(),
                 facilityRepository.countByPublishedTrue(),
                 bookingRepository.count(),
                 bookingRepository.countByStatus(BookingStatus.CONFIRMED),
@@ -107,17 +106,45 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public ReportDtos.OperationalSummaryResponse getOperationalSummary(String bookingDate) {
-        LocalDate targetDate = bookingDate == null || bookingDate.isBlank() ? LocalDate.now() : parseDate(bookingDate, "bookingDate");
+    public ReportDtos.OperationalSummaryResponse getOperationalSummary(String bookingDate, Long facilityId) {
+        LocalDate targetDate;
+        if (bookingDate == null || bookingDate.isBlank() || "all".equalsIgnoreCase(bookingDate.trim())) {
+            targetDate = null;
+        } else {
+            targetDate = parseDate(bookingDate, "bookingDate");
+        }
 
-        long total = bookingRepository.countByBookingDate(targetDate);
-        long confirmed = bookingRepository.countByBookingDateAndStatus(targetDate, BookingStatus.CONFIRMED);
-        long cancelled = bookingRepository.countByBookingDateAndStatus(targetDate, BookingStatus.CANCELLED);
+        long total;
+        long confirmed;
+        long cancelled;
+        
+        if (targetDate == null) {
+            // Aggregate all time
+            if (facilityId == null) {
+                total = bookingRepository.count();
+                confirmed = bookingRepository.countByStatus(BookingStatus.CONFIRMED);
+                cancelled = bookingRepository.countByStatus(BookingStatus.CANCELLED);
+            } else {
+                total = bookingRepository.countByFacilityFacilityId(facilityId);
+                confirmed = bookingRepository.countByFacilityFacilityIdAndStatus(facilityId, BookingStatus.CONFIRMED);
+                cancelled = bookingRepository.countByFacilityFacilityIdAndStatus(facilityId, BookingStatus.CANCELLED);
+            }
+        } else {
+            if (facilityId == null) {
+                total = bookingRepository.countByBookingDate(targetDate);
+                confirmed = bookingRepository.countByBookingDateAndStatus(targetDate, BookingStatus.CONFIRMED);
+                cancelled = bookingRepository.countByBookingDateAndStatus(targetDate, BookingStatus.CANCELLED);
+            } else {
+                total = bookingRepository.countByFacilityFacilityIdAndBookingDate(facilityId, targetDate);
+                confirmed = bookingRepository.countByFacilityFacilityIdAndBookingDateAndStatus(facilityId, targetDate, BookingStatus.CONFIRMED);
+                cancelled = bookingRepository.countByFacilityFacilityIdAndBookingDateAndStatus(facilityId, targetDate, BookingStatus.CANCELLED);
+            }
+        }
 
         double cancellationRate = total == 0 ? 0.0 : roundTwoDecimals((cancelled * 100.0) / total);
 
         return new ReportDtos.OperationalSummaryResponse(
-                targetDate.toString(),
+                targetDate == null ? "All Time" : targetDate.toString(),
                 total,
                 confirmed,
                 cancelled,
@@ -146,21 +173,12 @@ public class ReportServiceImpl implements ReportService {
                 BookingStatus.CANCELLED
         );
 
-        FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId).orElse(null);
-        Integer capacity = rule == null ? null : rule.getMaximumCapacity();
-
-        double utilization = (capacity == null || capacity <= 0)
-                ? 0.0
-                : roundTwoDecimals((confirmed * 100.0) / capacity);
-
         return new ReportDtos.FacilityUtilizationResponse(
                 facility.getFacilityId(),
                 facility.getFacilityName(),
                 targetDate.toString(),
-                capacity,
                 confirmed,
-                cancelled,
-                utilization
+                cancelled
         );
     }
 
@@ -208,8 +226,8 @@ public class ReportServiceImpl implements ReportService {
         return new ReportDtos.BookingTrendResponse(from.toString(), to.toString(), facilityId, points);
     }
 
-        @Override
-        public ReportDtos.EmployeeRegistrationsResponse getEmployeeRegistrations(String query, String location, Boolean activeOnly) {
+    @Override
+    public ReportDtos.EmployeeRegistrationsResponse getEmployeeRegistrations(String query, String location) {
         String normalizedQuery = normalizeNullable(query);
         String normalizedLocation = normalizeNullable(location);
 
@@ -217,7 +235,6 @@ public class ReportServiceImpl implements ReportService {
         List<Employee> filtered = allEmployees.stream()
             .filter(employee -> matchesQuery(employee, normalizedQuery))
             .filter(employee -> matchesLocation(employee, normalizedLocation))
-            .filter(employee -> activeOnly == null || Boolean.TRUE.equals(activeOnly) == Boolean.TRUE.equals(employee.getActive()))
             .toList();
 
         List<ReportDtos.EmployeeRegistrationItem> items = filtered.stream()
@@ -229,15 +246,11 @@ public class ReportServiceImpl implements ReportService {
                 employee.getOfficeLocation(),
                 employee.getWorkMode(),
                 employee.getRoleCode(),
-                employee.getActive(),
                 employee.getCreatedAt() == null ? null : employee.getCreatedAt().toString()
             ))
             .toList();
 
-        long activeCount = filtered.stream().filter(employee -> Boolean.TRUE.equals(employee.getActive())).count();
-        long inactiveCount = filtered.size() - activeCount;
-
-        return new ReportDtos.EmployeeRegistrationsResponse(items, filtered.size(), activeCount, inactiveCount);
+        return new ReportDtos.EmployeeRegistrationsResponse(items, filtered.size());
         }
 
     private LocalDate parseDate(String value, String fieldName) {

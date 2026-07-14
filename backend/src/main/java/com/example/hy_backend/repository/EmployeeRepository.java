@@ -10,7 +10,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     boolean existsByEmailIgnoreCase(String email);
 
-    long countByActiveTrue();
 
     List<Employee> findAllByOrderByCreatedAtDesc();
 }

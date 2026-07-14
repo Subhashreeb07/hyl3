@@ -37,8 +37,9 @@ public class FieldDefinition {
     @Column(length = 1000)
     private String defaultValue;
 
-    @OneToMany(mappedBy = "field", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FieldOption> options = new ArrayList<>();
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String fieldOptions;
 
     public Long getFieldId() {
         return fieldId;
@@ -112,11 +113,11 @@ public class FieldDefinition {
         this.defaultValue = defaultValue;
     }
 
-    public List<FieldOption> getOptions() {
-        return options;
+    public String getFieldOptions() {
+        return fieldOptions;
     }
 
-    public void setOptions(List<FieldOption> options) {
-        this.options = options;
+    public void setFieldOptions(String fieldOptions) {
+        this.fieldOptions = fieldOptions;
     }
 }

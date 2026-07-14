@@ -3,7 +3,7 @@ package com.example.hy_backend.mapper;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
 import com.example.hy_backend.model.FieldDefinition;
-import com.example.hy_backend.model.FieldOption;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -38,7 +38,7 @@ public class SpecificationMapperImpl implements SpecificationMapper {
         putNullableText(facilityNode, "description", facility.getDescription());
         putNullableText(facilityNode, "category", facility.getCategory());
         putNullableText(facilityNode, "icon", facility.getIcon());
-        facilityNode.put("status", Boolean.TRUE.equals(facility.getStatus()));
+
         facilityNode.put("published", Boolean.TRUE.equals(facility.getPublished()));
 
         ArrayNode fieldsNode = root.putArray("fields");
@@ -54,52 +54,29 @@ public class SpecificationMapperImpl implements SpecificationMapper {
             putNullableText(fieldNode, "defaultValue", field.getDefaultValue());
 
             ArrayNode optionArray = fieldNode.putArray("options");
-            for (FieldOption option : field.getOptions().stream().sorted(Comparator.comparing(FieldOption::getDisplayOrder)).toList()) {
-                optionArray.add(option.getOptionValue());
+            if (field.getFieldOptions() != null && !field.getFieldOptions().isBlank()) {
+                for (String option : field.getFieldOptions().split("\n")) {
+                    optionArray.add(option.trim());
+                }
             }
         }
 
         ObjectNode rulesNode = root.putObject("rules");
         if (rule != null) {
+            if (rule.getRulesJson() != null && !rule.getRulesJson().isBlank()) {
+                try {
+                    JsonNode storedRules = objectMapper.readTree(rule.getRulesJson());
+                    if (storedRules.isObject()) {
+                        rulesNode.setAll((ObjectNode) storedRules);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
             putNullableText(rulesNode, "bookingStartTime", rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString());
             putNullableText(rulesNode, "bookingDeadline", rule.getBookingDeadline() == null ? null : rule.getBookingDeadline().toString());
-            putNullableText(rulesNode, "reminderTime", rule.getReminderTime() == null ? null : rule.getReminderTime().toString());
-            rulesNode.put("qrRequired", Boolean.TRUE.equals(rule.getQrRequired()));
-            rulesNode.put("allowCancellation", !Boolean.FALSE.equals(rule.getAllowCancellation()));
-            if (rule.getMaximumCapacity() == null) {
-                rulesNode.putNull("maximumCapacity");
-            } else {
-                rulesNode.put("maximumCapacity", rule.getMaximumCapacity());
-            }
-            rulesNode.put("regularCommuteEnabled", Boolean.TRUE.equals(rule.getRegularCommuteEnabled()));
-            putNullableText(rulesNode, "availableDays", rule.getAvailableDays());
-            putNullableText(rulesNode, "cancellationDeadline", rule.getCancellationDeadline() == null ? null : rule.getCancellationDeadline().toString());
-            
-            putCsvAsArray(rulesNode, "employeeTypes", rule.getEmployeeTypes());
-            putCsvAsArray(rulesNode, "roles", rule.getRoles());
-
-            if (rule.getBookingWindowDays() == null) {
-                rulesNode.putNull("bookingWindowDays");
-            } else {
-                rulesNode.put("bookingWindowDays", rule.getBookingWindowDays());
-            }
-            putNullableText(rulesNode, "facilityAvailableFromDate", rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString());
-            putNullableText(rulesNode, "facilityAvailableToDate", rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString());
         } else {
             rulesNode.putNull("bookingStartTime");
             rulesNode.putNull("bookingDeadline");
-            rulesNode.putNull("reminderTime");
-            rulesNode.put("qrRequired", false);
-            rulesNode.put("allowCancellation", true);
-            rulesNode.putNull("maximumCapacity");
-            rulesNode.put("regularCommuteEnabled", false);
-            rulesNode.putNull("availableDays");
-            rulesNode.putNull("cancellationDeadline");
-            rulesNode.putArray("employeeTypes");
-            rulesNode.putArray("roles");
-            rulesNode.putNull("bookingWindowDays");
-            rulesNode.putNull("facilityAvailableFromDate");
-            rulesNode.putNull("facilityAvailableToDate");
         }
 
         return root;

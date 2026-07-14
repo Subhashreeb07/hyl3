@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal, HostListener } from '@angular/core';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -34,12 +34,14 @@ import { NotificationStreamService } from '../../core/services/notification-stre
   template: `
     <mat-sidenav-container autosize class="h-screen w-screen overflow-hidden" style="background:#F4F6F9;">
       <!-- ── Sidebar ── -->
-      <mat-sidenav #drawer mode="side" opened
+      <mat-sidenav #drawer [mode]="isMobile() ? 'over' : 'side'" 
+                   [opened]="isMobile() ? !isCollapsed() : true"
+                   (closedStart)="isMobile() && isCollapsed.set(true)"
                    style="background:#ffffff;border-right:1px solid #E2E8F0;"
                    class="transition-all duration-300 ease-in-out"
-                   [style.width]="isCollapsed() ? '0px' : '272px'"
-                   [style.visibility]="isCollapsed() ? 'hidden' : 'visible'"
-                   [style.border-right]="isCollapsed() ? 'none' : '1px solid #E2E8F0'">
+                   [style.width]="(!isMobile() && isCollapsed()) ? '0px' : '272px'"
+                   [style.visibility]="(!isMobile() && isCollapsed()) ? 'hidden' : 'visible'"
+                   [style.border-right]="(!isMobile() && isCollapsed()) ? 'none' : '1px solid #E2E8F0'">
         <div class="flex h-full flex-col overflow-hidden" style="padding:1.25rem 1rem;">
 
           <!-- Tricolor accent strip -->
@@ -77,6 +79,7 @@ import { NotificationStreamService } from '../../core/services/notification-stre
             <a *ngFor="let item of navItems"
                [routerLink]="item.link"
                routerLinkActive="active-nav"
+               (click)="onNavClick()"
                style="display:flex;align-items:center;gap:0.8rem;border-radius:8px;padding:0.75rem 1rem;color:#64748B;font-size:0.9rem;font-weight:600;text-decoration:none;transition:all 0.15s;position:relative;"
                onmouseenter="if(!this.classList.contains('active-nav')){this.style.background='#F8FAFC';this.style.color='#0A1628';}"
                onmouseleave="if(!this.classList.contains('active-nav')){this.style.background='transparent';this.style.color='#64748B';}">
@@ -100,9 +103,9 @@ import { NotificationStreamService } from '../../core/services/notification-stre
         <!-- Toolbar -->
         <mat-toolbar style="background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid #E2E8F0;height:64px;padding:0 1.5rem;flex-shrink:0;position:sticky;top:0;z-index:30;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
 
-          <!-- Open Sidebar (when collapsed) -->
+          <!-- Open Sidebar (when collapsed or mobile) -->
           <button type="button"
-                  *ngIf="isCollapsed()"
+                  *ngIf="isCollapsed() || isMobile()"
                   (click)="toggleSidebar()"
                   style="width:36px;height:36px;border-radius:8px;border:1.5px solid #E2E8F0;background:#fff;color:#64748B;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-right:1rem;transition:all 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.05);flex-shrink:0;"
                   matTooltip="Open sidebar">
@@ -110,11 +113,18 @@ import { NotificationStreamService } from '../../core/services/notification-stre
           </button>
 
           <!-- Search bar -->
-          <div class="portal-search hidden md:flex" style="width:320px;" [class.ml-2]="isCollapsed()">
-            <mat-icon style="font-size:18px;color:#94A3B8;">search</mat-icon>
-            <input class="w-full bg-transparent text-sm outline-none"
-                   style="color:#334155;font-family:inherit;"
-                   placeholder="Search bookings…" />
+          <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 border border-slate-200"
+               style="width:340px; background: #F8FAFC; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);"
+               [class.ml-2]="isCollapsed()"
+               onfocusin="this.style.background='#fff'; this.style.borderColor='#93C5FD'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+               onfocusout="this.style.background='#F8FAFC'; this.style.borderColor='#E2E8F0'; this.style.boxShadow='inset 0 1px 2px rgba(0,0,0,0.02)'">
+            <mat-icon style="font-size:18px; width:18px; height:18px; color:#64748B;">search</mat-icon>
+            <input class="w-full bg-transparent text-[13px] font-medium outline-none placeholder:text-slate-400"
+                   style="color:#0A1628; font-family:inherit;"
+                   placeholder="Search bookings, facilities, or dates..." />
+            <div class="flex items-center justify-center rounded border border-slate-200 bg-white px-1.5 py-0.5" style="box-shadow:0 1px 2px rgba(0,0,0,0.04); flex-shrink:0;">
+              <span class="text-[10px] font-bold text-slate-400">Ctrl K</span>
+            </div>
           </div>
 
           <span class="flex-1"></span>
@@ -190,6 +200,7 @@ export class EmployeePortalShellComponent implements OnInit, OnDestroy {
   readonly unreadNotifications = signal(0);
   readonly activeToasts = signal<{ id: number; message: string; type: string }[]>([]);
   readonly isCollapsed = signal(false);
+  readonly isMobile = signal(false);
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -198,7 +209,22 @@ export class EmployeePortalShellComponent implements OnInit, OnDestroy {
     private readonly authApi: AuthApiService,
     private readonly router: Router,
     private readonly notificationStreamService: NotificationStreamService
-  ) {}
+  ) {
+    this.checkScreenSize();
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.checkScreenSize();
+  }
+
+  private checkScreenSize(): void {
+    const mobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    this.isMobile.set(mobile);
+    if (mobile) {
+      this.isCollapsed.set(true); // default closed on mobile
+    }
+  }
 
   ngOnInit(): void {
     this.hydrateEmployeeIdentity();
@@ -227,6 +253,12 @@ export class EmployeePortalShellComponent implements OnInit, OnDestroy {
 
   toggleSidebar(): void {
     this.isCollapsed.set(!this.isCollapsed());
+  }
+
+  onNavClick(): void {
+    if (this.isMobile()) {
+      this.isCollapsed.set(true);
+    }
   }
 
   addToast(message: string): void {

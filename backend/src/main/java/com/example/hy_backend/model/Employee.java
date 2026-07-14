@@ -4,7 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
@@ -36,29 +36,12 @@ public class Employee {
 
     @Column(name = "work_mode", nullable = false, length = 32)
     private String workMode = "HYBRID";
-
-    @Column(name = "preference_tag", length = 64)
-    private String preferenceTag;
-
-    @Column(nullable = false)
-    private Boolean active = true;
-
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
     @PrePersist
     public void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     public String getEmployeeId() {
@@ -117,28 +100,12 @@ public class Employee {
         this.officeLocation = officeLocation;
     }
 
-    public Boolean getActive() {
-        return active;
-    }
-
-    public void setActive(Boolean active) {
-        this.active = active;
-    }
-
     public String getWorkMode() {
         return workMode;
     }
 
     public void setWorkMode(String workMode) {
         this.workMode = workMode;
-    }
-
-    public String getPreferenceTag() {
-        return preferenceTag;
-    }
-
-    public void setPreferenceTag(String preferenceTag) {
-        this.preferenceTag = preferenceTag;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -149,11 +116,4 @@ public class Employee {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

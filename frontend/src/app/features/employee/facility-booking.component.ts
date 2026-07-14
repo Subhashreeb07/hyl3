@@ -4,6 +4,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   BookingFieldInput,
+  BookingPreferenceResponse,
   FacilitySpecificationResponse,
   SpecificationField
 } from '../../core/models/employee-flow.models';
@@ -18,6 +19,24 @@ import { ToastService } from '../../core/services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, DynamicFieldRendererComponent],
   template: `
+    <section class="mx-auto max-w-4xl py-6 px-4 md:px-0" *ngIf="accessBlocked() as blockedReason">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-3 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-brand-600">Facility Request</p>
+          <h2 class="mt-1 text-2xl font-bold text-slate-900">Access Restricted</h2>
+          <p *ngIf="bookingDate" class="mt-2 text-sm font-medium text-slate-700 flex items-center bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg w-fit">
+            <span class="material-icons-outlined text-[1.1em] mr-1.5 text-slate-500">calendar_today</span> Date: <strong class="ml-1 text-slate-900">{{ bookingDate | date: 'EEEE, MMMM d, y' }}</strong>
+          </p>
+        </div>
+        <a routerLink="/employee/dashboard" class="satori-secondary">Return to Dashboard</a>
+      </div>
+
+      <div class="bg-white p-6 rounded-xl border border-rose-200 shadow-sm">
+        <p class="text-sm font-semibold text-rose-700">{{ blockedReason }}</p>
+        <p class="mt-2 text-sm text-slate-500">This facility can only be accessed within the admin-configured date and booking time window.</p>
+      </div>
+    </section>
+
     <section class="mx-auto max-w-4xl py-6 px-4 md:px-0" *ngIf="spec() as data">
       <div class="mb-6 flex flex-wrap items-center justify-between gap-3 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div>
@@ -32,6 +51,18 @@ import { ToastService } from '../../core/services/toast.service';
 
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <p class="mb-6 text-sm text-slate-500">Complete the form below to submit your service request through the portal.</p>
+
+      <div class="mb-4 flex flex-wrap items-center gap-3" *ngIf="data.rules?.regularCommuteEnabled">
+        <button
+          type="button"
+          class="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+          [disabled]="prefillLoading()"
+          (click)="applyRegularPreferences()"
+        >
+          {{ prefillLoading() ? 'Applying...' : 'Use My Regular Preferences' }}
+        </button>
+        <span class="text-xs text-slate-500">Autofills this form using your majority choices from previous confirmed bookings.</span>
+      </div>
 
       <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 md:grid-cols-2">
         <ng-container *ngFor="let field of orderedFields()">
@@ -53,6 +84,8 @@ export class FacilityBookingComponent implements OnInit {
   readonly form: FormGroup = this.fb.group({});
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly accessBlocked = signal<string | null>(null);
+  readonly prefillLoading = signal(false);
   bookingDate: string | null = null;
 
   readonly orderedFields = computed(() => {
@@ -77,17 +110,8 @@ export class FacilityBookingComponent implements OnInit {
       return;
     }
 
-    this.bookingDate = this.route.snapshot.queryParamMap.get('date');
-
-    this.employeeApi.getFacilitySpecification(facilityId).subscribe({
-      next: (data) => {
-        this.spec.set(data);
-        this.rebuildForm(data.fields);
-      },
-      error: () => {
-        this.error.set('Facility specification could not be loaded at this time.');
-      }
-    });
+    this.bookingDate = this.route.snapshot.queryParamMap.get('date') || this.todayIsoDate();
+    this.validateAccessAndLoadSpecification(facilityId, this.bookingDate);
   }
 
   controlName(field: SpecificationField): string {
@@ -97,6 +121,13 @@ export class FacilityBookingComponent implements OnInit {
   submit(): void {
     this.message.set(null);
     this.error.set(null);
+
+    if (this.accessBlocked()) {
+      const blockedMessage = this.accessBlocked() ?? 'This facility is not accessible at this time.';
+      this.error.set(blockedMessage);
+      this.toastService.show(blockedMessage, 'error');
+      return;
+    }
 
     if (this.form.invalid || !this.spec()) {
       this.form.markAllAsTouched();
@@ -149,6 +180,29 @@ export class FacilityBookingComponent implements OnInit {
       });
   }
 
+  applyRegularPreferences(): void {
+    this.error.set(null);
+    const employeeId = this.sessionService.getEmployeeId();
+    const facility = this.spec();
+    if (!employeeId || !facility) {
+      this.toastService.show('Your session has expired. Please sign in again.', 'error');
+      this.router.navigateByUrl('/login');
+      return;
+    }
+
+    this.prefillLoading.set(true);
+    this.bookingApi.getBookingPreferences(employeeId, facility.facilityId).subscribe({
+      next: (response) => {
+        this.applyPreferenceResponse(response);
+      },
+      error: (err) => {
+        this.prefillLoading.set(false);
+        const message = err?.error?.message ?? 'Could not load your regular preferences.';
+        this.toastService.show(message, 'error');
+      }
+    });
+  }
+
   private rebuildForm(fields: SpecificationField[]): void {
     Object.keys(this.form.controls).forEach((key) => this.form.removeControl(key));
 
@@ -157,6 +211,51 @@ export class FacilityBookingComponent implements OnInit {
       const initialValue = this.resolveInitialValue(field);
       this.form.addControl(this.controlName(field), new FormControl(initialValue, validators));
     }
+  }
+
+  private applyPreferenceResponse(response: BookingPreferenceResponse): void {
+    const facility = this.spec();
+    if (!facility) {
+      this.prefillLoading.set(false);
+      return;
+    }
+
+    const byFieldId = new Map(response.preferences.map((item) => [item.fieldId, item]));
+
+    for (const field of facility.fields) {
+      const preference = byFieldId.get(field.fieldId);
+      if (!preference) {
+        continue;
+      }
+
+      const control = this.form.get(this.controlName(field));
+      if (!control) {
+        continue;
+      }
+
+      const normalizedType = field.type.toUpperCase();
+      if (normalizedType === 'CHECKBOX') {
+        const values = preference.value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+        control.setValue(values);
+      } else {
+        control.setValue(preference.value ?? '');
+      }
+    }
+
+    this.prefillLoading.set(false);
+
+    if (response.sampleSize === 0) {
+      this.toastService.show('No previous confirmed bookings found for this facility yet.', 'success');
+      return;
+    }
+
+    this.toastService.show(
+      `Regular preferences applied from ${response.sampleSize} confirmed booking(s).`,
+      'success'
+    );
   }
 
   private resolveInitialValue(field: SpecificationField): string | string[] {
@@ -226,5 +325,53 @@ export class FacilityBookingComponent implements OnInit {
     } catch {
       return {};
     }
+  }
+
+  private validateAccessAndLoadSpecification(facilityId: number, bookingDate: string): void {
+    const employeeId = this.sessionService.getEmployeeId();
+    if (!employeeId) {
+      this.error.set('Your session has expired. Please sign in again.');
+      this.router.navigateByUrl('/login');
+      return;
+    }
+
+    this.employeeApi.getAvailableFacilitiesForDate(employeeId, bookingDate).subscribe({
+      next: (facilities) => {
+        const facilityAvailability = facilities.find((facility) => facility.facilityId === facilityId);
+        if (!facilityAvailability) {
+          this.accessBlocked.set('Facility is not available for the selected date.');
+          return;
+        }
+
+        if (!facilityAvailability.bookingAllowed) {
+          this.accessBlocked.set(
+            facilityAvailability.unavailableReason?.trim() || 'Facility is not accessible at this date/time.'
+          );
+          return;
+        }
+
+        this.accessBlocked.set(null);
+        this.loadFacilitySpecification(facilityId);
+      },
+      error: () => {
+        this.error.set('Facility availability could not be verified at this time.');
+      }
+    });
+  }
+
+  private loadFacilitySpecification(facilityId: number): void {
+    this.employeeApi.getFacilitySpecification(facilityId).subscribe({
+      next: (data) => {
+        this.spec.set(data);
+        this.rebuildForm(data.fields);
+      },
+      error: () => {
+        this.error.set('Facility specification could not be loaded at this time.');
+      }
+    });
+  }
+
+  private todayIsoDate(): string {
+    return new Date().toISOString().slice(0, 10);
   }
 }

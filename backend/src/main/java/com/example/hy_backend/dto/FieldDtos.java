@@ -19,7 +19,8 @@ public final class FieldDtos {
             @NotNull Boolean required,
             @NotNull @Positive Integer displayOrder,
             String validationJson,
-            String defaultValue
+            String defaultValue,
+            String fieldOptions
     ) {
     }
 
@@ -30,15 +31,18 @@ public final class FieldDtos {
             @NotNull Boolean required,
             @NotNull @Positive Integer displayOrder,
             String validationJson,
-            String defaultValue
+            String defaultValue,
+            String fieldOptions
     ) {
+    }
+
+    public record UpdateFieldOptionsRequest(List<String> options) {
     }
 
     public record FieldIdResponse(Long fieldId) {
     }
 
-    public record AddOptionsRequest(@NotEmpty List<@NotBlank String> options) {
-    }
+
 
     public record FieldSummaryResponse(Long fieldId, String label, String fieldType) {
     }
@@ -52,7 +56,7 @@ public final class FieldDtos {
             Integer displayOrder,
                         String validationJson,
                         String defaultValue,
-            List<String> options
+            String fieldOptions
     ) {
     }
 }

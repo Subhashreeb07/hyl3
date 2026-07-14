@@ -39,6 +39,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             long countByEmployeeIdAndStatus(String employeeId, BookingStatus status);
 
     long countByStatus(BookingStatus status);
+    
+    long countByFacilityFacilityId(Long facilityId);
+    
+    long countByFacilityFacilityIdAndStatus(Long facilityId, BookingStatus status);
 
     long countByFacilityFacilityIdAndStatusAndCreatedAtBetween(
             Long facilityId,
@@ -51,8 +55,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
 
     long countByStatusAndCreatedAtBetween(BookingStatus status, LocalDateTime start, LocalDateTime end);
 
-    Optional<Booking> findByEmployeeIdAndClientRequestId(String employeeId, String clientRequestId);
-
         Optional<Booking> findFirstByEmployeeIdAndFacilityFacilityIdAndBookingDateAndStatusOrderByCreatedAtDesc(
             String employeeId,
             Long facilityId,
@@ -60,12 +62,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             BookingStatus status
         );
 
-    Optional<Booking> findByQrCode(String qrCode);
+        List<Booking> findByEmployeeIdAndFacilityFacilityIdAndStatusOrderByCreatedAtDesc(
+            String employeeId,
+            Long facilityId,
+            BookingStatus status
+        );
 
         @Query("""
             SELECT b
             FROM Booking b
             JOIN FETCH b.facility f
+            LEFT JOIN FETCH b.employee e
                 WHERE (:applyFacility = false OR f.facilityId = :facilityId)
                   AND (:applyEmployee = false OR UPPER(b.employeeId) = :employeeId)
                   AND (:applyStatus = false OR b.status = :status)

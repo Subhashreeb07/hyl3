@@ -1,10 +1,12 @@
 package com.example.hy_backend.serviceimpl;
 
 import com.example.hy_backend.dto.BookingDtos;
-import com.example.hy_backend.dto.NotificationDtos;
 import com.example.hy_backend.exception.BadRequestException;
 import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.model.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
@@ -13,7 +15,6 @@ import com.example.hy_backend.repository.OfficeLocationRepository;
 import com.example.hy_backend.service.AuditService;
 import com.example.hy_backend.service.BookingService;
 import com.example.hy_backend.service.LocationService;
-import com.example.hy_backend.service.NotificationService;
 import com.example.hy_backend.service.RuleEngineService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,59 +30,43 @@ public class BookingServiceImpl implements BookingService {
     private final FacilityRepository facilityRepository;
     private final FieldDefinitionRepository fieldDefinitionRepository;
     private final FacilityRuleRepository facilityRuleRepository;
-    private final NotificationService notificationService;
     private final AuditService auditService;
     private final RuleEngineService ruleEngineService;
     private final LocationService locationService;
     private final OfficeLocationRepository officeLocationRepository;
+    private final ObjectMapper objectMapper;
 
     public BookingServiceImpl(
             BookingRepository bookingRepository,
             FacilityRepository facilityRepository,
             FieldDefinitionRepository fieldDefinitionRepository,
             FacilityRuleRepository facilityRuleRepository,
-            NotificationService notificationService,
             AuditService auditService,
             RuleEngineService ruleEngineService,
             LocationService locationService,
-            OfficeLocationRepository officeLocationRepository
+            OfficeLocationRepository officeLocationRepository,
+            ObjectMapper objectMapper
     ) {
         this.bookingRepository = bookingRepository;
         this.facilityRepository = facilityRepository;
         this.fieldDefinitionRepository = fieldDefinitionRepository;
         this.facilityRuleRepository = facilityRuleRepository;
-        this.notificationService = notificationService;
         this.auditService = auditService;
         this.ruleEngineService = ruleEngineService;
         this.locationService = locationService;
         this.officeLocationRepository = officeLocationRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     @Transactional
     public BookingDtos.SubmitBookingResponse submitBooking(BookingDtos.SubmitBookingRequest request) {
         String normalizedEmployeeId = request.employeeId().trim().toUpperCase(Locale.ROOT);
-        String normalizedClientRequestId = normalizeClientRequestId(request.clientRequestId());
-
-        if (normalizedClientRequestId != null) {
-            Optional<Booking> existing = bookingRepository.findByEmployeeIdAndClientRequestId(normalizedEmployeeId, normalizedClientRequestId);
-            if (existing.isPresent()) {
-                Booking replay = existing.get();
-                return new BookingDtos.SubmitBookingResponse(
-                        replay.getBookingId(),
-                        replay.getStatus().name(),
-                        replay.getBookingDate().toString(),
-                        replay.getCreatedAt().toString(),
-                        true,
-                        "Idempotent replay. Returning existing booking"
-                );
-            }
-        }
 
         Facility facility = facilityRepository.findById(request.facilityId())
                 .orElseThrow(() -> new ResourceNotFoundException("Facility not found with id: " + request.facilityId()));
 
-        if (!Boolean.TRUE.equals(facility.getStatus()) || !Boolean.TRUE.equals(facility.getPublished())) {
+        if (!Boolean.TRUE.equals(facility.getPublished())) {
             throw new BadRequestException("Facility is not available for booking");
         }
 
@@ -113,18 +98,12 @@ public class BookingServiceImpl implements BookingService {
 
         if (existingForDay.isPresent()) {
             Booking existing = existingForDay.get();
-            existing.setClientRequestId(normalizedClientRequestId);
             existing.setStatus(BookingStatus.CONFIRMED);
             existing.setCancelledAt(null);
 
             applyBookingResponses(existing, responseMap, fieldMap);
 
             Booking saved = bookingRepository.save(existing);
-            String qrCode = ruleEngineService.generateQrCodeIfRequired(rule, saved);
-            if (qrCode != null) {
-            saved.setQrCode(qrCode);
-            saved = bookingRepository.save(saved);
-            }
 
             auditService.logAction(
                 saved.getEmployeeId(),
@@ -150,53 +129,12 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = new Booking();
         booking.setFacility(facility);
         booking.setEmployeeId(normalizedEmployeeId);
-        booking.setClientRequestId(normalizedClientRequestId);
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setBookingDate(bookingDate);
 
         applyBookingResponses(booking, responseMap, fieldMap);
 
         Booking saved = bookingRepository.save(booking);
-        String qrCode = ruleEngineService.generateQrCodeIfRequired(rule, saved);
-        if (qrCode != null) {
-            saved.setQrCode(qrCode);
-            saved = bookingRepository.save(saved);
-        }
-
-        int queuedFromTrigger = notificationService.queueTriggeredNotifications(
-            "BOOKING_CREATED",
-            saved.getEmployeeId(),
-            saved.getBookingId(),
-            Map.of(
-                "facilityName", saved.getFacility().getFacilityName(),
-                "bookingDate", saved.getBookingDate().toString()
-            )
-        );
-
-        if (queuedFromTrigger == 0) {
-            notificationService.createNotification(new NotificationDtos.CreateNotificationRequest(
-                saved.getEmployeeId(),
-                saved.getBookingId(),
-                "BOOKING_CONFIRMED",
-                "IN_APP",
-                "Booking confirmed for " + facility.getFacilityName() + " on " + saved.getBookingDate()
-            ));
-        }
-
-        if (rule != null && rule.getReminderTime() != null) {
-            LocalDateTime reminderDateTime = LocalDateTime.of(saved.getBookingDate(), rule.getReminderTime());
-            if (reminderDateTime.isAfter(LocalDateTime.now())) {
-                notificationService.scheduleNotification(new NotificationDtos.CreateScheduledNotificationRequest(
-                    saved.getEmployeeId(),
-                    saved.getBookingId(),
-                    "BOOKING_REMINDER",
-                    "IN_APP",
-                    "Reminder: You have a booking for " + facility.getFacilityName() + " today. Please ensure you check in by " + rule.getReminderTime().toString(),
-                    reminderDateTime.toString(),
-                    3
-                ));
-            }
-        }
 
         auditService.logAction(
             saved.getEmployeeId(),
@@ -251,19 +189,66 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional(readOnly = true)
+    public BookingDtos.BookingPreferenceResponse getBookingPreferences(String employeeId, Long facilityId) {
+        if (employeeId == null || employeeId.isBlank()) {
+            throw new BadRequestException("employeeId is required");
+        }
+        if (facilityId == null) {
+            throw new BadRequestException("facilityId is required");
+        }
+
+        String normalizedEmployeeId = employeeId.trim().toUpperCase(Locale.ROOT);
+
+        List<Booking> bookings = bookingRepository.findByEmployeeIdAndFacilityFacilityIdAndStatusOrderByCreatedAtDesc(
+                normalizedEmployeeId,
+                facilityId,
+                BookingStatus.CONFIRMED
+        );
+
+        Map<Long, Map<String, Long>> fieldValueVotes = new HashMap<>();
+        Map<Long, String> fieldLabels = new HashMap<>();
+
+        for (Booking booking : bookings) {
+            List<BookingDtos.BookingAnswer> answers = parseBookingAnswers(booking.getBookingResponse());
+            for (BookingDtos.BookingAnswer answer : answers) {
+                if (answer == null || answer.fieldId() == null) {
+                    continue;
+                }
+                String value = answer.value() == null ? "" : answer.value().trim();
+                if (value.isEmpty()) {
+                    continue;
+                }
+
+                fieldLabels.putIfAbsent(answer.fieldId(), answer.label() == null ? "Field " + answer.fieldId() : answer.label());
+                fieldValueVotes
+                        .computeIfAbsent(answer.fieldId(), ignored -> new HashMap<>())
+                        .merge(value, 1L, Long::sum);
+            }
+        }
+
+        List<BookingDtos.BookingPreferenceItem> preferences = fieldValueVotes.entrySet()
+                .stream()
+                .map((entry) -> toPreferenceItem(entry.getKey(), fieldLabels.get(entry.getKey()), entry.getValue()))
+                .sorted(Comparator.comparing(BookingDtos.BookingPreferenceItem::fieldId))
+                .toList();
+
+        return new BookingDtos.BookingPreferenceResponse(
+                normalizedEmployeeId,
+                facilityId,
+                (long) bookings.size(),
+                preferences
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public BookingDtos.BookingDetail getBookingDetail(Long bookingId) {
         Booking booking = getBookingOrThrow(bookingId);
         if (!isFacilityVisible(booking.getFacility())) {
             throw new ResourceNotFoundException("Booking not found with id: " + bookingId);
         }
 
-        List<BookingDtos.BookingAnswer> answers = booking.getResponses().stream()
-                .map(response -> new BookingDtos.BookingAnswer(
-                        response.getField().getFieldId(),
-                        response.getField().getLabel(),
-                        response.getValue()
-                ))
-                .toList();
+        List<BookingDtos.BookingAnswer> answers = parseBookingAnswers(booking.getBookingResponse());
 
         return new BookingDtos.BookingDetail(
                 booking.getBookingId(),
@@ -273,7 +258,6 @@ public class BookingServiceImpl implements BookingService {
                 booking.getStatus().name(),
                 booking.getBookingDate().toString(),
                 booking.getCreatedAt().toString(),
-                booking.getQrCode(),
                 answers
         );
     }
@@ -291,26 +275,6 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(LocalDateTime.now());
         Booking saved = bookingRepository.save(booking);
-
-        int queuedFromTrigger = notificationService.queueTriggeredNotifications(
-            "BOOKING_CANCELLED",
-            saved.getEmployeeId(),
-            saved.getBookingId(),
-            Map.of(
-                "facilityName", saved.getFacility().getFacilityName(),
-                "bookingDate", saved.getBookingDate().toString()
-            )
-        );
-
-        if (queuedFromTrigger == 0) {
-            notificationService.createNotification(new NotificationDtos.CreateNotificationRequest(
-                saved.getEmployeeId(),
-                saved.getBookingId(),
-                "BOOKING_CANCELLED",
-                "IN_APP",
-                "Booking cancelled for " + saved.getFacility().getFacilityName() + " on " + saved.getBookingDate()
-            ));
-        }
 
         auditService.logAction(
             saved.getEmployeeId(),
@@ -381,42 +345,7 @@ public class BookingServiceImpl implements BookingService {
         );
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public BookingDtos.VerifyQrResponse verifyQrCode(String qrCode) {
-        if (qrCode == null || qrCode.isBlank()) {
-            return invalidQr("QR code is required");
-        }
 
-        Optional<Booking> bookingOptional = bookingRepository.findByQrCode(qrCode.trim());
-        if (bookingOptional.isEmpty()) {
-            return invalidQr("QR code not found");
-        }
-
-        Booking booking = bookingOptional.get();
-        if (!ruleEngineService.isQrCodeValid(qrCode.trim(), booking)) {
-            return invalidQr("QR code signature mismatch");
-        }
-
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            return invalidQr("Booking is cancelled");
-        }
-
-        if (booking.getBookingDate().isBefore(LocalDate.now())) {
-            return invalidQr("Booking date has expired");
-        }
-
-        return new BookingDtos.VerifyQrResponse(
-                true,
-                "QR code is valid",
-                booking.getBookingId(),
-                booking.getFacility().getFacilityId(),
-                booking.getFacility().getFacilityName(),
-                booking.getEmployeeId(),
-                booking.getBookingDate().toString(),
-                booking.getStatus().name()
-        );
-    }
 
     private Booking getBookingOrThrow(Long bookingId) {
         return bookingRepository.findByIdWithFacility(bookingId)
@@ -460,8 +389,11 @@ public class BookingServiceImpl implements BookingService {
 
             if (value != null && !value.isBlank() &&
                     (field.getFieldType() == FieldType.DROPDOWN || field.getFieldType() == FieldType.RADIO_BUTTON)) {
-                boolean exists = field.getOptions().stream()
-                        .anyMatch(option -> option.getOptionValue().equalsIgnoreCase(value));
+                boolean exists = false;
+                if (field.getFieldOptions() != null) {
+                    exists = Arrays.stream(field.getFieldOptions().split("\n"))
+                            .anyMatch(option -> option.trim().equalsIgnoreCase(value));
+                }
                 if (!exists) {
                     throw new BadRequestException("Invalid option for field: " + field.getLabel());
                 }
@@ -474,27 +406,16 @@ public class BookingServiceImpl implements BookingService {
             Map<Long, String> responseMap,
             Map<Long, FieldDefinition> fieldMap
     ) {
-        booking.getResponses().clear();
-
+        List<BookingDtos.BookingAnswer> answers = new ArrayList<>();
         for (Map.Entry<Long, String> entry : responseMap.entrySet()) {
             FieldDefinition field = fieldMap.get(entry.getKey());
-            BookingResponse response = new BookingResponse();
-            response.setBooking(booking);
-            response.setField(field);
-            response.setValue(entry.getValue());
-            booking.getResponses().add(response);
+            answers.add(new BookingDtos.BookingAnswer(field.getFieldId(), field.getLabel(), entry.getValue()));
         }
-    }
-
-    private String normalizeClientRequestId(String clientRequestId) {
-        if (clientRequestId == null || clientRequestId.isBlank()) {
-            return null;
+        try {
+            booking.setBookingResponse(objectMapper.writeValueAsString(answers));
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("Failed to serialize booking responses");
         }
-        String normalized = clientRequestId.trim();
-        if (normalized.length() > 120) {
-            throw new BadRequestException("clientRequestId must be 120 characters or fewer");
-        }
-        return normalized;
     }
 
     private LocalDate parseBookingDate(String bookingDate) {
@@ -514,35 +435,61 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private BookingDtos.AdminBookingSearchItem toAdminSearchItem(Booking booking) {
+        List<BookingDtos.BookingAnswer> answers = parseBookingAnswers(booking.getBookingResponse());
+        Employee employee = booking.getEmployee();
+        String employeeName = employee != null ? employee.getFullName() : null;
+        String department = employee != null ? employee.getDepartment() : null;
+
         return new BookingDtos.AdminBookingSearchItem(
                 booking.getBookingId(),
                 booking.getFacility().getFacilityId(),
                 booking.getFacility().getFacilityName(),
                 booking.getEmployeeId(),
+            employeeName,
+            department,
                 booking.getStatus().name(),
                 booking.getBookingDate().toString(),
                 booking.getCreatedAt() == null ? null : booking.getCreatedAt().toString(),
                 booking.getCancelledAt() == null ? null : booking.getCancelledAt().toString(),
-                booking.getQrCode()
+                answers
+        );
+    }
+
+    private BookingDtos.BookingPreferenceItem toPreferenceItem(
+            Long fieldId,
+            String label,
+            Map<String, Long> valueVotes
+    ) {
+        Map.Entry<String, Long> majority = valueVotes.entrySet()
+                .stream()
+                .sorted((a, b) -> {
+                    int byVotes = Long.compare(b.getValue(), a.getValue());
+                    return byVotes != 0 ? byVotes : a.getKey().compareToIgnoreCase(b.getKey());
+                })
+                .findFirst()
+                .orElse(Map.entry("", 0L));
+
+        return new BookingDtos.BookingPreferenceItem(
+                fieldId,
+                label == null || label.isBlank() ? "Field " + fieldId : label,
+                majority.getKey(),
+                majority.getValue()
         );
     }
 
     private boolean isFacilityVisible(Facility facility) {
         return facility != null
-                && Boolean.TRUE.equals(facility.getStatus())
                 && Boolean.TRUE.equals(facility.getPublished());
     }
 
-    private BookingDtos.VerifyQrResponse invalidQr(String message) {
-        return new BookingDtos.VerifyQrResponse(
-                false,
-                message,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
+    private List<BookingDtos.BookingAnswer> parseBookingAnswers(String json) {
+        if (json == null || json.isBlank()) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<BookingDtos.BookingAnswer>>() {});
+        } catch (JsonProcessingException e) {
+            return new ArrayList<>();
+        }
     }
 }

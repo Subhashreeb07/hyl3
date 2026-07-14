@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   BookingDetail,
   BookingHistoryItem,
+  BookingPreferenceResponse,
   MessageResponse,
   SubmitBookingRequest,
   SubmitBookingResponse
@@ -22,6 +23,12 @@ export class BookingApiService {
 
   getBookingHistory(employeeId: string): Observable<BookingHistoryItem[]> {
     return this.http.get<BookingHistoryItem[]>(`${this.baseUrl}/history/${employeeId}`);
+  }
+
+  getBookingPreferences(employeeId: string, facilityId: number): Observable<BookingPreferenceResponse> {
+    return this.http.get<BookingPreferenceResponse>(
+      `${this.baseUrl}/preferences?employeeId=${encodeURIComponent(employeeId)}&facilityId=${facilityId}`
+    );
   }
 
   getBookingDetail(bookingId: number): Observable<BookingDetail> {

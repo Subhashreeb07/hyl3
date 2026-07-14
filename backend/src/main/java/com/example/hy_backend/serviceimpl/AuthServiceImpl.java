@@ -58,7 +58,6 @@ public class AuthServiceImpl implements AuthService {
         employee.setDepartment(normalizeDepartment(request.department()));
         employee.setOfficeLocation(normalizeOfficeLocation(request.officeLocation()));
         employee.setWorkMode("HYBRID");
-        employee.setActive(true);
         employee.setPasswordHash(hashPassword(password));
 
         Employee saved = employeeRepository.save(employee);
@@ -83,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
         Employee profile = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new BadRequestException("Invalid employee ID or password"));
 
-        if (!Boolean.TRUE.equals(profile.getActive()) || !matchesPassword(profile, request.password())) {
+        if (!matchesPassword(profile, request.password())) {
             throw new BadRequestException("Invalid employee ID or password");
         }
 

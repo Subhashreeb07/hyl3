@@ -9,12 +9,4 @@ import java.util.List;
 public interface FieldDefinitionRepository extends JpaRepository<FieldDefinition, Long> {
     List<FieldDefinition> findByFacilityFacilityIdOrderByDisplayOrderAsc(Long facilityId);
 
-    @Query("""
-            select distinct field
-            from FieldDefinition field
-            left join fetch field.options option
-            where field.facility.facilityId = :facilityId
-            order by field.displayOrder asc, option.displayOrder asc
-            """)
-    List<FieldDefinition> findByFacilityFacilityIdWithOptions(Long facilityId);
 }

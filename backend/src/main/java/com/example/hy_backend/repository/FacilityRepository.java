@@ -10,9 +10,7 @@ public interface FacilityRepository extends JpaRepository<Facility, Long> {
 
     boolean existsByFacilityNameIgnoreCaseAndFacilityIdNot(String facilityName, Long facilityId);
 
-    List<Facility> findByPublishedTrueAndStatusTrue();
-
-    long countByStatusTrue();
+    List<Facility> findByPublishedTrue();
 
     long countByPublishedTrue();
 }

@@ -32,9 +32,8 @@ export interface DateEventCount {
 }
 
 export interface DashboardStatsResponse {
-  activeFacilities: number;
-  totalBookingsOnDate: number;
-  completedBookings: number;
+  totalBookings: number;
+  pendingRequests: number;
   todaysDeadline: string;
   dateStrip: DateEventCount[];
 }

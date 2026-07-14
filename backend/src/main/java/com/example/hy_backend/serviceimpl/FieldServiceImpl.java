@@ -5,7 +5,6 @@ import com.example.hy_backend.exception.BadRequestException;
 import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FieldDefinition;
-import com.example.hy_backend.model.FieldOption;
 import com.example.hy_backend.model.FieldType;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
@@ -66,30 +65,6 @@ public class FieldServiceImpl implements FieldService {
         return new FieldDtos.FieldIdResponse(saved.getFieldId());
     }
 
-    @Override
-    @Transactional
-    public void addOptions(Long fieldId, FieldDtos.AddOptionsRequest request) {
-        FieldDefinition field = getFieldOrThrow(fieldId);
-
-        if (!supportsOptions(field.getFieldType())) {
-            throw new BadRequestException("Options are allowed only for DROPDOWN, RADIO_BUTTON, or CHECKBOX fields");
-        }
-
-        List<String> normalizedOptions = normalizeOptions(request.options());
-        if (normalizedOptions.isEmpty()) {
-            throw new BadRequestException("At least one option is required");
-        }
-
-        field.getOptions().clear();
-        for (int i = 0; i < normalizedOptions.size(); i++) {
-            FieldOption option = new FieldOption();
-            option.setField(field);
-            option.setOptionValue(normalizedOptions.get(i));
-            option.setDisplayOrder(i + 1);
-            field.getOptions().add(option);
-        }
-        fieldDefinitionRepository.save(field);
-    }
 
     @Override
     public List<FieldDtos.FieldSummaryResponse> getFields(Long facilityId) {
@@ -126,8 +101,8 @@ public class FieldServiceImpl implements FieldService {
         field.setValidationJson(normalizeValidationJson(request.validationJson()));
         field.setDefaultValue(normalizeDefaultValue(request.defaultValue()));
 
-        if (!supportsOptions(parsedFieldType) && !field.getOptions().isEmpty()) {
-            field.getOptions().clear();
+        if (!supportsOptions(parsedFieldType) && field.getFieldOptions() != null) {
+            field.setFieldOptions(null);
         }
 
         FieldDefinition saved = fieldDefinitionRepository.save(field);
@@ -140,8 +115,21 @@ public class FieldServiceImpl implements FieldService {
                 saved.getDisplayOrder(),
                 saved.getValidationJson(),
                 saved.getDefaultValue(),
-                saved.getOptions().stream().map(FieldOption::getOptionValue).toList()
+                saved.getFieldOptions()
         );
+    }
+
+    @Override
+    @Transactional
+    public void updateFieldOptions(Long fieldId, FieldDtos.UpdateFieldOptionsRequest request) {
+        FieldDefinition field = getFieldOrThrow(fieldId);
+        if (!supportsOptions(field.getFieldType())) {
+            throw new BadRequestException("Field type does not support options: " + field.getFieldType().name());
+        }
+
+        List<String> options = normalizeOptions(request == null ? null : request.options());
+        field.setFieldOptions(options.isEmpty() ? null : String.join("\n", options));
+        fieldDefinitionRepository.save(field);
     }
 
     @Override
@@ -244,6 +232,10 @@ public class FieldServiceImpl implements FieldService {
     }
 
     private List<String> normalizeOptions(List<String> options) {
+        if (options == null || options.isEmpty()) {
+            return List.of();
+        }
+
         Set<String> unique = new LinkedHashSet<>();
         for (String option : options) {
             if (option == null) {

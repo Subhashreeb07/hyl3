@@ -66,7 +66,6 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
         e.setRoleCode(normalizeRole(req.roleCode()));
         e.setWorkMode(normalizeWorkMode(req.workMode()));
         e.setOfficeLocation(normalizeLocation(req.officeLocation()));
-        e.setActive(true);
 
         String rawPw = req.password() == null || req.password().isBlank() ? DEFAULT_PASSWORD : req.password().trim();
         e.setPasswordHash(hashPassword(rawPw));
@@ -263,7 +262,7 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
                 e.getRoleCode(),
                 e.getWorkMode(),
                 e.getOfficeLocation(),
-                Boolean.TRUE.equals(e.getActive())
+                true
         );
     }
 }

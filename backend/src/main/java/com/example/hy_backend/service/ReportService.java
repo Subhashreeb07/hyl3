@@ -11,11 +11,11 @@ public interface ReportService {
 
     ReportDtos.AnalyticsResponse getAnalytics();
 
-    ReportDtos.OperationalSummaryResponse getOperationalSummary(String bookingDate);
+    ReportDtos.OperationalSummaryResponse getOperationalSummary(String bookingDate, Long facilityId);
 
     ReportDtos.FacilityUtilizationResponse getFacilityUtilization(Long facilityId, String bookingDate);
 
     ReportDtos.BookingTrendResponse getBookingTrend(Long facilityId, String fromDate, String toDate);
 
-    ReportDtos.EmployeeRegistrationsResponse getEmployeeRegistrations(String query, String location, Boolean activeOnly);
+    ReportDtos.EmployeeRegistrationsResponse getEmployeeRegistrations(String query, String location);
 }

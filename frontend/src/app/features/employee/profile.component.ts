@@ -12,7 +12,7 @@ import { ToastService } from '../../core/services/toast.service';
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <section class="mx-auto max-w-6xl space-y-5" *ngIf="profile() as p">
+    <section class="w-full px-[5vw] py-7 space-y-5" *ngIf="profile() as p">
       <header class="portal-panel px-6 py-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>

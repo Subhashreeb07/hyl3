@@ -33,6 +33,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
       cursor: pointer; transition: all 0.15s;
     }
     .btn-outline:hover { border-color: #94a3b8; background: #f8fafc; }
+    .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary {
       display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px; border: none; background: #4f46e5;
@@ -40,6 +41,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
       cursor: pointer; transition: background 0.15s;
     }
     .btn-primary:hover { background: #4338ca; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; background: #6366f1; }
   `],
   template: `
     <section class="space-y-6 py-4">
@@ -51,19 +53,19 @@ import { MatExpansionModule } from '@angular/material/expansion';
       </div>
 
       <section class="flex flex-wrap gap-3">
-        <button *ngIf="!isPublished" class="btn-outline" (click)="saveDraft.emit()">
+        <button *ngIf="!isPublished" class="btn-outline" [disabled]="isBusy" (click)="saveDraft.emit()">
           <span class="material-icons-outlined text-[1.2em] mr-1">save</span> Save Draft
         </button>
-        <button class="btn-primary" (click)="publish.emit()">
+        <button class="btn-primary" [disabled]="isBusy" (click)="publish.emit()">
           <span class="material-icons-outlined text-[1.2em] mr-1">rocket_launch</span> {{ isPublished ? 'Republish Facility' : 'Publish Facility' }}
         </button>
-        <button class="btn-outline" (click)="openEditJson()">
+        <button class="btn-outline" [disabled]="isBusy" (click)="openEditJson()">
           <span class="material-icons-outlined text-[1.2em] mr-1">code</span> Edit JSON
         </button>
-        <button class="btn-outline" (click)="downloadJson.emit()">
+        <button class="btn-outline" [disabled]="isBusy" (click)="downloadJson.emit()">
           <span class="material-icons-outlined text-[1.2em] mr-1">download</span> Download JSON
         </button>
-        <button class="btn-outline" (click)="importJson.emit()">
+        <button class="btn-outline" [disabled]="isBusy" (click)="importJson.emit()">
           <span class="material-icons-outlined text-[1.2em] mr-1">upload</span> Import JSON
         </button>
       </section>
@@ -104,6 +106,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 export class BuilderPublishPanelComponent implements OnChanges {
   @Input() generatedJson = '';
   @Input() isPublished = false;
+  @Input() isBusy = false;
 
   @Output() saveDraft = new EventEmitter<void>();
   @Output() publish = new EventEmitter<void>();

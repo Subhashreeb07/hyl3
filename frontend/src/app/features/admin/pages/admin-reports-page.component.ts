@@ -4,80 +4,112 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { BookingTrendResponse, OperationalSummaryResponse } from '../../../core/models/admin.models';
 import { AdminApiService } from '../../../core/services/admin-api.service';
+import { FacilityAdminApiService, FacilitySummaryResponse } from '../../../core/services/facility-admin-api.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { MatIconModule } from '@angular/material/icon';
+import { NgApexchartsModule } from 'ng-apexcharts';
 
 @Component({
   selector: 'app-admin-reports-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, NgApexchartsModule],
   template: `
     <div class="space-y-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-2xl font-bold text-slate-900">Reports</h2>
-        <button class="satori-secondary" (click)="exportExcel()" [disabled]="exporting()">
-          {{ exporting() ? 'Exporting...' : 'Export Excel' }}
-        </button>
+        <div class="flex items-center gap-3">
+          <select [(ngModel)]="selectedFacilityId" (ngModelChange)="onFacilityChange()" class="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-sm cursor-pointer min-w-[200px]">
+            <option [ngValue]="null">All Facilities</option>
+            <option *ngFor="let facility of facilities()" [ngValue]="facility.facilityId">{{ facility.facilityName }}</option>
+          </select>
+          <div class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 bg-white h-10 shadow-sm">
+            <span class="text-xs font-semibold text-slate-500">Export:</span>
+            <input type="date" [(ngModel)]="exportFromDate" class="text-xs font-medium text-slate-700 border-none outline-none bg-transparent cursor-pointer">
+            <span class="text-xs font-semibold text-slate-400">to</span>
+            <input type="date" [(ngModel)]="exportToDate" class="text-xs font-medium text-slate-700 border-none outline-none bg-transparent cursor-pointer">
+          </div>
+          <button class="satori-secondary h-10 px-4" (click)="exportExcel()" [disabled]="exporting() || !exportFromDate || !exportToDate">
+            {{ exporting() ? 'Exporting...' : 'Export Excel' }}
+          </button>
+        </div>
       </div>
 
-      <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md" *ngFor="let card of statCards(); let i = index">
-          <div class="flex items-center justify-between">
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ card.label }}</p>
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl transition-colors"
+      <section class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group" *ngFor="let card of statCards(); let i = index">
+          <div class="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity"
+               [ngClass]="i === 0 ? 'from-brand-500 to-brand-700' : (i === 1 ? 'from-emerald-500 to-emerald-700' : (i === 2 ? 'from-rose-500 to-rose-700' : 'from-amber-500 to-amber-700'))"></div>
+          <div class="flex items-center justify-between relative z-10">
+            <p class="text-[11px] font-bold uppercase tracking-widest text-slate-500">{{ card.label }}</p>
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-110"
                  [ngClass]="{
-                   'bg-brand-50 text-brand-600': i === 0,
-                   'bg-emerald-50 text-emerald-600': i === 1,
-                   'bg-rose-50 text-rose-600': i === 2,
-                   'bg-amber-50 text-amber-600': i === 3
+                   'bg-brand-50 text-brand-600 border border-brand-100': i === 0,
+                   'bg-emerald-50 text-emerald-600 border border-emerald-100': i === 1,
+                   'bg-rose-50 text-rose-600 border border-rose-100': i === 2,
+                   'bg-amber-50 text-amber-600 border border-amber-100': i === 3
                  }">
               <mat-icon class="!text-[22px]">{{ card.icon }}</mat-icon>
             </div>
           </div>
-          <p class="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">{{ card.value }}</p>
+          <p class="mt-5 text-3xl font-black tracking-tight text-slate-900 relative z-10">{{ card.value }}</p>
         </article>
       </section>
 
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-5">
           <h3 class="text-lg font-bold text-slate-900">Daily Summary Snapshot</h3>
-          <div class="flex items-center gap-3">
-            <div class="relative">
-              <input type="date" [(ngModel)]="reportDate" class="h-10 w-44 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-            </div>
-            <button class="flex h-10 items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700" (click)="loadSummary()">
-              <mat-icon class="!text-[18px]">sync</mat-icon> Load
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            <button (click)="selectDate('')"
+                    class="flex flex-col items-center justify-center min-w-[64px] py-2 px-2 rounded-xl border transition-all duration-300"
+                    [ngClass]="!reportDate ? 'bg-gradient-to-br from-brand-600 to-brand-800 border-transparent text-white shadow-md shadow-brand-500/20 scale-105' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+              <mat-icon class="!text-[20px] mb-1">history</mat-icon>
+              <span class="text-[9px] font-bold uppercase tracking-wider">All Time</span>
             </button>
+            <button *ngFor="let day of calendarStrip"
+                    (click)="selectDate(day.date)"
+                    class="flex flex-col items-center justify-center min-w-[64px] py-2 px-2 rounded-xl border transition-all duration-300"
+                    [ngClass]="reportDate === day.date ? 'bg-gradient-to-br from-brand-600 to-brand-800 border-transparent text-white shadow-md shadow-brand-500/20 scale-105' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+              <span class="text-[9px] font-bold uppercase tracking-wider" [ngClass]="reportDate === day.date ? 'opacity-80' : 'opacity-60'">{{ day.dayName }}</span>
+              <span class="text-lg font-black leading-tight mt-0.5">{{ day.dayNum }}</span>
+              <span class="text-[9px] font-semibold" [ngClass]="reportDate === day.date ? 'opacity-80' : 'opacity-60'">{{ day.monthName }}</span>
+            </button>
+            
+            <div class="flex items-center ml-1 border-l border-slate-200 pl-3 relative">
+               <input type="date" [(ngModel)]="reportDate" (ngModelChange)="selectDate($event)" class="h-full w-full absolute inset-0 opacity-0 cursor-pointer" title="Pick another date">
+               <button class="flex flex-col items-center justify-center h-full px-2 text-slate-400 hover:text-brand-600 transition-colors pointer-events-none">
+                 <mat-icon>calendar_month</mat-icon>
+                 <span class="text-[8px] font-bold mt-1">MORE</span>
+               </button>
+            </div>
           </div>
         </div>
 
         <div class="p-6">
-          <div class="grid gap-4 md:grid-cols-3" *ngIf="summary() as s; else noSummary">
-            <article class="flex items-center gap-4 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-brand-100">
+          <div class="grid gap-5 md:grid-cols-3" *ngIf="summary() as s; else noSummary">
+            <article class="flex items-center gap-4 rounded-2xl border border-transparent bg-gradient-to-br from-brand-50 to-brand-100/50 p-5 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow border border-brand-100">
                 <mat-icon class="text-brand-600">book_online</mat-icon>
               </div>
               <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-brand-600/80">Total Bookings</p>
-                <p class="text-2xl font-black text-brand-900">{{ s.totalBookings }}</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-brand-700/80">Total Bookings</p>
+                <p class="text-3xl font-black text-brand-900">{{ s.totalBookings }}</p>
               </div>
             </article>
-            <article class="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-emerald-100">
+            <article class="flex items-center gap-4 rounded-2xl border border-transparent bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-5 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow border border-emerald-100">
                 <mat-icon class="text-emerald-600">check_circle_outline</mat-icon>
               </div>
               <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-emerald-600/80">Confirmed</p>
-                <p class="text-2xl font-black text-emerald-900">{{ s.confirmedBookings }}</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700/80">Confirmed</p>
+                <p class="text-3xl font-black text-emerald-900">{{ s.confirmedBookings }}</p>
               </div>
             </article>
-            <article class="flex items-center gap-4 rounded-2xl border border-rose-100 bg-rose-50/50 p-4">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-rose-100">
+            <article class="flex items-center gap-4 rounded-2xl border border-transparent bg-gradient-to-br from-rose-50 to-rose-100/50 p-5 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow border border-rose-100">
                 <mat-icon class="text-rose-600">highlight_off</mat-icon>
               </div>
               <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-rose-600/80">Cancelled</p>
-                <p class="text-2xl font-black text-rose-900">{{ s.cancelledBookings }}</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-rose-700/80">Cancelled</p>
+                <p class="text-3xl font-black text-rose-900">{{ s.cancelledBookings }}</p>
               </div>
             </article>
           </div>
@@ -93,29 +125,36 @@ import { MatIconModule } from '@angular/material/icon';
       </section>
 
       <!-- Trend & Status Row -->
-      <section class="grid gap-6 xl:grid-cols-[2fr,1fr]">
-        <!-- Booking Volume Bar Chart -->
+      <section class="grid gap-6 lg:grid-cols-2">
+        <!-- Top Facilities Horizontal Bar Chart -->
         <article class="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-5">
-            <h3 class="text-lg font-bold text-slate-900">Booking Volume Trend</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Daily booking counts over selected period</p>
+            <h3 class="text-lg font-bold text-slate-900">Top Facilities</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Most active locations</p>
           </div>
-          <div class="flex-1 p-6" *ngIf="trend()?.points?.length; else noChartData">
-            <div class="flex items-end gap-2 h-48">
-              <ng-container *ngFor="let p of trend()!.points">
-                <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                  <span class="text-[9px] font-bold text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity">{{ p.totalBookings }}</span>
-                  <div class="w-full rounded-t-md bg-gradient-to-t from-brand-600 to-brand-400 transition-all duration-300 min-h-[4px]"
-                       [style.height.%]="barHeight(p.totalBookings)"
-                       [title]="p.bookingDate + ': ' + p.totalBookings + ' bookings'"></div>
-                  <span class="text-[8px] font-semibold text-slate-400 truncate w-full text-center">{{ p.bookingDate.slice(5) }}</span>
+          <div class="flex-1 p-6 overflow-y-auto" *ngIf="topFacilities().length; else noDailyData">
+            <div class="space-y-3">
+              <div *ngFor="let fac of topFacilities(); let i = index" class="flex items-center gap-4 group cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors" (click)="showFacilityChart(fac.name)">
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs shadow-sm"
+                     [ngClass]="i === 0 ? 'bg-amber-100 text-amber-700' : (i === 1 ? 'bg-slate-200 text-slate-700' : (i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500 border border-slate-200'))">
+                  #{{ i + 1 }}
                 </div>
-              </ng-container>
+                <div class="flex-1 min-w-0">
+                  <div class="flex justify-between items-end mb-1.5">
+                    <span class="text-sm font-bold text-slate-800 truncate pr-2 group-hover:text-brand-600 transition-colors">{{ fac.name }}</span>
+                    <span class="text-xs font-black text-slate-900">{{ fac.count }}</span>
+                  </div>
+                  <div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div class="h-full rounded-full bg-brand-500 transition-all duration-500" [style.width.%]="facilityBarWidth(fac.count)"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <ng-template #noChartData>
-            <div class="flex h-48 items-center justify-center text-sm text-slate-400">
-              No trend data. Generate a trend report below.
+          <ng-template #noDailyData>
+            <div class="flex h-48 items-center justify-center text-sm text-slate-400 flex-col gap-2">
+              <mat-icon class="!text-[32px] !h-8 !w-8 text-slate-300">corporate_fare</mat-icon>
+              No active facilities
             </div>
           </ng-template>
         </article>
@@ -183,27 +222,79 @@ import { MatIconModule } from '@angular/material/icon';
           </div>
         </div>
         <div class="p-6">
-          <div *ngIf="trend()?.points?.length; else noTrendData">
-            <div class="space-y-3">
-              <div *ngFor="let p of trend()!.points" class="grid grid-cols-[120px_1fr_60px] items-center gap-4">
-                <span class="text-xs font-semibold text-slate-500 text-right">{{ p.bookingDate }}</span>
-                <div class="h-6 rounded-full bg-slate-100 overflow-hidden">
-                  <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-400 transition-all duration-500"
-                       [style.width.%]="barHeight(p.totalBookings)"></div>
+          <div *ngIf="trend()?.points?.length; else noTrendData" class="w-full h-64 relative mt-4">
+             <div class="absolute inset-0 flex justify-between items-end gap-2">
+                <div *ngFor="let p of trend()!.points" class="flex flex-col items-center flex-1 h-full relative group">
+                   <!-- Grouped Bars container -->
+                   <div class="absolute bottom-6 w-full flex justify-center items-end gap-1 px-1 h-[calc(100%-1.5rem)]">
+                     <!-- Confirmed Bar -->
+                     <div class="w-full max-w-[12px] bg-emerald-500 rounded-t-md transition-all hover:brightness-110 cursor-pointer min-h-[4px]"
+                          [style.height.%]="getPointHeight(p.confirmedBookings)"
+                          [title]="'Confirmed: ' + p.confirmedBookings"></div>
+                     <!-- Cancelled Bar -->
+                     <div class="w-full max-w-[12px] bg-rose-500 rounded-t-md transition-all hover:brightness-110 cursor-pointer min-h-[4px]"
+                          [style.height.%]="getPointHeight(p.cancelledBookings)"
+                          [title]="'Cancelled: ' + p.cancelledBookings"></div>
+                   </div>
+                   <!-- Tooltip showing total -->
+                   <div class="absolute -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg pointer-events-none z-10 whitespace-nowrap">
+                     Total: {{ p.totalBookings }}
+                   </div>
+                   <!-- X-axis label -->
+                   <div class="absolute bottom-0 text-[10px] font-semibold text-slate-400 truncate w-full text-center">{{ p.bookingDate.slice(5) }}</div>
                 </div>
-                <span class="text-xs font-bold text-slate-700">{{ p.totalBookings }} bookings</span>
-              </div>
-            </div>
+             </div>
+             
+             <!-- Legend for Trend -->
+             <div class="absolute -top-4 right-0 flex items-center gap-4 bg-white/80 p-1 rounded backdrop-blur">
+               <div class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded bg-emerald-500"></span><span class="text-xs font-semibold text-slate-600">Confirmed</span></div>
+               <div class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded bg-rose-500"></span><span class="text-xs font-semibold text-slate-600">Cancelled</span></div>
+             </div>
           </div>
+          <div class="h-8"></div>
           <ng-template #noTrendData>
-            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-              <mat-icon class="mb-2 !text-[40px] text-slate-300">bar_chart</mat-icon>
-              <p class="text-sm font-semibold text-slate-600">No trend data yet</p>
-              <p class="text-xs text-slate-400 mt-1">Select a date range and click Generate</p>
-            </div>
+             <div class="flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 w-full mt-4">
+                <mat-icon class="text-slate-300 mb-2">bar_chart</mat-icon>
+                <p class="text-sm font-medium text-slate-500">No trend data available for this period</p>
+             </div>
           </ng-template>
         </div>
       </section>
+
+      <!-- Field Breakdown Modal -->
+      <div *ngIf="chartData()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col overflow-hidden shadow-brand-500/10">
+          <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-5">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-brand-600 mb-1">Field Breakdown</p>
+              <h3 class="text-xl font-bold text-slate-900">{{ chartData()?.facilityName }}</h3>
+              <p class="text-xs text-slate-500 mt-1">Based on {{ chartData()?.totalBookings }} booking(s) for {{ reportDate || 'All Time' }}</p>
+            </div>
+            <button (click)="closeChart()" class="flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm">
+              <mat-icon class="!text-[20px]">close</mat-icon>
+            </button>
+          </div>
+          <div class="p-6 overflow-y-auto max-h-[70vh]">
+             <apx-chart *ngIf="chartData()?.series?.length"
+                [series]="chartData()!.series"
+                [chart]="{ type: 'bar', height: 350, toolbar: { show: false }, fontFamily: 'inherit' }"
+                [plotOptions]="{ bar: { horizontal: false, columnWidth: '45%', borderRadius: 6 } }"
+                [xaxis]="{ categories: chartData()!.categories, labels: { style: { cssClass: 'text-xs font-medium fill-slate-500' } } }"
+                [yaxis]="{ labels: { style: { cssClass: 'text-xs font-medium fill-slate-500' } } }"
+                [dataLabels]="{ enabled: false }"
+                [colors]="['#0ea5e9']"
+                [grid]="{ borderColor: '#f1f5f9', strokeDashArray: 4 }"
+             ></apx-chart>
+             <div *ngIf="!chartData()?.series?.length" class="flex flex-col items-center justify-center py-12 text-center text-slate-500">
+                <div class="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 border border-slate-100 mb-4">
+                  <mat-icon class="!text-[32px] !h-8 !w-8 text-slate-300">pie_chart_outline</mat-icon>
+                </div>
+                <p class="text-base font-semibold text-slate-700">No field data available</p>
+                <p class="text-sm mt-1 max-w-xs">Bookings for this facility don't have any custom fields recorded.</p>
+             </div>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`.admin-field{display:grid;gap:.35rem;font-size:.8rem;font-weight:600;color:#334155}.admin-field input{border:1px solid #cbd5e1;border-radius:.65rem;padding:.55rem .7rem}`]
@@ -212,12 +303,18 @@ export class AdminReportsPageComponent implements OnInit {
   reportDate = '';
   fromDate = '';
   toDate = '';
+  exportFromDate = '';
+  exportToDate = '';
+  selectedFacilityId: number | null = null;
 
+  readonly facilities = signal<FacilitySummaryResponse[]>([]);
   readonly summary = signal<OperationalSummaryResponse | null>(null);
   readonly trend = signal<BookingTrendResponse | null>(null);
+  readonly topFacilities = signal<{name: string, count: number}[]>([]);
   readonly loadingSummary = signal(false);
   readonly loadingTrend = signal(false);
   readonly exporting = signal(false);
+  readonly chartData = signal<{ facilityName: string, totalBookings: number, series: any[], categories: string[] } | null>(null);
 
 
   readonly statCards = computed(() => {
@@ -243,12 +340,142 @@ export class AdminReportsPageComponent implements OnInit {
     return points.reduce((max, point) => Math.max(max, point.totalBookings), 0);
   });
 
+  readonly calendarStrip = this.buildCalendarStrip();
+
+  private buildCalendarStrip() {
+    const strip = [];
+    const today = new Date();
+    for (let i = -6; i <= 0; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      strip.push({
+        date: this.toInputDate(d),
+        dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dayNum: d.getDate(),
+        monthName: d.toLocaleDateString('en-US', { month: 'short' })
+      });
+    }
+    return strip;
+  }
+
+  selectDate(d: string) {
+    this.reportDate = d;
+    
+    if (!d) {
+       // "All Time" selected - set trend to past 30 days
+       const today = new Date();
+       const from = new Date(today);
+       from.setDate(from.getDate() - 29);
+       this.fromDate = this.toInputDate(from);
+       this.toDate = this.toInputDate(today);
+    } else {
+       const selectedDateObj = new Date(d + 'T00:00:00');
+       const from = new Date(selectedDateObj);
+       from.setDate(from.getDate() - 6);
+       this.fromDate = this.toInputDate(from);
+       this.toDate = d;
+    }
+    
+    void this.loadSummary();
+    void this.loadTrend();
+    void this.loadDailyReport();
+  }
+
+  onFacilityChange() {
+    void this.loadSummary();
+    void this.loadTrend();
+    void this.loadDailyReport();
+    
+    if (this.selectedFacilityId != null && String(this.selectedFacilityId).trim() !== '') {
+      const facId = Number(this.selectedFacilityId);
+      const selectedFacName = this.facilities().find(f => f.facilityId === facId)?.facilityName;
+      if (selectedFacName) {
+        this.showFacilityChart(selectedFacName);
+      }
+    } else {
+      this.closeChart();
+    }
+  }
+
+  async showFacilityChart(facName: string): Promise<void> {
+    const fac = this.facilities().find(f => f.facilityName === facName);
+    if (!fac) return;
+    
+    try {
+      const bookings = await firstValueFrom(this.adminApi.searchBookings({
+        facilityId: fac.facilityId,
+        bookingDate: this.reportDate || null
+      }));
+
+      const counts: Record<string, number> = {};
+      let hasAnswers = false;
+      for (const b of bookings) {
+        if (b.answers && b.answers.length > 0) {
+          for (const ans of b.answers) {
+            hasAnswers = true;
+            const key = `${ans.label}: ${ans.value}`;
+            counts[key] = (counts[key] || 0) + 1;
+          }
+        }
+      }
+
+      if (hasAnswers) {
+        const categories = Object.keys(counts);
+        const data = Object.values(counts);
+        this.chartData.set({
+          facilityName: facName,
+          totalBookings: bookings.length,
+          categories,
+          series: [{ name: 'Count', data }]
+        });
+      } else {
+        this.chartData.set({ facilityName: facName, totalBookings: bookings.length, categories: [], series: [] });
+      }
+    } catch (e) {
+       console.error(e);
+       this.toastService.show('Failed to load facility data', 'error');
+    }
+  }
+
+  closeChart() {
+    this.chartData.set(null);
+  }
+
+  getLinePoints(): string {
+    const points = this.trend()?.points ?? [];
+    if (!points.length) return '';
+    const max = this.trendMax() || 1;
+    return points.map((p, i) => {
+      const x = (i / (points.length - 1)) * 100;
+      const y = 100 - ((p.totalBookings / max) * 100);
+      return `${x},${y}`;
+    }).join(' ');
+  }
+
+  getAreaPoints(): string {
+    const points = this.trend()?.points ?? [];
+    if (!points.length) return '';
+    const line = this.getLinePoints();
+    return `0,100 ${line} 100,100`;
+  }
+
+  getPointHeight(value: number): number {
+    const max = this.trendMax() || 1;
+    return (value / max) * 100;
+  }
+
+  facilityBarWidth(count: number): number {
+    const max = Math.max(...this.topFacilities().map(f => f.count), 1);
+    return (count / max) * 100;
+  }
+
   constructor(
     private readonly adminApi: AdminApiService,
+    private readonly facilityApi: FacilityAdminApiService,
     private readonly toastService: ToastService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const today = new Date();
     const from = new Date(today);
     from.setDate(from.getDate() - 6);
@@ -256,9 +483,22 @@ export class AdminReportsPageComponent implements OnInit {
     this.reportDate = this.toInputDate(today);
     this.fromDate = this.toInputDate(from);
     this.toDate = this.toInputDate(today);
+    this.exportFromDate = this.fromDate;
+    this.exportToDate = this.toDate;
 
+    await this.loadFacilities();
     void this.loadSummary();
     void this.loadTrend();
+    void this.loadDailyReport();
+  }
+
+  private async loadFacilities(): Promise<void> {
+    try {
+      const facs = await firstValueFrom(this.facilityApi.getFacilities());
+      this.facilities.set(facs);
+    } catch (err) {
+      console.error('Failed to load facilities', err);
+    }
   }
 
   private toInputDate(value: Date): string {
@@ -275,7 +515,7 @@ export class AdminReportsPageComponent implements OnInit {
 
     this.loadingSummary.set(true);
     try {
-      const data = await firstValueFrom(this.adminApi.getOperationalSummary(this.reportDate || null));
+      const data = await firstValueFrom(this.adminApi.getOperationalSummary(this.reportDate || null, this.selectedFacilityId));
       this.summary.set(data);
     } catch (error: any) {
       this.toastService.show(error?.error?.message ?? 'Failed to load report summary', 'error');
@@ -295,7 +535,7 @@ export class AdminReportsPageComponent implements OnInit {
 
     this.loadingTrend.set(true);
     try {
-      const data = await firstValueFrom(this.adminApi.getBookingTrend(this.fromDate, this.toDate));
+      const data = await firstValueFrom(this.adminApi.getBookingTrend(this.fromDate, this.toDate, this.selectedFacilityId));
       this.trend.set(data);
     } catch (error: any) {
       this.toastService.show(error?.error?.message ?? 'Failed to load booking trend', 'error');
@@ -304,21 +544,68 @@ export class AdminReportsPageComponent implements OnInit {
     }
   }
 
+  async loadDailyReport(): Promise<void> {
+    try {
+      const data = await firstValueFrom(this.adminApi.getDailyReport());
+      let arr = Object.keys(data).map(name => ({ name, count: data[name] }));
+      
+      // Ensure all facilities are represented even if they have 0 bookings today
+      for (const fac of this.facilities()) {
+        if (!arr.find(f => f.name === fac.facilityName)) {
+           arr.push({ name: fac.facilityName, count: 0 });
+        }
+      }
+      
+      if (this.selectedFacilityId != null && String(this.selectedFacilityId).trim() !== '') {
+         const facId = Number(this.selectedFacilityId);
+         const selectedFacName = this.facilities().find(f => f.facilityId === facId)?.facilityName;
+         if (selectedFacName) {
+             arr = arr.filter(f => f.name === selectedFacName);
+         } else {
+             arr = [];
+         }
+      } else {
+         arr.sort((a, b) => b.count - a.count);
+      }
+      this.topFacilities.set(arr);
+    } catch (error) {
+      console.error('Failed to load daily report', error);
+    }
+  }
+
   async exportExcel(): Promise<void> {
-    if (this.exporting()) {
+    if (this.exporting() || !this.exportFromDate || !this.exportToDate) {
       return;
     }
 
     this.exporting.set(true);
     try {
-      const [summary, trend] = await Promise.all([
-        firstValueFrom(this.adminApi.getOperationalSummary(this.reportDate || null)),
-        firstValueFrom(this.adminApi.getBookingTrend(this.fromDate, this.toDate))
-      ]);
+      const trend = await firstValueFrom(this.adminApi.getBookingTrend(this.exportFromDate, this.exportToDate, this.selectedFacilityId));
+      
+      let total = 0;
+      let confirmed = 0;
+      let cancelled = 0;
+      
+      for (const p of trend.points) {
+         total += p.totalBookings;
+         confirmed += p.confirmedBookings;
+         cancelled += p.cancelledBookings;
+      }
+      
+      const cancellationRate = total > 0 ? ((cancelled * 100) / total).toFixed(2) : '0.00';
+      
+      const summary = {
+         bookingDate: `${this.exportFromDate} to ${this.exportToDate}`,
+         totalBookings: total,
+         confirmedBookings: confirmed,
+         cancelledBookings: cancelled,
+         pendingBookings: Math.max(0, total - confirmed - cancelled),
+         cancellationRate: cancellationRate
+      };
 
       const html = this.buildExcelHtml(summary, trend);
       const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-      const fileName = `reports_${this.reportDate || this.toInputDate(new Date())}.xls`;
+      const fileName = `reports_${this.exportFromDate}_to_${this.exportToDate}.xls`;
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.href = url;
@@ -361,7 +648,7 @@ export class AdminReportsPageComponent implements OnInit {
     return Math.max(0, summary.totalBookings - summary.confirmedBookings - summary.cancelledBookings);
   }
 
-  private buildExcelHtml(summary: OperationalSummaryResponse, trend: BookingTrendResponse): string {
+  private buildExcelHtml(summary: any, trend: BookingTrendResponse): string {
     const escape = (value: unknown): string =>
       String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -371,14 +658,12 @@ export class AdminReportsPageComponent implements OnInit {
 
     const summaryRows = [
       ['Metric', 'Value'],
-      ['Report Date', summary.bookingDate],
+      ['Report Range', summary.bookingDate],
       ['Total Bookings', summary.totalBookings],
       ['Confirmed Bookings', summary.confirmedBookings],
       ['Cancelled Bookings', summary.cancelledBookings],
-      ['Pending Bookings', this.pendingBookings(summary)],
-      ['Cancellation Rate (%)', summary.cancellationRate],
-      ['Total Facilities', summary.totalFacilities],
-      ['Published Facilities', summary.publishedFacilities]
+      ['Pending Bookings', summary.pendingBookings],
+      ['Cancellation Rate (%)', summary.cancellationRate]
     ]
       .map((row) => `<tr><td>${escape(row[0])}</td><td>${escape(row[1])}</td></tr>`)
       .join('');

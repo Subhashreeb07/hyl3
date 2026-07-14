@@ -7,7 +7,6 @@ import com.example.hy_backend.mapper.SpecificationMapper;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
 import com.example.hy_backend.model.FieldDefinition;
-import com.example.hy_backend.model.FieldOption;
 import com.example.hy_backend.model.FieldType;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FacilityRuleRepository;
@@ -78,7 +77,7 @@ public class SpecificationServiceImpl implements SpecificationService {
         facility.setDescription(getOptionalText(specificationJson, "description"));
         facility.setCategory(getOptionalText(specificationJson, "category"));
         facility.setIcon(getOptionalText(specificationJson, "icon"));
-        facility.setStatus(getOptionalBoolean(specificationJson, "status", true));
+
         facility.setPublished(getOptionalBoolean(specificationJson, "published", false));
 
         List<FieldDefinition> fields = parseFields(specificationJson.path("fields"), facility);
@@ -121,7 +120,7 @@ public class SpecificationServiceImpl implements SpecificationService {
         Facility facility = facilityRepository.findById(facilityId)
                 .orElseThrow(() -> new ResourceNotFoundException("Facility not found with id: " + facilityId));
 
-        List<FieldDefinition> fields = fieldDefinitionRepository.findByFacilityFacilityIdWithOptions(facilityId);
+        List<FieldDefinition> fields = fieldDefinitionRepository.findByFacilityFacilityIdOrderByDisplayOrderAsc(facilityId);
         FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId).orElse(null);
 
         return specificationMapper.toJson(facility, fields, rule);
@@ -170,11 +169,11 @@ public class SpecificationServiceImpl implements SpecificationService {
             field.setDisplayOrder(displayOrder);
             fallbackDisplayOrder++;
 
-            List<FieldOption> parsedOptions = parseFieldOptions(fieldNode.path("options"), field);
-            if (requiresOptions(parsedType) && parsedOptions.isEmpty()) {
+            String parsedOptions = parseFieldOptions(fieldNode.path("options"));
+            if (requiresOptions(parsedType) && parsedOptions.isBlank()) {
                 throw new BadRequestException("Options are required for field type " + parsedType + " and label " + label);
             }
-            field.setOptions(parsedOptions);
+            field.setFieldOptions(parsedOptions);
             fields.add(field);
         }
         if (fields.isEmpty()) {
@@ -183,13 +182,12 @@ public class SpecificationServiceImpl implements SpecificationService {
         return fields;
     }
 
-    private List<FieldOption> parseFieldOptions(JsonNode optionsNode, FieldDefinition field) {
+    private String parseFieldOptions(JsonNode optionsNode) {
         if (!optionsNode.isArray()) {
-            return List.of();
+            return "";
         }
 
-        List<FieldOption> options = new ArrayList<>();
-        int displayOrder = 1;
+        List<String> options = new ArrayList<>();
         for (JsonNode optionNode : optionsNode) {
             String optionValue;
             if (optionNode.isTextual()) {
@@ -204,13 +202,9 @@ public class SpecificationServiceImpl implements SpecificationService {
                 continue;
             }
 
-            FieldOption option = new FieldOption();
-            option.setField(field);
-            option.setOptionValue(optionValue);
-            option.setDisplayOrder(displayOrder++);
-            options.add(option);
+            options.add(optionValue);
         }
-        return options;
+        return String.join("\n", options);
     }
 
     private FacilityRule parseRule(JsonNode rulesNode, Facility facility) {
@@ -218,17 +212,8 @@ public class SpecificationServiceImpl implements SpecificationService {
         rule.setFacility(facility);
         rule.setBookingDeadline(parseOptionalTime(rulesNode, "bookingDeadline"));
         rule.setBookingStartTime(parseOptionalTime(rulesNode, "bookingStartTime"));
-        rule.setReminderTime(parseOptionalTime(rulesNode, "reminderTime"));
-        rule.setQrRequired(getOptionalBoolean(rulesNode, "qrRequired", false));
-        rule.setAllowCancellation(getOptionalBoolean(rulesNode, "allowCancellation", true));
-        if (rulesNode.hasNonNull("maximumCapacity")) {
-            int maximumCapacity = rulesNode.path("maximumCapacity").asInt();
-            if (maximumCapacity <= 0) {
-                throw new BadRequestException("maximumCapacity must be greater than zero");
-            }
-            rule.setMaximumCapacity(maximumCapacity);
-        }
-        rule.setRegularCommuteEnabled(getOptionalBoolean(rulesNode, "regularCommuteEnabled", false));
+        rule.setRulesJson(rulesNode.toString());
+
         return rule;
     }
 

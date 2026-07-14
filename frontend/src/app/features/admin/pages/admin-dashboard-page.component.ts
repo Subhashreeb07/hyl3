@@ -34,7 +34,7 @@ import {
         </div>
       </header>
 
-      <div class="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-6">
+      <div class="w-full px-[5vw] py-7 space-y-6">
 
         <!-- ── Date strip ── -->
         <section class="rounded-2xl bg-white p-5 shadow-sm">
@@ -148,6 +148,21 @@ import {
           </div>
         </section>
 
+        <!-- ── Stats cards ── -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
+            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">book_online</span></div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Bookings</p>
+            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.totalBookings ?? 0 }}</p>
+          </div>
+          <!-- Stat Card 3 -->
+          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
+            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">pending_actions</span></div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pending Requests</p>
+            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.pendingRequests ?? 0 }}</p>
+          </div>
+        </div>
         <!-- ── Office Locations table ── -->
         <section class="rounded-2xl bg-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
@@ -172,9 +187,9 @@ import {
             </div>
           </div>
 
-          <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="data-table-header">
+          <div class="overflow-x-auto w-full">
+            <table class="min-w-full text-sm">
+              <thead class="data-table-header">
               <tr>
                 <th class="px-6 py-3 font-semibold">Office Location</th>
                 <th class="px-6 py-3 font-semibold">Employee Count</th>
@@ -210,7 +225,7 @@ import {
                 </td>
               </tr>
             </tbody>
-          </table>
+            </table>
           </div>
         </section>
 
@@ -231,9 +246,9 @@ import {
             </button>
           </div>
 
-          <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div class="overflow-x-auto w-full">
+            <table class="min-w-full text-sm">
+              <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
                 <th class="px-6 py-3">Facility</th>
                 <th class="px-6 py-3">Category</th>
@@ -268,7 +283,7 @@ import {
                 </td>
               </tr>
             </tbody>
-          </table>
+            </table>
           </div>
         </section>
 

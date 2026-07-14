@@ -56,9 +56,8 @@ import { ToastService } from '../../core/services/toast.service';
 
     /* ── Content Area ── */
     .hy-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 1.75rem 2rem;
+      width: 100%;
+      padding: 1.75rem 5vw;
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
@@ -638,29 +637,6 @@ import { ToastService } from '../../core/services/toast.service';
   template: `
     <div class="hy-page">
 
-      <!-- ── Sticky Top Bar ── -->
-      <header class="hy-page-header">
-        <div class="hy-page-logo-area">
-          <div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#0A1628,#1E4D8C);display:flex;align-items:center;justify-content:center;">
-            <span class="material-icons-outlined" style="font-size:14px;color:#fff;">business_center</span>
-          </div>
-          <span class="hy-page-title-sm">Employee Workspace</span>
-        </div>
-
-        <div class="hy-header-actions">
-          <button class="hy-icon-btn" (click)="goHistory()" title="Booking Records">
-            <span class="material-icons-outlined" style="font-size:20px">receipt_long</span>
-          </button>
-          <button class="hy-icon-btn" (click)="goNotifications()" title="Notifications">
-            <span class="material-icons-outlined" style="font-size:20px">notifications_none</span>
-            <span *ngIf="unreadNotifications() > 0" class="hy-notif-dot"></span>
-          </button>
-          <div style="width:1px;height:20px;background:#E2E8F0;margin:0 2px;"></div>
-          <div class="hy-avatar" (click)="goProfile()" title="Profile">
-            {{ avatarInitials() }}
-          </div>
-        </div>
-      </header>
 
       <!-- ── Main Content ── -->
       <div class="hy-content">

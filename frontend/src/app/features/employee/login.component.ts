@@ -11,71 +11,95 @@ import { ToastService } from '../../core/services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <section class="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#f7f5f3] to-[#efe9e2] p-2">
-      <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl md:p-8">
-        <!-- Header -->
-        <div class="mb-8 text-center">
-          <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d39c78] to-[#9a562d]">
-            <span class="text-2xl">🏢</span>
+    <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f3f6fa] px-4 py-8">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(12,71,138,0.10),_transparent_55%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.08),_transparent_45%)]"></div>
+
+      <div class="relative grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[#dbe5ef] bg-white shadow-[0_30px_70px_-45px_rgba(15,23,42,0.6)] lg:grid-cols-2">
+        <aside class="hidden bg-gradient-to-br from-[#0b2948] via-[#103b63] to-[#0f2239] p-10 text-white lg:flex lg:flex-col lg:justify-between">
+          <div>
+            <img
+              class="hyland-logo"
+              src="https://www.keymarkinc.com/wp-content/uploads/2025/05/Hyland-logos_CMYK-scaled.png"
+              alt="Hyland logo"
+              style="width: 140px; height: auto;"
+            />
+            <p class="mt-8 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/90">
+              Enterprise Access
+            </p>
+            <h1 class="mt-4 text-3xl font-semibold leading-tight">Secure sign-in for your Hyland workspace</h1>
+            <p class="mt-4 max-w-sm text-sm leading-6 text-slate-200">
+              Access employee tools, booking workflows, and internal operations through a protected enterprise portal.
+            </p>
           </div>
-          <h1 class="text-3xl font-bold text-[#1f2937]">Enterprise Access Portal</h1>
-          <p class="mt-2 text-sm text-[#6b7280]">Secure workforce access for enterprise operations</p>
-        </div>
+          <p class="text-xs text-slate-300">Authorized employees only. Activity may be monitored for security and compliance.</p>
+        </aside>
 
-        <div class="mb-5 grid grid-cols-2 rounded-lg bg-[#f5eee8] p-1">
-          <button
-            type="button"
-            class="rounded-md px-3 py-2 text-sm font-semibold transition"
-            [ngClass]="mode() === 'SIGN_IN' ? 'bg-white text-[#7a4620] shadow-sm' : 'text-[#7c5a45]'"
-            (click)="setMode('SIGN_IN')"
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            class="rounded-md px-3 py-2 text-sm font-semibold transition"
-            [ngClass]="mode() === 'SIGN_UP' ? 'bg-white text-[#7a4620] shadow-sm' : 'text-[#7c5a45]'"
-            (click)="setMode('SIGN_UP')"
-          >
-            Sign Up
-          </button>
-        </div>
+        <div class="p-6 sm:p-8 lg:p-10">
+          <div class="mb-8 lg:hidden">
+            <img
+              class="hyland-logo"
+              src="https://www.keymarkinc.com/wp-content/uploads/2025/05/Hyland-logos_CMYK-scaled.png"
+              alt="Hyland logo"
+              style="width: 130px; height: auto;"
+            />
+            <h1 class="mt-4 text-2xl font-semibold text-[#0f172a]">Employee access portal</h1>
+            <p class="mt-1 text-sm text-slate-600">Sign in with your corporate credentials.</p>
+          </div>
 
-        <form [formGroup]="mode() === 'SIGN_IN' ? loginForm : registerForm" (ngSubmit)="onSubmit()" class="space-y-5">
+          <div class="mb-5 grid grid-cols-2 rounded-xl bg-[#f1f5f9] p-1">
+            <button
+              type="button"
+              class="rounded-lg px-3 py-2.5 text-sm font-semibold transition"
+              [ngClass]="mode() === 'SIGN_IN' ? 'bg-white text-[#0f3358] shadow-sm' : 'text-[#475569]'"
+              (click)="setMode('SIGN_IN')"
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-3 py-2.5 text-sm font-semibold transition"
+              [ngClass]="mode() === 'SIGN_UP' ? 'bg-white text-[#0f3358] shadow-sm' : 'text-[#475569]'"
+              (click)="setMode('SIGN_UP')"
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <form [formGroup]="mode() === 'SIGN_IN' ? loginForm : registerForm" (ngSubmit)="onSubmit()" class="space-y-5">
           <div *ngIf="mode() === 'SIGN_UP'">
-            <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-[#7c5a45]">Full Name</label>
+            <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Full Name</label>
             <input
               id="name"
               type="text"
               formControlName="name"
               [class.border-red-500]="isFieldInvalid('name')"
-              class="mt-2 w-full rounded-lg border border-[#e5ddd5] bg-[#f9f7f5] px-4 py-3 text-sm text-[#1f2937] transition placeholder-[#9ca3af] focus:border-[#d39c78] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d39c78] focus:ring-opacity-20"
+              class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] transition placeholder-[#94a3b8] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
               placeholder="Enter your legal full name"
               [disabled]="isLoading()"
             />
           </div>
 
           <div>
-            <label for="employeeId" class="block text-xs font-semibold uppercase tracking-wider text-[#7c5a45]">Employee ID</label>
+            <label for="employeeId" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Employee ID</label>
             <input
               id="employeeId"
               type="text"
               formControlName="employeeId"
               [class.border-red-500]="isFieldInvalid('employeeId')"
-              class="mt-2 w-full rounded-lg border border-[#e5ddd5] bg-[#f9f7f5] px-4 py-3 text-sm text-[#1f2937] transition placeholder-[#9ca3af] focus:border-[#d39c78] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d39c78] focus:ring-opacity-20"
+              class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] transition placeholder-[#94a3b8] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
               placeholder="Enter your corporate employee ID"
               [disabled]="isLoading()"
             />
           </div>
 
           <div *ngIf="mode() === 'SIGN_UP'">
-            <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-[#7c5a45]">Email</label>
+            <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Email</label>
             <input
               id="email"
               type="email"
               formControlName="email"
               [class.border-red-500]="isFieldInvalid('email')"
-              class="mt-2 w-full rounded-lg border border-[#e5ddd5] bg-[#f9f7f5] px-4 py-3 text-sm text-[#1f2937] transition placeholder-[#9ca3af] focus:border-[#d39c78] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d39c78] focus:ring-opacity-20"
+              class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] transition placeholder-[#94a3b8] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
               placeholder="Enter your corporate email address"
               [disabled]="isLoading()"
             />
@@ -83,22 +107,22 @@ import { ToastService } from '../../core/services/toast.service';
 
           <div *ngIf="mode() === 'SIGN_UP'" class="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <label for="department" class="block text-xs font-semibold uppercase tracking-wider text-[#7c5a45]">Department</label>
+              <label for="department" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Department</label>
               <input
                 id="department"
                 type="text"
                 formControlName="department"
-                class="mt-2 w-full rounded-lg border border-[#e5ddd5] bg-[#f9f7f5] px-4 py-3 text-sm text-[#1f2937] transition placeholder-[#9ca3af] focus:border-[#d39c78] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d39c78] focus:ring-opacity-20"
+                class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] transition placeholder-[#94a3b8] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
                 placeholder="Enter your department"
                 [disabled]="isLoading()"
               />
             </div>
             <div>
-              <label for="officeLocation" class="block text-xs font-semibold uppercase tracking-wider text-[#7c5a45]">Office</label>
+              <label for="officeLocation" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Office</label>
               <select
                 id="officeLocation"
                 formControlName="officeLocation"
-                class="mt-2 w-full rounded-lg border border-[#e5ddd5] bg-[#f9f7f5] px-4 py-3 text-sm text-[#1f2937] focus:border-[#d39c78] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d39c78] focus:ring-opacity-20"
+                class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
                 [disabled]="isLoading()"
               >
                 <option value="HYDERABAD">Hyderabad</option>
@@ -108,13 +132,13 @@ import { ToastService } from '../../core/services/toast.service';
           </div>
 
           <div>
-            <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-[#7c5a45]">Password</label>
+            <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Password</label>
             <input
               id="password"
               type="password"
               formControlName="password"
               [class.border-red-500]="isFieldInvalid('password')"
-              class="mt-2 w-full rounded-lg border border-[#e5ddd5] bg-[#f9f7f5] px-4 py-3 text-sm text-[#1f2937] transition placeholder-[#9ca3af] focus:border-[#d39c78] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d39c78] focus:ring-opacity-20"
+              class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] transition placeholder-[#94a3b8] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
               [placeholder]="mode() === 'SIGN_IN' ? 'Enter your password' : 'Create a secure password'"
               [disabled]="isLoading()"
             />
@@ -134,7 +158,7 @@ import { ToastService } from '../../core/services/toast.service';
           <button
             type="submit"
             [disabled]="(mode() === 'SIGN_IN' ? loginForm.invalid : registerForm.invalid) || isLoading()"
-            class="relative mt-6 w-full rounded-lg bg-gradient-to-r from-[#9a562d] to-[#7a4620] px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:from-[#824923] hover:enabled:to-[#6a3a1a] active:enabled:scale-95"
+            class="relative mt-6 w-full rounded-lg bg-gradient-to-r from-[#154777] to-[#0f3358] px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 hover:enabled:from-[#123d67] hover:enabled:to-[#0d2d4f] active:enabled:scale-95"
           >
             <span *ngIf="!isLoading()" class="flex items-center justify-center gap-2">
               <span>{{ mode() === 'SIGN_IN' ? 'Sign In' : 'Create Account' }}</span>
@@ -149,8 +173,8 @@ import { ToastService } from '../../core/services/toast.service';
           </button>
         </form>
 
-        <!-- Footer -->
-        
+          <p class="mt-6 text-center text-xs text-slate-500">Hyland employee systems access.</p>
+        </div>
       </div>
     </section>
   `

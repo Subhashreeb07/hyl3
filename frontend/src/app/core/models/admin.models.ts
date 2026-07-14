@@ -3,11 +3,13 @@ export interface AdminBookingSearchItem {
   facilityId: number;
   facilityName: string;
   employeeId: string;
+  employeeName: string | null;
+  department: string | null;
   status: string;
   bookingDate: string;
   createdAt: string;
   cancelledAt: string | null;
-  qrCode: string | null;
+  answers: { fieldId: number; label: string; value: string }[];
 }
 
 export interface BookingSummaryResponse {

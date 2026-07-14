@@ -46,16 +46,20 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.submitBooking(request));
     }
 
-    @PostMapping("/verify-qr")
-    @Operation(summary = "Verify booking QR token")
-    public ResponseEntity<BookingDtos.VerifyQrResponse> verifyQrCode(@Valid @RequestBody BookingDtos.VerifyQrRequest request) {
-        return ResponseEntity.ok(bookingService.verifyQrCode(request.qrCode()));
-    }
 
     @GetMapping("/history/{employeeId}")
     @Operation(summary = "Get booking history by employee")
     public ResponseEntity<List<BookingDtos.BookingHistoryItem>> getHistory(@PathVariable String employeeId) {
         return ResponseEntity.ok(bookingService.getBookingHistory(employeeId));
+    }
+
+    @GetMapping("/preferences")
+    @Operation(summary = "Get employee majority preferences for a facility")
+    public ResponseEntity<BookingDtos.BookingPreferenceResponse> getBookingPreferences(
+            @RequestParam String employeeId,
+            @RequestParam Long facilityId
+    ) {
+        return ResponseEntity.ok(bookingService.getBookingPreferences(employeeId, facilityId));
     }
 
     @GetMapping("/admin/search")

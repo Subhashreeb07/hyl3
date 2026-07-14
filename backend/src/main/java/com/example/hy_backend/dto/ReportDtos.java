@@ -13,7 +13,6 @@ public final class ReportDtos {
 
     public record AnalyticsResponse(
             long totalFacilities,
-            long activeFacilities,
             long publishedFacilities,
             long totalBookings,
             long confirmedBookings,
@@ -37,10 +36,8 @@ public final class ReportDtos {
             Long facilityId,
             String facilityName,
             String bookingDate,
-            Integer maximumCapacity,
             long confirmedBookings,
-            long cancelledBookings,
-            double utilizationPercent
+            long cancelledBookings
         ) {
         }
 
@@ -58,16 +55,13 @@ public final class ReportDtos {
             String officeLocation,
             String workMode,
             String roleCode,
-            Boolean active,
             String createdAt
         ) {
         }
 
         public record EmployeeRegistrationsResponse(
             List<EmployeeRegistrationItem> items,
-            long total,
-            long active,
-            long inactive
+            long total
         ) {
         }
 }

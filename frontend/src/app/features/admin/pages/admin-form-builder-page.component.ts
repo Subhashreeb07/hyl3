@@ -27,7 +27,7 @@ import { SpecificationApiService } from '../../../core/services/specification-ap
 /** Cross-field validator: start < end, reminder before end, cancellation before end. */
 function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | null {
   const start  = group.get('bookingStartTime')?.value as string | null;
-  const end    = group.get('bookingEndTime')?.value   as string | null;
+  const end    = (group.get('bookingDeadline')?.value || group.get('bookingEndTime')?.value) as string | null;
   const reminder = group.get('reminderTime')?.value   as string | null;
   const cancel = group.get('cancellationDeadline')?.value as string | null;
 
@@ -235,6 +235,7 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
           <app-builder-publish-panel
             [generatedJson]="generatedJson()"
             [isPublished]="isPublished()"
+            [isBusy]="persistInFlight()"
             (saveDraft)="saveDraft()"
             (publish)="publish()"
             (editJson)="applyJsonEdit($event)"
@@ -253,7 +254,7 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
               color="accent"
               class="shrink-0"
               (click)="saveAsTemplate()"
-              [disabled]="!activeFacilityId()">
+              [disabled]="!activeFacilityId() || persistInFlight()">
               <span class="material-icons-outlined text-[1.1em] mr-1">auto_awesome_mosaic</span> Save as Template
             </button>
           </div>
@@ -369,8 +370,8 @@ export class AdminFormBuilderPageComponent {
     facilityAvailableFromDate: [''],
     facilityAvailableToDate: [''],
     bookingStartTime: ['', Validators.required],
-    bookingEndTime: ['', Validators.required],
-    bookingDeadline: [''],
+    bookingEndTime: [''],
+    bookingDeadline: ['', Validators.required],
     reminderTime: [''],
     cancellationDeadline: [''],
     bookingWindowDays: [null as number | null],
@@ -392,6 +393,7 @@ export class AdminFormBuilderPageComponent {
 
   readonly draftFields = signal<FacilityField[]>([]);
   readonly generatedJson = signal('');
+  readonly persistInFlight = signal(false);
 
   readonly orderedFields = computed(() =>
     this.draftFields()
@@ -562,6 +564,10 @@ export class AdminFormBuilderPageComponent {
       this.toast('Please enter a facility name before saving a draft', 'Close', 3500);
       return;
     }
+    if (this.persistInFlight()) {
+      return;
+    }
+    this.persistInFlight.set(true);
     try {
       const persisted = await this.persistBuilder(false);
       this.state.upsertFacility(persisted);
@@ -569,6 +575,8 @@ export class AdminFormBuilderPageComponent {
       this.toast('Draft saved');
     } catch (error: any) {
       this.toast(error?.error?.message ?? 'Draft save failed', 'Close', 3200);
+    } finally {
+      this.persistInFlight.set(false);
     }
   }
 
@@ -583,6 +591,10 @@ export class AdminFormBuilderPageComponent {
       this.toast('Save a draft first before saving as template', 'Close', 3000);
       return;
     }
+    if (this.persistInFlight()) {
+      return;
+    }
+    this.persistInFlight.set(true);
     try {
       // Persist current state first
       const persisted = await this.persistBuilder(false);
@@ -593,6 +605,8 @@ export class AdminFormBuilderPageComponent {
       this.router.navigateByUrl('/admin/facilities');
     } catch (error: any) {
       this.toast(error?.error?.message ?? 'Save as template failed', 'Close', 3200);
+    } finally {
+      this.persistInFlight.set(false);
     }
   }
 
@@ -613,6 +627,12 @@ export class AdminFormBuilderPageComponent {
       this.toast(fieldError, 'Close', 3400);
       return;
     }
+
+    if (this.persistInFlight()) {
+      return;
+    }
+
+    this.persistInFlight.set(true);
 
     try {
       const publishConfig = await firstValueFrom(
@@ -635,6 +655,8 @@ export class AdminFormBuilderPageComponent {
       this.toast('Facility published successfully');
     } catch (error: any) {
       this.toast(error?.error?.message ?? 'Publish failed', 'Close', 3200);
+    } finally {
+      this.persistInFlight.set(false);
     }
   }
 
@@ -839,6 +861,14 @@ export class AdminFormBuilderPageComponent {
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
 
+  /** Checks if a value exists in a rule field that may be an array or a comma-separated string. */
+  private ruleIncludes(field: string[] | string | null | undefined, value: string): boolean {
+    if (!field) return false;
+    if (Array.isArray(field)) return field.includes(value);
+    // Handle legacy comma-separated string format
+    return field.split(',').map(v => v.trim()).includes(value);
+  }
+
   private clearForm(): void {
     this.basicForm.reset({ facilityName: '', description: '', category: '', icon: 'inventory_2' });
     this.rulesForm.reset({
@@ -909,19 +939,19 @@ export class AdminFormBuilderPageComponent {
       cancellationDeadline: record.rules?.cancellationDeadline ?? '',
       bookingWindowDays: record.rules?.bookingWindowDays ?? null,
       availableDays: record.rules?.availableDays ?? '',
-      employeeTypeOnSite: (record.rules?.employeeTypes ?? []).includes('On-site'),
-      employeeTypeRemote: (record.rules?.employeeTypes ?? []).includes('Remote'),
-      employeeTypeHybrid: (record.rules?.employeeTypes ?? []).includes('Hybrid'),
-      roleHR: (record.rules?.roles ?? []).includes('HR'),
-      roleManager: (record.rules?.roles ?? []).includes('Manager'),
-      roleFinance: (record.rules?.roles ?? []).includes('Finance'),
-      roleCloud: (record.rules?.roles ?? []).includes('Cloud'),
-      roleRD: (record.rules?.roles ?? []).includes('RD'),
-      roleDirector: (record.rules?.roles ?? []).includes('Director'),
-      roleIS: (record.rules?.roles ?? []).includes('IS'),
-      roleNOC: (record.rules?.roles ?? []).includes('NOC'),
-      roleOps: (record.rules?.roles ?? []).includes('Ops'),
-      roleDevops: (record.rules?.roles ?? []).includes('Devops'),
+      employeeTypeOnSite: this.ruleIncludes(record.rules?.employeeTypes, 'On-site'),
+      employeeTypeRemote: this.ruleIncludes(record.rules?.employeeTypes, 'Remote'),
+      employeeTypeHybrid: this.ruleIncludes(record.rules?.employeeTypes, 'Hybrid'),
+      roleHR: this.ruleIncludes(record.rules?.roles, 'HR'),
+      roleManager: this.ruleIncludes(record.rules?.roles, 'Manager'),
+      roleFinance: this.ruleIncludes(record.rules?.roles, 'Finance'),
+      roleCloud: this.ruleIncludes(record.rules?.roles, 'Cloud'),
+      roleRD: this.ruleIncludes(record.rules?.roles, 'RD'),
+      roleDirector: this.ruleIncludes(record.rules?.roles, 'Director'),
+      roleIS: this.ruleIncludes(record.rules?.roles, 'IS'),
+      roleNOC: this.ruleIncludes(record.rules?.roles, 'NOC'),
+      roleOps: this.ruleIncludes(record.rules?.roles, 'Ops'),
+      roleDevops: this.ruleIncludes(record.rules?.roles, 'Devops'),
     });
 
     this.draftFields.set(record.fields.map((field) => ({ ...field })));
@@ -1091,29 +1121,23 @@ export class AdminFormBuilderPageComponent {
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
         facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
-        employeeTypes: (() => {
-          const t = [
-            this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
-            this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
-            this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
-          ].filter((v): v is string => v !== null);
-          return t.length === 3 ? '' : t.join(','); // all selected = no restriction
-        })(),
-        roles: (() => {
-          const r = [
-            this.rulesForm.value.roleHR ? 'HR' : null,
-            this.rulesForm.value.roleManager ? 'Manager' : null,
-            this.rulesForm.value.roleFinance ? 'Finance' : null,
-            this.rulesForm.value.roleCloud ? 'Cloud' : null,
-            this.rulesForm.value.roleRD ? 'RD' : null,
-            this.rulesForm.value.roleDirector ? 'Director' : null,
-            this.rulesForm.value.roleIS ? 'IS' : null,
-            this.rulesForm.value.roleNOC ? 'NOC' : null,
-            this.rulesForm.value.roleOps ? 'Ops' : null,
-            this.rulesForm.value.roleDevops ? 'Devops' : null,
-          ].filter((v): v is string => v !== null);
-          return r.length === 10 ? '' : r.join(','); // all selected = no restriction
-        })()
+        employeeTypes: [
+          this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
+          this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
+          this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
+        ].filter((v): v is string => v !== null).join(','),
+        roles: [
+          this.rulesForm.value.roleHR ? 'HR' : null,
+          this.rulesForm.value.roleManager ? 'Manager' : null,
+          this.rulesForm.value.roleFinance ? 'Finance' : null,
+          this.rulesForm.value.roleCloud ? 'Cloud' : null,
+          this.rulesForm.value.roleRD ? 'RD' : null,
+          this.rulesForm.value.roleDirector ? 'Director' : null,
+          this.rulesForm.value.roleIS ? 'IS' : null,
+          this.rulesForm.value.roleNOC ? 'NOC' : null,
+          this.rulesForm.value.roleOps ? 'Ops' : null,
+          this.rulesForm.value.roleDevops ? 'Devops' : null,
+        ].filter((v): v is string => v !== null).join(',')
       })
     );
 

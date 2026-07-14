@@ -1,12 +1,3 @@
-CREATE INDEX idx_notifications_employee_created_at
-    ON notifications (employee_id, created_at DESC);
-
-CREATE INDEX idx_notifications_employee_status_created_at
-    ON notifications (employee_id, status_code, created_at DESC);
-
-CREATE INDEX idx_notifications_status_created_at
-    ON notifications (status_code, created_at);
-
 CREATE INDEX idx_audit_logs_actor_occurred_at
     ON audit_logs (actor_id, occurred_at DESC);
 

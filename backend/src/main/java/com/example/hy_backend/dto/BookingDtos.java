@@ -15,7 +15,6 @@ public final class BookingDtos {
     public record SubmitBookingRequest(
             @NotNull Long facilityId,
             @NotBlank String employeeId,
-            String clientRequestId,
             String bookingDate,
             @NotEmpty List<@Valid BookingFieldInput> responses
     ) {
@@ -45,7 +44,6 @@ public final class BookingDtos {
             String status,
             String bookingDate,
             String createdAt,
-            String qrCode,
             List<BookingAnswer> responses
     ) {
     }
@@ -53,16 +51,29 @@ public final class BookingDtos {
     public record BookingAnswer(Long fieldId, String label, String value) {
     }
 
+    public record BookingPreferenceItem(Long fieldId, String label, String value, Long voteCount) {
+    }
+
+    public record BookingPreferenceResponse(
+            String employeeId,
+            Long facilityId,
+            Long sampleSize,
+            List<BookingPreferenceItem> preferences
+    ) {
+    }
+
         public record AdminBookingSearchItem(
             Long bookingId,
             Long facilityId,
             String facilityName,
             String employeeId,
+            String employeeName,
+            String department,
             String status,
             String bookingDate,
             String createdAt,
             String cancelledAt,
-            String qrCode
+            List<BookingAnswer> answers
         ) {
         }
 
@@ -75,18 +86,4 @@ public final class BookingDtos {
         ) {
         }
 
-    public record VerifyQrRequest(@NotBlank String qrCode) {
-    }
-
-    public record VerifyQrResponse(
-            Boolean valid,
-            String message,
-            Long bookingId,
-            Long facilityId,
-            String facilityName,
-            String employeeId,
-            String bookingDate,
-            String status
-    ) {
-    }
 }

@@ -34,9 +34,8 @@ public final class LocationDtos {
     ) {}
 
     public record DashboardStatsResponse(
-            long activeFacilities,
-            long totalBookingsOnDate,
-            long completedBookings,
+            long totalBookings,
+            long pendingRequests,
             String todaysDeadline,
             List<DateEventCount> dateStrip
     ) {}

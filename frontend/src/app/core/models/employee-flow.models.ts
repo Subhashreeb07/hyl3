@@ -175,6 +175,20 @@ export interface SubmitBookingResponse {
   message?: string;
 }
 
+export interface BookingPreferenceItem {
+  fieldId: number;
+  label: string;
+  value: string;
+  voteCount: number;
+}
+
+export interface BookingPreferenceResponse {
+  employeeId: string;
+  facilityId: number;
+  sampleSize: number;
+  preferences: BookingPreferenceItem[];
+}
+
 export interface BookingHistoryItem {
   bookingId: number;
   facility: string;

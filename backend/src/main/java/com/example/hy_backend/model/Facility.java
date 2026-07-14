@@ -22,8 +22,6 @@ public class Facility {
 
     private String icon;
 
-    @Column(nullable = false)
-    private Boolean status = true;
 
     @Column(nullable = false)
     private Boolean published = false;
@@ -100,13 +98,6 @@ public class Facility {
         this.icon = icon;
     }
 
-    public Boolean getStatus() {
-        return status;
-    }
-
-    public void setStatus(Boolean status) {
-        this.status = status;
-    }
 
     public Boolean getPublished() {
         return published;

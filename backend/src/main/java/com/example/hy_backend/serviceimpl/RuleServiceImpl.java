@@ -8,6 +8,10 @@ import com.example.hy_backend.model.FacilityRule;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.service.RuleService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,19 +22,30 @@ public class RuleServiceImpl implements RuleService {
 
     private final FacilityRepository facilityRepository;
     private final FacilityRuleRepository facilityRuleRepository;
+    private final ObjectMapper objectMapper;
 
-    public RuleServiceImpl(FacilityRepository facilityRepository, FacilityRuleRepository facilityRuleRepository) {
+    public RuleServiceImpl(FacilityRepository facilityRepository, FacilityRuleRepository facilityRuleRepository, ObjectMapper objectMapper) {
         this.facilityRepository = facilityRepository;
         this.facilityRuleRepository = facilityRuleRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
-    public RuleDtos.RuleResponse saveRules(Long facilityId, RuleDtos.RuleRequest request) {
+    public RuleDtos.RuleResponse saveRules(Long facilityId, com.fasterxml.jackson.databind.JsonNode request) {
         Facility facility = getFacilityOrThrow(facilityId);
         FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId).orElse(new FacilityRule());
         rule.setFacility(facility);
         applyRuleRequest(rule, request);
-        FacilityRule saved = facilityRuleRepository.save(rule);
+        FacilityRule saved;
+        try {
+            saved = facilityRuleRepository.saveAndFlush(rule);
+        } catch (DataIntegrityViolationException ex) {
+            FacilityRule existing = facilityRuleRepository.findByFacilityFacilityId(facilityId)
+                    .orElseThrow(() -> ex);
+            existing.setFacility(facility);
+            applyRuleRequest(existing, request);
+            saved = facilityRuleRepository.save(existing);
+        }
         return toResponse(saved);
     }
 
@@ -43,9 +58,63 @@ public class RuleServiceImpl implements RuleService {
     }
 
     @Override
-    public RuleDtos.RuleResponse updateRules(Long facilityId, RuleDtos.RuleRequest request) {
+    public JsonNode getFullRules(Long facilityId) {
+        getFacilityOrThrow(facilityId);
+        FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId)
+                .orElse(null);
+
+        ObjectNode result = objectMapper.createObjectNode();
+
+        // Merge stored rules_json first (contains all extra fields)
+        if (rule != null && rule.getRulesJson() != null && !rule.getRulesJson().isBlank()) {
+            try {
+                JsonNode stored = objectMapper.readTree(rule.getRulesJson());
+                if (stored.isObject()) {
+                    result.setAll((ObjectNode) stored);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Overwrite with authoritative typed columns
+        if (rule != null) {
+            if (rule.getBookingStartTime() != null) {
+                result.put("bookingStartTime", rule.getBookingStartTime().toString());
+            } else {
+                result.putNull("bookingStartTime");
+            }
+            if (rule.getBookingDeadline() != null) {
+                result.put("bookingDeadline", rule.getBookingDeadline().toString());
+            } else {
+                result.putNull("bookingDeadline");
+            }
+            if (rule.getFacilityAvailableFromDate() != null) {
+                result.put("facilityAvailableFromDate", rule.getFacilityAvailableFromDate().toString());
+            } else {
+                result.putNull("facilityAvailableFromDate");
+            }
+            if (rule.getFacilityAvailableToDate() != null) {
+                result.put("facilityAvailableToDate", rule.getFacilityAvailableToDate().toString());
+            } else {
+                result.putNull("facilityAvailableToDate");
+            }
+        }
+
+        return result;
+    }
+
+    public void deleteRules(Long facilityId) {
+        getFacilityOrThrow(facilityId);
+        FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId)
+                .orElseThrow(() -> new ResourceNotFoundException("No rules found for facility with id " + facilityId));
+        facilityRuleRepository.delete(rule);
+    }
+
+    @Override
+    public RuleDtos.RuleResponse updateRules(Long facilityId, com.fasterxml.jackson.databind.JsonNode request) {
+        Facility facility = getFacilityOrThrow(facilityId);
         FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId)
                 .orElseThrow(() -> new ResourceNotFoundException("Rules not found for facility id: " + facilityId));
+        rule.setFacility(facility);
         applyRuleRequest(rule, request);
         FacilityRule saved = facilityRuleRepository.save(rule);
         return toResponse(saved);
@@ -56,66 +125,44 @@ public class RuleServiceImpl implements RuleService {
                 .orElseThrow(() -> new ResourceNotFoundException("Facility not found with id: " + facilityId));
     }
 
-    private void applyRuleRequest(FacilityRule rule, RuleDtos.RuleRequest request) {
-        LocalTime bookingDeadline = parseTime(request.bookingDeadline(), "bookingDeadline");
-        LocalTime bookingStartTime = parseTime(request.bookingStartTime(), "bookingStartTime");
-        LocalTime reminderTime = parseTime(request.reminderTime(), "reminderTime");
-        LocalDate facilityAvailableFromDate = parseDate(request.facilityAvailableFromDate(), "facilityAvailableFromDate");
-        LocalDate facilityAvailableToDate = parseDate(request.facilityAvailableToDate(), "facilityAvailableToDate");
-        LocalTime cancellationDeadline = parseTime(request.cancellationDeadline(), "cancellationDeadline");
+    private void applyRuleRequest(FacilityRule rule, com.fasterxml.jackson.databind.JsonNode request) {
+        String bookingDeadlineStr = request.hasNonNull("bookingDeadline") ? request.get("bookingDeadline").asText(null) : null;
+        String bookingStartTimeStr = request.hasNonNull("bookingStartTime") ? request.get("bookingStartTime").asText(null) : null;
+        String availableFromDateStr = request.hasNonNull("facilityAvailableFromDate") ? request.get("facilityAvailableFromDate").asText(null) : null;
+        String availableToDateStr = request.hasNonNull("facilityAvailableToDate") ? request.get("facilityAvailableToDate").asText(null) : null;
+        
+        LocalTime bookingDeadline = parseTime(bookingDeadlineStr, "bookingDeadline");
+        LocalTime bookingStartTime = parseTime(bookingStartTimeStr, "bookingStartTime");
+        LocalDate facilityAvailableFromDate = parseDate(availableFromDateStr, "facilityAvailableFromDate");
+        LocalDate facilityAvailableToDate = parseDate(availableToDateStr, "facilityAvailableToDate");
+
+        if (facilityAvailableFromDate != null && facilityAvailableToDate == null) {
+            facilityAvailableToDate = facilityAvailableFromDate;
+        }
+        if (facilityAvailableToDate != null && facilityAvailableFromDate == null) {
+            facilityAvailableFromDate = facilityAvailableToDate;
+        }
+
+        if (facilityAvailableFromDate != null && facilityAvailableToDate != null
+                && facilityAvailableFromDate.isAfter(facilityAvailableToDate)) {
+            throw new BadRequestException("facilityAvailableFromDate must be before or equal to facilityAvailableToDate");
+        }
 
         if (bookingStartTime != null && bookingDeadline != null && bookingStartTime.isAfter(bookingDeadline)) {
             throw new BadRequestException("booking Start Time must be before or equal to booking Deadline");
         }
 
-        if (reminderTime != null && bookingDeadline != null && reminderTime.isAfter(bookingDeadline)) {
-            throw new BadRequestException("reminder Time cannot be after booking Deadline");
-        }
-
-        if (request.maximumCapacity() != null && request.maximumCapacity() <= 0) {
-            throw new BadRequestException("maximum Capacity must be greater than zero");
-        }
-
-        if (request.bookingWindowDays() != null && request.bookingWindowDays() < 0) {
-            throw new BadRequestException("bookingWindowDays must be greater than or equal to zero");
-        }
-
-        if (facilityAvailableFromDate != null && facilityAvailableToDate != null && facilityAvailableFromDate.isAfter(facilityAvailableToDate)) {
-            throw new BadRequestException("facility Available From Date must be before or equal to facility Available To Date");
-        }
-
         rule.setBookingDeadline(bookingDeadline);
         rule.setBookingStartTime(bookingStartTime);
-        rule.setReminderTime(reminderTime);
-        rule.setQrRequired(request.qrRequired() != null ? request.qrRequired() : false);
-        rule.setAllowCancellation(request.allowCancellation() != null ? request.allowCancellation() : true);
-        rule.setMaximumCapacity(request.maximumCapacity());
-        rule.setRegularCommuteEnabled(request.regularCommuteEnabled() != null ? request.regularCommuteEnabled() : false);
-        rule.setAvailableDays(request.availableDays());
-        rule.setBookingWindowDays(request.bookingWindowDays());
         rule.setFacilityAvailableFromDate(facilityAvailableFromDate);
         rule.setFacilityAvailableToDate(facilityAvailableToDate);
-        rule.setCancellationDeadline(cancellationDeadline);
-        rule.setEmployeeTypes(request.employeeTypes());
-        rule.setRoles(request.roles());
+        rule.setRulesJson(request.toString());
     }
 
     private RuleDtos.RuleResponse toResponse(FacilityRule rule) {
         return new RuleDtos.RuleResponse(
                 rule.getBookingDeadline() == null ? null : rule.getBookingDeadline().toString(),
-                rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString(),
-                rule.getReminderTime() == null ? null : rule.getReminderTime().toString(),
-                rule.getQrRequired() != null ? rule.getQrRequired() : false,
-                rule.getAllowCancellation() != null ? rule.getAllowCancellation() : true,
-                rule.getMaximumCapacity(),
-                rule.getRegularCommuteEnabled() != null ? rule.getRegularCommuteEnabled() : false,
-                rule.getAvailableDays(),
-                rule.getBookingWindowDays(),
-                rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString(),
-                rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString(),
-                rule.getCancellationDeadline() == null ? null : rule.getCancellationDeadline().toString(),
-                rule.getEmployeeTypes(),
-                rule.getRoles()
+                rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString()
         );
     }
 

@@ -21,8 +21,6 @@ public class Booking {
     @Column(name = "employee_id", nullable = false)
     private String employeeId;
 
-    @Column(name = "client_request_id", length = 120)
-    private String clientRequestId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", referencedColumnName = "employee_id", insertable = false, updatable = false)
@@ -32,7 +30,6 @@ public class Booking {
     @Column(nullable = false)
     private BookingStatus status = BookingStatus.CONFIRMED;
 
-    private String qrCode;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -42,8 +39,9 @@ public class Booking {
 
     private LocalDateTime cancelledAt;
 
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BookingResponse> responses = new ArrayList<>();
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "booking_response", columnDefinition = "jsonb")
+    private String bookingResponse;
 
     @PrePersist
     public void onCreate() {
@@ -77,13 +75,6 @@ public class Booking {
         this.employeeId = employeeId;
     }
 
-    public String getClientRequestId() {
-        return clientRequestId;
-    }
-
-    public void setClientRequestId(String clientRequestId) {
-        this.clientRequestId = clientRequestId;
-    }
 
     public Employee getEmployee() {
         return employee;
@@ -101,13 +92,6 @@ public class Booking {
         this.status = status;
     }
 
-    public String getQrCode() {
-        return qrCode;
-    }
-
-    public void setQrCode(String qrCode) {
-        this.qrCode = qrCode;
-    }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
@@ -133,11 +117,11 @@ public class Booking {
         this.bookingDate = bookingDate;
     }
 
-    public List<BookingResponse> getResponses() {
-        return responses;
+    public String getBookingResponse() {
+        return bookingResponse;
     }
 
-    public void setResponses(List<BookingResponse> responses) {
-        this.responses = responses;
+    public void setBookingResponse(String bookingResponse) {
+        this.bookingResponse = bookingResponse;
     }
 }

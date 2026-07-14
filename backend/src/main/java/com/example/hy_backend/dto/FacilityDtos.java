@@ -15,7 +15,6 @@ public final class FacilityDtos {
             String description,
             String category,
             String icon,
-            @NotNull Boolean status,
             Boolean isTemplate,
             Boolean isPublic
     ) {
@@ -26,7 +25,6 @@ public final class FacilityDtos {
             String description,
             String category,
             String icon,
-            @NotNull Boolean status,
             Boolean isTemplate,
             Boolean isPublic
     ) {
@@ -38,7 +36,6 @@ public final class FacilityDtos {
     public record FacilitySummaryResponse(
             Long facilityId,
             String facilityName,
-            Boolean status,
             Boolean isTemplate,
             Boolean isPublic
     ) {
@@ -50,7 +47,6 @@ public final class FacilityDtos {
             String description,
             String category,
             String icon,
-            Boolean status,
             Boolean published,
             Boolean isTemplate,
             Boolean isPublic,

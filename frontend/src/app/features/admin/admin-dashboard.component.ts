@@ -18,457 +18,6 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule],
   styles: [`
-    /* ── Hyland Corporate Design System ── */
-
-    .hy-page {
-      min-height: 100vh;
-      background: #F4F6F9;
-      font-family: 'Inter', system-ui, sans-serif;
-    }
-
-    /* ── Page Header ── */
-    .hy-page-header {
-      padding: 2rem 2rem 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-    .hy-page-kicker {
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #0066CC;
-      margin-bottom: 0.25rem;
-    }
-    .hy-page-title {
-      font-size: 1.65rem;
-      font-weight: 700;
-      color: #0A1628;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-    }
-    .hy-page-subtitle {
-      font-size: 0.8rem;
-      color: #64748b;
-      margin-top: 0.25rem;
-    }
-    .hy-header-actions {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    /* ── Content Area ── */
-    .hy-content {
-      padding: 1.5rem 2rem 2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      max-width: 1400px;
-    }
-
-    /* ── Divider accent line ── */
-    .hy-accent-bar {
-      height: 3px;
-      background: linear-gradient(90deg, #0A1628 0% 34%, #14B8A6 34% 68%, #F59E0B 68% 100%);
-      border-radius: 2px;
-      width: 56px;
-      margin-bottom: 1rem;
-    }
-
-    /* ── Stat Cards ── */
-    .hy-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1rem;
-    }
-
-    .hy-stat-card {
-      background: #fff;
-      border: 1px solid #E2E8F0;
-      border-radius: 10px;
-      padding: 1.25rem 1.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      transition: box-shadow 0.2s, transform 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-    .hy-stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      border-radius: 10px 10px 0 0;
-    }
-    .hy-stat-card.navy::before { background: linear-gradient(90deg, #0A1628, #1E4D8C); }
-    .hy-stat-card.teal::before { background: linear-gradient(90deg, #0D9488, #14B8A6); }
-    .hy-stat-card.sky::before  { background: linear-gradient(90deg, #0066CC, #38BDF8); }
-    .hy-stat-card.gold::before { background: linear-gradient(90deg, #D97706, #F59E0B); }
-
-    .hy-stat-card:hover {
-      box-shadow: 0 6px 20px rgba(0,0,0,0.09);
-      transform: translateY(-1px);
-    }
-    .hy-stat-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-    .hy-stat-icon.navy { background: #EFF6FF; color: #1E4D8C; }
-    .hy-stat-icon.teal { background: #F0FDFA; color: #0D9488; }
-    .hy-stat-icon.sky  { background: #E0F2FE; color: #0066CC; }
-    .hy-stat-icon.gold { background: #FFFBEB; color: #D97706; }
-
-    .hy-stat-value {
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1;
-    }
-    .hy-stat-value.navy { color: #1E4D8C; }
-    .hy-stat-value.teal { color: #0D9488; }
-    .hy-stat-value.sky  { color: #0066CC; }
-    .hy-stat-value.gold { color: #D97706; }
-    .hy-stat-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #64748B;
-      letter-spacing: 0.02em;
-    }
-
-    /* ── Card Panel ── */
-    .hy-card {
-      background: #fff;
-      border: 1px solid #E2E8F0;
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-      overflow: hidden;
-    }
-    .hy-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.1rem 1.5rem;
-      border-bottom: 1px solid #F1F5F9;
-      gap: 1rem;
-    }
-    .hy-card-title {
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: #0A1628;
-      letter-spacing: -0.01em;
-    }
-    .hy-card-desc {
-      font-size: 0.72rem;
-      color: #94A3B8;
-      margin-top: 1px;
-    }
-
-    /* ── Date Strip ── */
-    .hy-date-strip {
-      display: flex;
-      gap: 0.5rem;
-      overflow-x: auto;
-      padding: 1rem 1.5rem;
-      padding-bottom: 1.25rem;
-      scrollbar-width: none;
-    }
-    .hy-date-strip::-webkit-scrollbar { display: none; }
-    .hy-date-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0.65rem 1rem;
-      border-radius: 8px;
-      border: 1.5px solid transparent;
-      cursor: pointer;
-      transition: all 0.18s ease;
-      background: #F8FAFC;
-      min-width: 72px;
-      gap: 0.1rem;
-      flex-shrink: 0;
-    }
-    .hy-date-btn:hover {
-      background: #EFF6FF;
-      border-color: #BFDBFE;
-    }
-    .hy-date-btn.active {
-      background: #0A1628;
-      border-color: #0A1628;
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(10,22,40,0.3);
-    }
-    .hy-date-btn.active .hy-date-event-badge {
-      background: rgba(255,255,255,0.2);
-      color: #fff;
-    }
-    .hy-date-day { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94A3B8; }
-    .hy-date-btn.active .hy-date-day { color: rgba(255,255,255,0.65); }
-    .hy-date-num { font-size: 1.5rem; font-weight: 800; color: #0A1628; line-height: 1.1; }
-    .hy-date-btn.active .hy-date-num { color: #fff; }
-    .hy-date-mon { font-size: 0.65rem; font-weight: 500; color: #64748B; }
-    .hy-date-btn.active .hy-date-mon { color: rgba(255,255,255,0.7); }
-    .hy-date-event-badge {
-      margin-top: 0.3rem;
-      background: #EFF6FF;
-      color: #1E4D8C;
-      border-radius: 20px;
-      padding: 1px 8px;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-    }
-    .hy-date-picker-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: #F8FAFC;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 0.45rem 0.85rem;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #475569;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .hy-date-picker-btn:hover {
-      background: #EFF6FF;
-      border-color: #93C5FD;
-      color: #1E4D8C;
-    }
-
-    /* ── Buttons ── */
-    .hy-btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: #0A1628;
-      color: #fff;
-      border: 1.5px solid #0A1628;
-      border-radius: 7px;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      letter-spacing: 0.01em;
-      font-family: inherit;
-    }
-    .hy-btn-primary:hover { background: #1E4D8C; border-color: #1E4D8C; box-shadow: 0 3px 10px rgba(30,77,140,0.3); }
-
-    .hy-btn-success {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: #0D9488;
-      color: #fff;
-      border: 1.5px solid #0D9488;
-      border-radius: 7px;
-      padding: 0.4rem 0.8rem;
-      font-size: 0.78rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .hy-btn-success:hover { background: #0F766E; }
-
-    .hy-btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: transparent;
-      color: #64748B;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 7px;
-      padding: 0.4rem 0.8rem;
-      font-size: 0.78rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .hy-btn-ghost:hover { background: #F8FAFC; border-color: #CBD5E1; color: #334155; }
-
-    .hy-btn-danger {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: #FEF2F2;
-      color: #DC2626;
-      border: 1.5px solid #FECACA;
-      border-radius: 7px;
-      padding: 0.3rem 0.7rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .hy-btn-danger:hover { background: #FEE2E2; border-color: #FCA5A5; }
-
-    .hy-btn-outline {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      background: transparent;
-      color: #1E4D8C;
-      border: 1.5px solid #BFDBFE;
-      border-radius: 7px;
-      padding: 0.3rem 0.65rem;
-      font-size: 0.72rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .hy-btn-outline:hover { background: #EFF6FF; border-color: #93C5FD; }
-
-    /* ── Input ── */
-    .hy-input {
-      border: 1.5px solid #E2E8F0;
-      border-radius: 7px;
-      padding: 0.4rem 0.75rem;
-      font-size: 0.8rem;
-      font-family: inherit;
-      color: #0A1628;
-      background: #fff;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .hy-input:focus {
-      border-color: #0066CC;
-      box-shadow: 0 0 0 3px rgba(0,102,204,0.12);
-    }
-
-    /* ── Table ── */
-    .hy-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    .hy-table thead th {
-      text-align: left;
-      padding: 0.7rem 1.25rem;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #64748B;
-      background: #F8FAFC;
-      border-bottom: 1px solid #E2E8F0;
-    }
-    .hy-table tbody tr {
-      border-bottom: 1px solid #F1F5F9;
-      transition: background 0.15s;
-      cursor: pointer;
-    }
-    .hy-table tbody tr:hover { background: #F8FAFC; }
-    .hy-table tbody tr.selected { background: #EFF6FF; }
-    .hy-table td { padding: 0.9rem 1.25rem; color: #1E293B; vertical-align: middle; }
-    .hy-table .no-data td { text-align: center; color: #94A3B8; font-size: 0.8rem; padding: 3rem 1.5rem; cursor: default; }
-    .hy-table .no-data td:hover { background: none; }
-
-    /* ── Location avatar ── */
-    .loc-avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #0A1628, #1E4D8C);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.85rem;
-      font-weight: 800;
-      flex-shrink: 0;
-      letter-spacing: -0.02em;
-    }
-
-    /* ── Badge ── */
-    .hy-badge {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 20px;
-      padding: 2px 9px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-    }
-    .hy-badge.neutral { background: #F1F5F9; color: #475569; }
-    .hy-badge.blue    { background: #DBEAFE; color: #1D4ED8; }
-
-    /* ── Progress Bar ── */
-    .hy-progress-wrap {
-      background: #F1F5F9;
-      border-radius: 100px;
-      height: 6px;
-      overflow: hidden;
-      min-width: 80px;
-      flex: 1;
-    }
-    .hy-progress-fill {
-      height: 100%;
-      border-radius: 100px;
-      background: linear-gradient(90deg, #0D9488, #14B8A6);
-      transition: width 0.4s ease;
-    }
-    .hy-progress-pct {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: #64748B;
-      min-width: 30px;
-      text-align: right;
-    }
-
-    /* ── Section heading ── */
-    .hy-section-label {
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #94A3B8;
-      padding: 0.9rem 1.5rem 0.5rem;
-    }
-
-    /* ── Close btn ── */
-    .hy-close-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: none;
-      color: #94A3B8;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.15s;
-      flex-shrink: 0;
-    }
-    .hy-close-btn:hover { background: #F1F5F9; color: #475569; }
-
-    /* ── Metric highlights ── */
-    .metric-blue  { font-size: 1.15rem; font-weight: 800; color: #1D4ED8; }
-    .metric-teal  { font-size: 1.15rem; font-weight: 800; color: #0D9488; }
-    .metric-amber { font-size: 1.15rem; font-weight: 800; color: #D97706; }
-
-    /* ── Empty state ── */
-    .hy-empty-icon {
-      font-size: 2.2rem;
-      margin-bottom: 0.5rem;
-    }
 
     /* ── Animate fade-in ── */
     @keyframes hy-fade-in {
@@ -481,159 +30,202 @@ import {
     <div class="hy-page">
 
       <!-- ── Page Header ── -->
-      <div class="hy-page-header">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 px-6 md:px-8 pt-8 pb-2 max-w-[1400px] mx-auto w-full">
         <div>
-          <p class="hy-page-kicker">Admin Console</p>
-          <h1 class="hy-page-title">Operations Dashboard</h1>
-          <p class="hy-page-subtitle">Manage facilities, track bookings, and monitor office activity</p>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[10px] font-black tracking-widest text-brand-600 uppercase bg-brand-50 px-2.5 py-1 rounded-md border border-brand-100/50">Admin Console</span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Operations Dashboard</h1>
+          <p class="text-sm font-medium text-slate-500 mt-2">Manage facilities, track bookings, and monitor office activity</p>
         </div>
-        <div class="hy-header-actions">
-          <button class="hy-btn-ghost" (click)="goFacilities()">
-            <span class="material-icons-outlined" style="font-size:16px">apartment</span>
-            Facilities
-          </button>
-          <button class="hy-btn-danger" (click)="logout()">
-            <span class="material-icons-outlined" style="font-size:15px">logout</span>
-            Sign Out
+        <div class="flex items-center gap-3 shrink-0">
+          <button class="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-brand-600 hover:border-brand-200" (click)="goFacilities()">
+            <mat-icon class="!text-[20px]">apartment</mat-icon>
+            Manage Facilities
           </button>
         </div>
       </div>
 
       <!-- ── Content Body ── -->
-      <div class="hy-content">
+      <div class="hy-content w-full">
 
         <!-- ── KPI Stats Row ── -->
-        <div class="hy-stats-grid hy-animate">
-          <div class="hy-stat-card gold">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="hy-stat-icon gold">
-                <span class="material-icons-outlined" style="font-size:19px">schedule</span>
+        <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4 hy-animate">
+          <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group">
+            <div class="absolute inset-0 bg-gradient-to-br from-brand-500 to-brand-700 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+            <div class="flex items-center justify-between relative z-10">
+              <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">LIVE</span>
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 border border-brand-100 shadow-sm transition-transform group-hover:scale-110">
+                <mat-icon class="!text-[22px]">apartment</mat-icon>
               </div>
-              <span style="font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;">CUTOFF</span>
             </div>
-            <div>
-              <p class="hy-stat-value gold">{{ dashStats()?.todaysDeadline ?? '—' }}</p>
-              <p class="hy-stat-label">Today's Deadline</p>
+            <div class="mt-5 relative z-10">
+              <p class="text-3xl font-black tracking-tight text-slate-900">{{ dashStats()?.totalBookings ?? 0 }}</p>
+              <p class="text-xs font-semibold text-slate-500 mt-1">Total Bookings</p>
+            </div>
+          </div>
+
+          <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-700 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+            <div class="flex items-center justify-between relative z-10">
+              <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">TODAY</span>
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm transition-transform group-hover:scale-110">
+                <mat-icon class="!text-[22px]">book_online</mat-icon>
+              </div>
+            </div>
+            <div class="mt-5 relative z-10">
+              <p class="text-3xl font-black tracking-tight text-slate-900">{{ dashStats()?.totalBookings ?? 0 }}</p>
+              <p class="text-xs font-semibold text-slate-500 mt-1">Total Bookings</p>
+            </div>
+          </div>
+
+          <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group">
+            <div class="absolute inset-0 bg-gradient-to-br from-rose-500 to-rose-700 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+            <div class="flex items-center justify-between relative z-10">
+              <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">PENDING</span>
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 shadow-sm transition-transform group-hover:scale-110">
+                <mat-icon class="!text-[22px]">pending_actions</mat-icon>
+              </div>
+            </div>
+            <div class="mt-5 relative z-10">
+              <p class="text-3xl font-black tracking-tight text-slate-900">{{ dashStats()?.pendingRequests ?? 0 }}</p>
+              <p class="text-xs font-semibold text-slate-500 mt-1">Pending Requests</p>
+            </div>
+          </div>
+
+          <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group">
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-700 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+            <div class="flex items-center justify-between relative z-10">
+              <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">CUTOFF</span>
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100 shadow-sm transition-transform group-hover:scale-110">
+                <mat-icon class="!text-[22px]">schedule</mat-icon>
+              </div>
+            </div>
+            <div class="mt-5 relative z-10">
+              <p class="text-3xl font-black tracking-tight text-slate-900">{{ dashStats()?.todaysDeadline ?? '—' }}</p>
+              <p class="text-xs font-semibold text-slate-500 mt-1">Today's Deadline</p>
             </div>
           </div>
         </div>
 
         <!-- ── Date Selector ── -->
-        <div class="hy-card hy-animate" style="animation-delay:0.05s">
-          <div class="hy-card-header">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hy-animate" style="animation-delay:0.05s">
+          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-5">
             <div>
-              <p class="hy-card-title">Date Navigator</p>
-              <p class="hy-card-desc">Select a date to filter bookings and activity</p>
+              <p class="text-sm font-bold text-slate-900">Date Navigator</p>
+              <p class="text-xs text-slate-500 mt-0.5">Select a date to filter bookings and activity</p>
             </div>
-            <label class="hy-date-picker-btn">
-              <span class="material-icons-outlined" style="font-size:15px">calendar_month</span>
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 bg-white h-9 shadow-sm cursor-pointer hover:bg-slate-50 hover:text-brand-600 transition-colors text-xs font-semibold text-slate-600">
+              <mat-icon class="!text-[16px]">calendar_month</mat-icon>
               Pick Date
               <input type="date" style="position:absolute;opacity:0;width:0;height:0;" [value]="selectedDate()" (change)="onDatePick($event)" />
             </label>
           </div>
 
-          <div class="hy-date-strip">
+          <div class="flex gap-2 overflow-x-auto p-5 pb-6">
             <ng-container *ngIf="dateStrip().length > 0">
               <button *ngFor="let d of dateStrip()"
                       (click)="selectDate(d.date)"
-                      class="hy-date-btn"
-                      [class.active]="d.date === selectedDate()">
-                <span class="hy-date-day">{{ d.label }}</span>
-                <span class="hy-date-num">{{ d.date | date:'d' }}</span>
-                <span class="hy-date-mon">{{ d.date | date:'MMM' }}</span>
-                <span class="hy-date-event-badge">{{ d.eventCount }}</span>
+                      class="flex flex-col items-center justify-center min-w-[72px] py-2.5 px-3 rounded-xl border transition-all duration-300"
+                      [ngClass]="d.date === selectedDate() ? 'bg-gradient-to-br from-brand-600 to-brand-800 border-transparent text-white shadow-md shadow-brand-500/20 scale-105' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+                <span class="text-[10px] font-bold uppercase tracking-wider" [ngClass]="d.date === selectedDate() ? 'opacity-80' : 'opacity-60'">{{ d.label }}</span>
+                <span class="text-xl font-black leading-tight mt-0.5">{{ d.date | date:'d' }}</span>
+                <span class="text-[10px] font-semibold" [ngClass]="d.date === selectedDate() ? 'opacity-80' : 'opacity-60'">{{ d.date | date:'MMM' }}</span>
+                <span class="mt-1.5 rounded-full px-2 py-0.5 text-[9px] font-bold" 
+                      [ngClass]="d.date === selectedDate() ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-600'">{{ d.eventCount }} Events</span>
               </button>
             </ng-container>
 
             <ng-container *ngIf="dateStrip().length === 0">
               <button *ngFor="let d of fallbackStrip"
                       (click)="selectDate(d.date)"
-                      class="hy-date-btn"
-                      [class.active]="d.date === selectedDate()">
-                <span class="hy-date-day">{{ d.label }}</span>
-                <span class="hy-date-num">{{ d.date | date:'d' }}</span>
-                <span class="hy-date-mon">{{ d.date | date:'MMM' }}</span>
-                <span class="hy-date-event-badge">0</span>
+                      class="flex flex-col items-center justify-center min-w-[72px] py-2.5 px-3 rounded-xl border transition-all duration-300"
+                      [ngClass]="d.date === selectedDate() ? 'bg-gradient-to-br from-brand-600 to-brand-800 border-transparent text-white shadow-md shadow-brand-500/20 scale-105' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+                <span class="text-[10px] font-bold uppercase tracking-wider" [ngClass]="d.date === selectedDate() ? 'opacity-80' : 'opacity-60'">{{ d.label }}</span>
+                <span class="text-xl font-black leading-tight mt-0.5">{{ d.date | date:'d' }}</span>
+                <span class="text-[10px] font-semibold" [ngClass]="d.date === selectedDate() ? 'opacity-80' : 'opacity-60'">{{ d.date | date:'MMM' }}</span>
+                <span class="mt-1.5 rounded-full px-2 py-0.5 text-[9px] font-bold" 
+                      [ngClass]="d.date === selectedDate() ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-600'">0 Events</span>
               </button>
             </ng-container>
           </div>
         </div>
 
         <!-- ── Office Locations Table ── -->
-        <div class="hy-card hy-animate" style="animation-delay:0.1s">
-          <div class="hy-card-header">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hy-animate" style="animation-delay:0.1s">
+          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-5">
             <div>
-              <p class="hy-card-title">Office Locations</p>
-              <p class="hy-card-desc">Manage corporate offices — click a row to view facility activity</p>
+              <p class="text-sm font-bold text-slate-900">Office Locations</p>
+              <p class="text-xs text-slate-500 mt-0.5">Manage corporate offices — click a row to view facility activity</p>
             </div>
-            <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="flex items-center gap-2">
               <ng-container *ngIf="!showAddForm()">
-                <button (click)="showAddForm.set(true)" class="hy-btn-primary">
-                  <span style="font-size:1rem;line-height:1;">+</span>
-                  Add Location
+                <button (click)="showAddForm.set(true)" class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-700">
+                  <span class="text-lg leading-none">+</span> Add Location
                 </button>
               </ng-container>
               <ng-container *ngIf="showAddForm()">
                 <input type="text" [(ngModel)]="newLocationName"
                        placeholder="e.g. Mumbai HQ"
-                       class="hy-input" style="width:160px;"
+                       class="h-9 w-40 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                        (keydown.enter)="addLocation()"
                        (keydown.escape)="cancelAdd()" />
-                <button (click)="addLocation()" class="hy-btn-success">Save</button>
-                <button (click)="cancelAdd()" class="hy-btn-ghost">Cancel</button>
+                <button (click)="addLocation()" class="flex h-9 items-center justify-center rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700">Save</button>
+                <button (click)="cancelAdd()" class="flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
               </ng-container>
             </div>
           </div>
-
-          <table class="hy-table">
-            <thead>
-              <tr>
-                <th>Office Location</th>
-                <th>Employee Count</th>
-                <th>Actions</th>
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+              <tr class="bg-slate-50/50 border-b border-slate-100">
+                <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Office Location</th>
+                <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Employee Count</th>
+                <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let loc of locations()"
                   (click)="selectLocation(loc)"
-                  [class.selected]="selectedLocation()?.id === loc.id">
-                <td>
-                  <div style="display:flex;align-items:center;gap:0.75rem;">
-                    <div class="loc-avatar">{{ loc.locationName.charAt(0) }}</div>
+                  class="border-b border-slate-50 hover:bg-slate-50/80 transition-colors cursor-pointer"
+                  [class.bg-brand-50]="selectedLocation()?.id === loc.id">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 text-sm font-bold text-white shadow-sm">
+                      {{ loc.locationName.charAt(0) }}
+                    </div>
                     <div>
-                      <p style="font-weight:700;color:#0A1628;font-size:0.84rem;margin:0;">{{ loc.locationName }}</p>
-                      <p style="font-size:0.68rem;color:#94A3B8;margin:0;margin-top:1px;">
-                        Click to view facility stats →
-                      </p>
+                      <p class="font-bold text-slate-900 text-sm">{{ loc.locationName }}</p>
+                      <p class="text-[10px] font-semibold text-slate-400 mt-0.5">Click to view facility stats &rarr;</p>
                     </div>
                   </div>
                 </td>
-                <td (click)="$event.stopPropagation()">
-                  <div style="display:flex;align-items:center;gap:0.5rem;">
+                <td class="px-5 py-4 align-middle" (click)="$event.stopPropagation()">
+                  <div class="flex items-center gap-3">
                     <ng-container *ngIf="editingLocationId() !== loc.id">
-                      <span style="font-size:1.1rem;font-weight:800;color:#0A1628;">{{ loc.employeeCount }}</span>
-                      <button (click)="startEditCount(loc)" class="hy-btn-outline">Edit</button>
+                      <span class="text-base font-black text-slate-900">{{ loc.employeeCount }}</span>
+                      <button (click)="startEditCount(loc)" class="flex h-7 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 px-2.5 text-[10px] font-bold uppercase tracking-wider text-brand-700 hover:bg-brand-100 transition-colors">Edit</button>
                     </ng-container>
                     <ng-container *ngIf="editingLocationId() === loc.id">
                       <input type="number" [(ngModel)]="editCountValue" min="0"
-                             class="hy-input" style="width:90px;"
+                             class="h-8 w-20 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none"
                              (keydown.enter)="saveCount(loc)"
                              (keydown.escape)="editingLocationId.set(null)" />
-                      <button (click)="saveCount(loc)" class="hy-btn-success">✓</button>
-                      <button (click)="editingLocationId.set(null)" class="hy-btn-ghost">✕</button>
+                      <button (click)="saveCount(loc)" class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">&check;</button>
+                      <button (click)="editingLocationId.set(null)" class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">&times;</button>
                     </ng-container>
                   </div>
                 </td>
-                <td (click)="$event.stopPropagation()">
-                  <button (click)="deleteLocation(loc)" class="hy-btn-danger">Remove</button>
+                <td class="px-5 py-4 align-middle text-right" (click)="$event.stopPropagation()">
+                  <button (click)="deleteLocation(loc)" class="inline-flex h-8 items-center justify-center rounded-lg bg-rose-50 px-3 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors">Remove</button>
                 </td>
               </tr>
-              <tr *ngIf="locations().length === 0" class="no-data">
-                <td colspan="3">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;">
-                    <div class="hy-empty-icon">🏢</div>
-                    <p style="font-weight:600;color:#64748B;margin:0;">No office locations yet</p>
-                    <p style="color:#94A3B8;font-size:0.73rem;margin:0;">Click "+ Add Location" to create your first office</p>
+              <tr *ngIf="locations().length === 0">
+                <td colspan="3" class="px-5 py-16 text-center">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <div class="text-4xl opacity-50 mb-2">🏢</div>
+                    <p class="text-sm font-semibold text-slate-600">No office locations yet</p>
+                    <p class="text-xs text-slate-400">Click "+ Add Location" to create your first office</p>
                   </div>
                 </td>
               </tr>
@@ -642,67 +234,69 @@ import {
         </div>
 
         <!-- ── Facility Activity Panel ── -->
-        <div *ngIf="selectedLocation() && locationStats()" class="hy-card hy-animate" style="animation-delay:0.05s">
-          <div class="hy-card-header">
+        <div *ngIf="selectedLocation() && locationStats()" class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hy-animate" style="animation-delay:0.05s">
+          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-5">
             <div>
-              <p class="hy-card-title">
+              <p class="text-sm font-bold text-slate-900">
                 Facility Activity — {{ selectedLocation()!.locationName }}
               </p>
-              <p class="hy-card-desc">
-                {{ selectedDate() | date:'MMMM d, yyyy' }}
+              <p class="text-xs text-slate-500 mt-0.5">
+                {{ selectedDate() | date:'MMMM d, yyyy' }} · Counts increment when employees book
               </p>
             </div>
-            <button class="hy-close-btn"
+            <button class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                     (click)="selectedLocation.set(null); locationStats.set(null)"
                     title="Close">✕</button>
           </div>
 
-          <table class="hy-table">
-            <thead>
-              <tr>
-                <th>Facility</th>
-                <th>Category</th>
-                <th style="text-align:center;">Requested</th>
-                <th style="text-align:center;">Acknowledged</th>
-                <th style="text-align:center;">Pending</th>
-                <th style="min-width:160px;">Progress</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of locationStats()!.facilityStats" style="cursor:default;">
-                <td style="font-weight:700;color:#0A1628;">{{ row.facilityName }}</td>
-                <td>
-                  <span class="hy-badge neutral">{{ row.category || '—' }}</span>
-                </td>
-                <td style="text-align:center;">
-                  <span class="metric-blue">{{ row.totalRequested }}</span>
-                </td>
-                <td style="text-align:center;">
-                  <span class="metric-teal">{{ row.acknowledged }}</span>
-                </td>
-                <td style="text-align:center;">
-                  <span class="metric-amber">{{ row.totalRequested - row.acknowledged }}</span>
-                </td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:0.5rem;">
-                    <div class="hy-progress-wrap">
-                      <div class="hy-progress-fill" [style.width]="getProgressWidth(row)"></div>
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-slate-50/50 border-b border-slate-100">
+                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Facility</th>
+                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Category</th>
+                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Requested</th>
+                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Acknowledged</th>
+                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Pending</th>
+                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 min-w-[160px]">Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of locationStats()!.facilityStats" class="border-b border-slate-50 hover:bg-slate-50/80 transition-colors">
+                  <td class="px-5 py-4 align-middle font-bold text-slate-900">{{ row.facilityName }}</td>
+                  <td class="px-5 py-4 align-middle">
+                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-slate-600 uppercase">{{ row.category || '—' }}</span>
+                  </td>
+                  <td class="px-5 py-4 align-middle text-center">
+                    <span class="text-base font-black text-brand-600">{{ row.totalRequested }}</span>
+                  </td>
+                  <td class="px-5 py-4 align-middle text-center">
+                    <span class="text-base font-black text-emerald-600">{{ row.acknowledged }}</span>
+                  </td>
+                  <td class="px-5 py-4 align-middle text-center">
+                    <span class="text-base font-black text-amber-600">{{ row.totalRequested - row.acknowledged }}</span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <div class="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500" [style.width]="getProgressWidth(row)"></div>
+                      </div>
+                      <span class="w-8 text-right text-[10px] font-bold text-slate-500">{{ getProgressPct(row) }}%</span>
                     </div>
-                    <span class="hy-progress-pct">{{ getProgressPct(row) }}%</span>
-                  </div>
-                </td>
-              </tr>
-              <tr *ngIf="locationStats()!.facilityStats.length === 0" class="no-data">
-                <td colspan="6">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;">
-                    <div class="hy-empty-icon">📊</div>
-                    <p style="font-weight:600;color:#64748B;margin:0;">No published facilities</p>
-                    <p style="color:#94A3B8;font-size:0.73rem;margin:0;">Publish a facility to see it tracked here</p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  </td>
+                </tr>
+                <tr *ngIf="locationStats()!.facilityStats.length === 0">
+                  <td colspan="6" class="px-5 py-16 text-center">
+                    <div class="flex flex-col items-center justify-center gap-2">
+                      <div class="text-4xl opacity-50 mb-2">📊</div>
+                      <p class="text-sm font-semibold text-slate-600">No published facilities</p>
+                      <p class="text-xs text-slate-400">Publish a facility to see it tracked here</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
       </div>

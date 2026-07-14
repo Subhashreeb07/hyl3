@@ -11,7 +11,4 @@ public interface RuleEngineService {
 
     void validateBookingCancellation(Booking booking, FacilityRule rule);
 
-    String generateQrCodeIfRequired(FacilityRule rule, Booking booking);
-
-    boolean isQrCodeValid(String qrCode, Booking booking);
 }

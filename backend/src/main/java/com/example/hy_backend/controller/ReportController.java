@@ -41,9 +41,10 @@ public class ReportController {
     @GetMapping("/summary")
     @Operation(summary = "Get operational summary for a booking date")
     public ResponseEntity<ReportDtos.OperationalSummaryResponse> getOperationalSummary(
-            @RequestParam(required = false) String bookingDate
+            @RequestParam(required = false) String bookingDate,
+            @RequestParam(required = false) Long facilityId
     ) {
-        return ResponseEntity.ok(reportService.getOperationalSummary(bookingDate));
+        return ResponseEntity.ok(reportService.getOperationalSummary(bookingDate, facilityId));
     }
 
     @GetMapping("/facility/{facilityId}/utilization")
@@ -69,9 +70,8 @@ public class ReportController {
     @Operation(summary = "Get employee registrations for admin review")
     public ResponseEntity<ReportDtos.EmployeeRegistrationsResponse> getEmployeeRegistrations(
             @RequestParam(required = false) String query,
-            @RequestParam(required = false) String location,
-            @RequestParam(required = false) Boolean activeOnly
+            @RequestParam(required = false) String location
     ) {
-        return ResponseEntity.ok(reportService.getEmployeeRegistrations(query, location, activeOnly));
+        return ResponseEntity.ok(reportService.getEmployeeRegistrations(query, location));
     }
 }

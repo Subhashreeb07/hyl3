@@ -92,35 +92,13 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
         <div class="grid gap-6 md:grid-cols-3">
           <label class="admin-field">
             Booking Start Time *
-            <input type="time" formControlName="bookingStartTime" required
-                   [class.border-red-500]="(form.get('bookingStartTime')?.touched || form.get('bookingEndTime')?.touched) && form.hasError('startAfterEnd')" />
-            <span *ngIf="(form.get('bookingStartTime')?.touched || form.get('bookingEndTime')?.touched) && form.hasError('startAfterEnd')"
-                  class="text-red-500 text-xs font-normal">Start time must be before end time.</span>
+            <input type="time" formControlName="bookingStartTime" required [class.border-red-500]="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched" />
+            <span *ngIf="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched" class="text-[11px] text-red-500 font-medium">Start time is required</span>
           </label>
           <label class="admin-field">
-            Booking End Time *
-            <input type="time" formControlName="bookingEndTime" required
-                   [class.border-red-500]="(form.get('bookingStartTime')?.touched || form.get('bookingEndTime')?.touched) && form.hasError('startAfterEnd')" />
-          </label>
-          <label class="admin-field">
-            Reminder Time
-            <input type="time" formControlName="reminderTime"
-                   [class.border-red-500]="form.get('reminderTime')?.touched && form.hasError('reminderAfterEnd')" />
-            <span *ngIf="form.get('reminderTime')?.touched && form.hasError('reminderAfterEnd')"
-                  class="text-red-500 text-xs font-normal">Reminder must be before booking end time.</span>
-          </label>
-        </div>
-        <div class="grid gap-6 md:grid-cols-2 mt-4">
-          <label class="admin-field">
-            Cancellation Deadline
-            <input type="time" formControlName="cancellationDeadline"
-                   [class.border-red-500]="form.get('cancellationDeadline')?.touched && form.hasError('cancellationAfterEnd')" />
-            <span *ngIf="form.get('cancellationDeadline')?.touched && form.hasError('cancellationAfterEnd')"
-                  class="text-red-500 text-xs font-normal">Cancellation deadline must be before booking end time.</span>
-          </label>
-          <label class="admin-field">
-            Booking Deadline
-            <input type="time" formControlName="bookingDeadline" />
+            Booking Deadline *
+            <input type="time" formControlName="bookingDeadline" required [class.border-red-500]="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched" />
+            <span *ngIf="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched" class="text-[11px] text-red-500 font-medium">Deadline is required</span>
           </label>
         </div>
       </section>

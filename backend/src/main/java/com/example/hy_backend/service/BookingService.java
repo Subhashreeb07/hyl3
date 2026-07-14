@@ -9,6 +9,8 @@ public interface BookingService {
 
     List<BookingDtos.BookingHistoryItem> getBookingHistory(String employeeId);
 
+    BookingDtos.BookingPreferenceResponse getBookingPreferences(String employeeId, Long facilityId);
+
     BookingDtos.BookingDetail getBookingDetail(Long bookingId);
 
     void cancelBooking(Long bookingId);
@@ -16,6 +18,4 @@ public interface BookingService {
     List<BookingDtos.AdminBookingSearchItem> searchBookings(Long facilityId, String employeeId, String status, String bookingDate);
 
     BookingDtos.BookingSummaryResponse getBookingSummary(Long facilityId, String bookingDate);
-
-    BookingDtos.VerifyQrResponse verifyQrCode(String qrCode);
 }

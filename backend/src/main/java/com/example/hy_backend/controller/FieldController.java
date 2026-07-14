@@ -31,15 +31,6 @@ public class FieldController {
         return ResponseEntity.ok(fieldService.addField(facilityId, request));
     }
 
-    @PostMapping("/fields/{fieldId}/options")
-    @Operation(summary = "Add dropdown/radio options for field")
-    public ResponseEntity<CommonDtos.MessageResponse> addOptions(
-            @PathVariable Long fieldId,
-            @Valid @RequestBody FieldDtos.AddOptionsRequest request
-    ) {
-        fieldService.addOptions(fieldId, request);
-        return ResponseEntity.ok(new CommonDtos.MessageResponse("Options saved successfully"));
-    }
 
     @GetMapping("/facilities/{facilityId}/fields")
     @Operation(summary = "Get fields by facility")
@@ -54,6 +45,16 @@ public class FieldController {
             @Valid @RequestBody FieldDtos.UpdateFieldRequest request
     ) {
         return ResponseEntity.ok(fieldService.updateField(fieldId, request));
+    }
+
+    @PostMapping("/fields/{fieldId}/options")
+    @Operation(summary = "Update options for dropdown/radio/checkbox field")
+    public ResponseEntity<CommonDtos.MessageResponse> updateFieldOptions(
+            @PathVariable Long fieldId,
+            @RequestBody FieldDtos.UpdateFieldOptionsRequest request
+    ) {
+        fieldService.updateFieldOptions(fieldId, request);
+        return ResponseEntity.ok(new CommonDtos.MessageResponse("Field options updated successfully"));
     }
 
     @DeleteMapping("/fields/{fieldId}")

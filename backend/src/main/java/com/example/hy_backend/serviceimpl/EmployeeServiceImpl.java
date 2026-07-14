@@ -1,18 +1,17 @@
 package com.example.hy_backend.serviceimpl;
-
 import com.example.hy_backend.dto.EmployeeDtos;
 import com.example.hy_backend.model.Booking;
 import com.example.hy_backend.model.BookingStatus;
 import com.example.hy_backend.model.Employee;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
-import com.example.hy_backend.model.Notification;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.EmployeeRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FacilityRuleRepository;
-import com.example.hy_backend.repository.NotificationRepository;
 import com.example.hy_backend.service.EmployeeService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,21 +31,21 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final FacilityRepository facilityRepository;
     private final BookingRepository bookingRepository;
     private final EmployeeRepository employeeRepository;
-    private final NotificationRepository notificationRepository;
     private final FacilityRuleRepository facilityRuleRepository;
+        private final ObjectMapper objectMapper;
 
     public EmployeeServiceImpl(
             FacilityRepository facilityRepository,
             BookingRepository bookingRepository,
             EmployeeRepository employeeRepository,
-            NotificationRepository notificationRepository,
-            FacilityRuleRepository facilityRuleRepository
+                        FacilityRuleRepository facilityRuleRepository,
+                        ObjectMapper objectMapper
     ) {
         this.facilityRepository = facilityRepository;
         this.bookingRepository = bookingRepository;
         this.employeeRepository = employeeRepository;
-        this.notificationRepository = notificationRepository;
         this.facilityRuleRepository = facilityRuleRepository;
+                this.objectMapper = objectMapper;
     }
 
     @Override
@@ -57,7 +56,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(employee -> normalizeLocation(employee.getOfficeLocation()))
                 .orElse(null);
 
-        return facilityRepository.findByPublishedTrueAndStatusTrue().stream()
+        return facilityRepository.findByPublishedTrue().stream()
                 .filter(facility -> facilityVisibleForOffice(facility, officeLocation))
                 .filter(facility -> facilityAllowedForEmployee(facility, employeeOpt.orElse(null)))
                 .map(f -> new EmployeeDtos.DashboardFacilityResponse(
@@ -71,7 +70,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public EmployeeDtos.EmployeeHomeResponse getEmployeeHomeSummary(String employeeId) {
         String normalizedEmployeeId = normalizeEmployeeId(employeeId);
-        List<Facility> facilities = facilityRepository.findByPublishedTrueAndStatusTrue();
+        List<Facility> facilities = facilityRepository.findByPublishedTrue();
 
         Optional<Employee> employeeOpt = employeeRepository.findById(normalizedEmployeeId);
         String officeLocation = employeeOpt.map(e -> normalizeLocation(e.getOfficeLocation())).orElse(null);
@@ -168,23 +167,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public EmployeeDtos.InvitationsResponse getEmployeeInvitations(String employeeId) {
         String normalized = normalizeEmployeeId(employeeId);
-        List<Notification> notifications = notificationRepository.findByEmployeeIdOrderByCreatedAtDesc(normalized);
-
-        List<EmployeeDtos.InvitationItem> invitations = notifications.stream()
-                .map(notification -> new EmployeeDtos.InvitationItem(
-                        "INV-" + notification.getNotificationId(),
-                        notification.getNotificationType(),
-                        notification.getCreatedAt() == null ? "N/A" : notification.getCreatedAt().toString(),
-                        notification.getStatusCode(),
-                        notification.getChannelCode()
-                ))
-                .toList();
-
-        int pending = (int) invitations.stream()
-                .filter(item -> "PENDING".equalsIgnoreCase(item.status()))
-                .count();
-
-        return new EmployeeDtos.InvitationsResponse(normalized, pending, invitations);
+        return new EmployeeDtos.InvitationsResponse(normalized, 0, Collections.emptyList());
     }
 
     private String normalizeEmployeeId(String employeeId) {
@@ -259,26 +242,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElse(null);
         if (rule == null) return true;
 
-        // Check employee types (work mode)
-        String empTypesCsv = rule.getEmployeeTypes();
-        if (empTypesCsv != null && !empTypesCsv.isBlank()) {
-            String normalized = normalizeWorkMode(employee.getWorkMode());
-            boolean typeMatch = Arrays.stream(empTypesCsv.split(","))
-                    .map(String::trim)
-                    .anyMatch(t -> t.equalsIgnoreCase(normalized));
-            if (!typeMatch) return false;
-        }
-
-        // Check roles
-        String rolesCsv = rule.getRoles();
-        if (rolesCsv != null && !rolesCsv.isBlank()) {
-            String normalized = normalizeRoleCode(employee.getRoleCode());
-            boolean roleMatch = Arrays.stream(rolesCsv.split(","))
-                    .map(String::trim)
-                    .anyMatch(r -> r.equalsIgnoreCase(normalized));
-            if (!roleMatch) return false;
-        }
-
         return true;
     }
 
@@ -323,16 +286,13 @@ public class EmployeeServiceImpl implements EmployeeService {
         String officeLocation = empOpt.map(e -> normalizeLocation(e.getOfficeLocation())).orElse(null);
         Employee employee = empOpt.orElse(null);
 
-        List<Facility> publishedFacilities = facilityRepository.findByPublishedTrueAndStatusTrue()
+        List<Facility> publishedFacilities = facilityRepository.findByPublishedTrue()
                 .stream()
                 .filter(f -> facilityVisibleForOffice(f, officeLocation))
                 .filter(f -> facilityAllowedForEmployee(f, employee))
                 .toList();
 
         LocalTime now = LocalTime.now();
-        java.time.DayOfWeek dayOfWeek = date.getDayOfWeek();
-        long daysFromToday = java.time.temporal.ChronoUnit.DAYS.between(today, date);
-
         return publishedFacilities.stream().map(facility -> {
             Optional<FacilityRule> ruleOpt = facilityRuleRepository.findByFacilityFacilityId(facility.getFacilityId());
 
@@ -342,41 +302,17 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (ruleOpt.isPresent()) {
                 FacilityRule rule = ruleOpt.get();
 
-                // Check facility date range — FILTER OUT (hide) if selected date is outside range
-                java.time.LocalDate facilityFromDate = rule.getFacilityAvailableFromDate();
-                java.time.LocalDate facilityToDate = rule.getFacilityAvailableToDate();
-                if (facilityFromDate != null || facilityToDate != null) {
-                    if (facilityFromDate != null && date.isBefore(facilityFromDate)) {
-                        return null; // hide facility — not yet available on this date
-                    }
-                    if (facilityToDate != null && date.isAfter(facilityToDate)) {
-                        return null; // hide facility — no longer available on this date
-                    }
-                }
+                if (bookingAllowed) {
+                    LocalDate[] window = resolveFacilityDateWindow(rule);
+                    LocalDate availableFromDate = window[0];
+                    LocalDate availableToDate = window[1];
 
-                // Check booking window restriction (how many days in advance can book)
-                Integer bookingWindowDays = rule.getBookingWindowDays();
-                if (bookingAllowed && bookingWindowDays != null && daysFromToday > bookingWindowDays) {
-                    bookingAllowed = false;
-                    LocalDate openDate = today.plusDays(bookingWindowDays);
-                    unavailableReason = "Booking opens on " + openDate.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"));
-                }
-
-                // Check available days restriction
-                String availableDays = rule.getAvailableDays();
-                if (bookingAllowed && availableDays != null && !availableDays.isBlank()) {
-                    boolean allowed = java.util.Arrays.stream(availableDays.split(","))
-                            .map(String::trim)
-                            .map(String::toUpperCase)
-                            .anyMatch(d -> d.equals(dayOfWeek.name()));
-                    if (!allowed) {
-                        bookingAllowed = false;
-                        String dayName = dayOfWeek.name().charAt(0) + dayOfWeek.name().substring(1).toLowerCase();
-                        unavailableReason = "Not available on " + dayName;
+                    if (availableFromDate != null && availableToDate != null
+                            && (date.isBefore(availableFromDate) || date.isAfter(availableToDate))) {
+                        return null;
                     }
                 }
 
-                // For today: check the booking window (bookingStartTime → bookingDeadline)
                 if (bookingAllowed && date.equals(today)) {
                     LocalTime startTime = rule.getBookingStartTime();
                     LocalTime deadline = rule.getBookingDeadline();
@@ -389,6 +325,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                         unavailableReason = "Booking window closed at " + deadline;
                     }
                 }
+
+                                if (bookingAllowed && date.isAfter(today)) {
+                                        LocalTime startTime = rule.getBookingStartTime();
+                                        if (startTime != null) {
+                                                bookingAllowed = false;
+                                                unavailableReason = "Booking opens on " + date + " at " + startTime;
+                                        }
+                                }
             }
 
             String startTimeStr = ruleOpt
@@ -401,13 +345,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .map(LocalTime::toString)
                     .orElse(null);
 
-            String availableDaysStr = ruleOpt
-                    .map(FacilityRule::getAvailableDays)
-                    .orElse(null);
-
-            Integer bookingWindowDaysInt = ruleOpt
-                    .map(FacilityRule::getBookingWindowDays)
-                    .orElse(null);
+            String availableDaysStr = null;
+            Integer bookingWindowDaysInt = null;
 
             boolean alreadyBooked = bookingAllowed && bookingRepository
                     .existsByEmployeeIdAndFacilityFacilityIdAndBookingDateAndStatus(
@@ -444,4 +383,95 @@ public class EmployeeServiceImpl implements EmployeeService {
         .filter(java.util.Objects::nonNull)
         .toList();
     }
+
+        private LocalDate[] resolveFacilityDateWindow(FacilityRule rule) {
+                LocalDate availableFromDate = rule.getFacilityAvailableFromDate();
+                LocalDate availableToDate = rule.getFacilityAvailableToDate();
+
+                if ((availableFromDate == null || availableToDate == null)
+                                && rule.getRulesJson() != null && !rule.getRulesJson().isBlank()) {
+                        try {
+                                JsonNode rulesNode = objectMapper.readTree(rule.getRulesJson());
+
+                                LocalDate jsonFrom = firstDate(rulesNode,
+                                                "facilityAvailableFromDate",
+                                                "facilityAvailableDateFrom",
+                                                "availableFromDate",
+                                                "availableFrom",
+                                                "startDate");
+                                LocalDate jsonTo = firstDate(rulesNode,
+                                                "facilityAvailableToDate",
+                                                "facilityAvailableDateTo",
+                                                "availableToDate",
+                                                "availableTo",
+                                                "endDate");
+                                LocalDate singleDate = firstDate(rulesNode,
+                                                "facilityAvailableDate",
+                                                "availableDate",
+                                                "date");
+
+                                if (availableFromDate == null) {
+                                        availableFromDate = jsonFrom;
+                                }
+                                if (availableToDate == null) {
+                                        availableToDate = jsonTo;
+                                }
+                                if (availableFromDate == null && availableToDate == null && singleDate != null) {
+                                        availableFromDate = singleDate;
+                                        availableToDate = singleDate;
+                                }
+                        } catch (Exception ignored) {
+                                // Ignore malformed rules_json and fall back to typed columns only.
+                        }
+                }
+
+                if (availableFromDate == null && availableToDate != null) {
+                        availableFromDate = availableToDate;
+                }
+                if (availableToDate == null && availableFromDate != null) {
+                        availableToDate = availableFromDate;
+                }
+
+                return new LocalDate[]{availableFromDate, availableToDate};
+        }
+
+        private LocalDate firstDate(JsonNode node, String... keys) {
+                JsonNode rulesNode = node.has("rules") && node.get("rules").isObject() ? node.get("rules") : null;
+                for (String key : keys) {
+                        if (node.hasNonNull(key)) {
+                                LocalDate parsed = parseFlexibleDate(node.get(key).asText(null));
+                                if (parsed != null) {
+                                        return parsed;
+                                }
+                        }
+
+                        if (rulesNode != null && rulesNode.hasNonNull(key)) {
+                                LocalDate parsed = parseFlexibleDate(rulesNode.get(key).asText(null));
+                                if (parsed != null) {
+                                        return parsed;
+                                }
+                        }
+                }
+                return null;
+        }
+
+        private LocalDate parseFlexibleDate(String value) {
+                if (value == null || value.isBlank()) {
+                        return null;
+                }
+                String trimmed = value.trim();
+                try {
+                        return LocalDate.parse(trimmed);
+                } catch (Exception ignored) {
+                        // Try ISO date-time by taking the date part.
+                }
+                if (trimmed.length() >= 10) {
+                        try {
+                                return LocalDate.parse(trimmed.substring(0, 10));
+                        } catch (Exception ignored) {
+                                return null;
+                        }
+                }
+                return null;
+        }
 }

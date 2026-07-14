@@ -7,8 +7,6 @@ SELECT
     e.office_location,
     e.work_mode,
     e.role_code,
-    e.active,
-    e.created_at,
-    e.updated_at
+    e.created_at
 FROM employees e
 ORDER BY e.created_at DESC;

@@ -5,17 +5,14 @@ import com.example.hy_backend.dto.FacilityDtos;
 import com.example.hy_backend.exception.BadRequestException;
 import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.model.Facility;
-import com.example.hy_backend.model.FieldDefinition;
-import com.example.hy_backend.model.FieldOption;
 import com.example.hy_backend.model.FacilityRule;
+import com.example.hy_backend.model.FieldDefinition;
 import com.example.hy_backend.model.FieldType;
+import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
-import com.example.hy_backend.repository.FieldOptionRepository;
-import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.service.FacilityService;
 import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,8 +23,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.LocalTime;
+import org.springframework.stereotype.Service;
 
 @Service
 public class FacilityServiceImpl implements FacilityService {
@@ -37,25 +35,22 @@ public class FacilityServiceImpl implements FacilityService {
 
     private final FacilityRepository facilityRepository;
     private final FieldDefinitionRepository fieldDefinitionRepository;
-    private final FieldOptionRepository fieldOptionRepository;
     private final FacilityRuleRepository facilityRuleRepository;
 
     public FacilityServiceImpl(
             FacilityRepository facilityRepository,
             FieldDefinitionRepository fieldDefinitionRepository,
-            FieldOptionRepository fieldOptionRepository,
             FacilityRuleRepository facilityRuleRepository
     ) {
         this.facilityRepository = facilityRepository;
         this.fieldDefinitionRepository = fieldDefinitionRepository;
-        this.fieldOptionRepository = fieldOptionRepository;
         this.facilityRuleRepository = facilityRuleRepository;
     }
 
     @Override
     public FacilityDtos.FacilityCreateResponse createFacility(FacilityDtos.FacilityCreateRequest request) {
-        String name = request.facilityName().trim();
-        if (facilityRepository.existsByFacilityNameIgnoreCase(name)) {
+        String name = normalizeFacilityName(request.facilityName());
+        if (hasConflictingFacilityName(name, null)) {
             throw new BadRequestException("A facility named '" + name + "' already exists. Please choose a different name.");
         }
         Facility facility = new Facility();
@@ -63,7 +58,6 @@ public class FacilityServiceImpl implements FacilityService {
         facility.setDescription(request.description());
         facility.setCategory(request.category());
         facility.setIcon(request.icon());
-        facility.setStatus(request.status());
         facility.setPublished(false);
         facility.setIsTemplate(request.isTemplate() != null && request.isTemplate());
         facility.setIsPublic(request.isPublic() == null || request.isPublic());
@@ -78,7 +72,6 @@ public class FacilityServiceImpl implements FacilityService {
                 .map(f -> new FacilityDtos.FacilitySummaryResponse(
                         f.getFacilityId(),
                         f.getFacilityName(),
-                        f.getStatus(),
                         f.getIsTemplate(),
                         f.getIsPublic()
                 ))
@@ -94,15 +87,13 @@ public class FacilityServiceImpl implements FacilityService {
     @Override
     public FacilityDtos.FacilityDetailResponse updateFacility(Long facilityId, FacilityDtos.FacilityUpdateRequest request) {
         Facility facility = getFacilityOrThrow(facilityId);
-        String name = request.facilityName().trim();
-        if (facilityRepository.existsByFacilityNameIgnoreCaseAndFacilityIdNot(name, facilityId)) {
+        String name = normalizeFacilityName(request.facilityName());
+        if (hasConflictingFacilityName(name, facilityId)) {
             throw new BadRequestException("A facility named '" + name + "' already exists. Please choose a different name.");
         }
         facility.setFacilityName(name);
         facility.setDescription(request.description());
         facility.setCategory(request.category());
-        facility.setIcon(request.icon());
-        facility.setStatus(request.status());
         if (request.isPublic() != null) {
             facility.setIsPublic(request.isPublic());
         }
@@ -127,8 +118,6 @@ public class FacilityServiceImpl implements FacilityService {
         }
         validatePublishReadiness(facilityId);
         List<String> normalizedLocations = normalizeTargetLocations(request == null ? null : request.targetLocations());
-        facility.setTargetLocations(String.join(",", normalizedLocations));
-        facility.setStatus(true);
         facility.setPublished(true);
         facilityRepository.save(facility);
         return new FacilityDtos.PublishResponse(facility.getFacilityId(), "Facility published successfully");
@@ -143,16 +132,16 @@ public class FacilityServiceImpl implements FacilityService {
         }
 
         String baseName = (newFacilityName != null && !newFacilityName.isBlank())
-                ? newFacilityName.trim()
+            ? normalizeFacilityName(newFacilityName)
                 : template.getFacilityName() + "_COPY";
 
         // Ensure unique name — collect all existing names first, then loop without lambda
         Set<String> existingNames = facilityRepository.findAll().stream()
-                .map(f -> f.getFacilityName().toLowerCase(Locale.ROOT))
+            .map(f -> normalizeFacilityName(f.getFacilityName()).toLowerCase(Locale.ROOT))
                 .collect(Collectors.toSet());
         String uniqueName = baseName;
         int suffix = 1;
-        while (existingNames.contains(uniqueName.toLowerCase(Locale.ROOT))) {
+        while (existingNames.contains(normalizeFacilityName(uniqueName).toLowerCase(Locale.ROOT))) {
             uniqueName = baseName + "_" + suffix++;
         }
 
@@ -161,7 +150,6 @@ public class FacilityServiceImpl implements FacilityService {
         copy.setDescription(template.getDescription());
         copy.setCategory(template.getCategory());
         copy.setIcon(template.getIcon());
-        copy.setStatus(true);
         copy.setPublished(false);
         copy.setIsTemplate(false);
         copy.setIsPublic(template.getIsPublic());
@@ -169,7 +157,7 @@ public class FacilityServiceImpl implements FacilityService {
 
         // Deep-copy fields (including their options)
         List<FieldDefinition> sourceFields =
-                fieldDefinitionRepository.findByFacilityFacilityIdWithOptions(templateFacilityId);
+                fieldDefinitionRepository.findByFacilityFacilityIdOrderByDisplayOrderAsc(templateFacilityId);
         for (FieldDefinition src : sourceFields) {
             FieldDefinition fd = new FieldDefinition();
             fd.setFacility(savedCopy);
@@ -180,16 +168,7 @@ public class FacilityServiceImpl implements FacilityService {
             fd.setDefaultValue(src.getDefaultValue());
             fd.setValidationJson(src.getValidationJson());
             fd.setDisplayOrder(src.getDisplayOrder());
-
-            // Copy each option so dropdowns/radio/checkbox choices are preserved
-            for (FieldOption srcOpt : src.getOptions()) {
-                FieldOption opt = new FieldOption();
-                opt.setField(fd);
-                opt.setOptionValue(srcOpt.getOptionValue());
-                opt.setDisplayOrder(srcOpt.getDisplayOrder());
-                fd.getOptions().add(opt);
-            }
-
+            fd.setFieldOptions(src.getFieldOptions());
             fieldDefinitionRepository.save(fd);
         }
 
@@ -201,18 +180,10 @@ public class FacilityServiceImpl implements FacilityService {
             rule.setFacility(savedCopy);
             rule.setBookingDeadline(srcRule.getBookingDeadline());
             rule.setBookingStartTime(srcRule.getBookingStartTime());
-            rule.setReminderTime(srcRule.getReminderTime());
-            rule.setQrRequired(srcRule.getQrRequired());
-            rule.setAllowCancellation(srcRule.getAllowCancellation());
-            rule.setMaximumCapacity(srcRule.getMaximumCapacity());
-            rule.setRegularCommuteEnabled(srcRule.getRegularCommuteEnabled());
-            rule.setAvailableDays(srcRule.getAvailableDays());
-            rule.setBookingWindowDays(srcRule.getBookingWindowDays());
             rule.setFacilityAvailableFromDate(srcRule.getFacilityAvailableFromDate());
             rule.setFacilityAvailableToDate(srcRule.getFacilityAvailableToDate());
-            rule.setCancellationDeadline(srcRule.getCancellationDeadline());
-            rule.setEmployeeTypes(srcRule.getEmployeeTypes());
-            rule.setRoles(srcRule.getRoles());
+            rule.setRulesJson(srcRule.getRulesJson());
+
             facilityRuleRepository.save(rule);
         }
 
@@ -249,7 +220,7 @@ public class FacilityServiceImpl implements FacilityService {
     @Transactional
     public EmployeeDtos.FacilitySpecificationResponse getFacilitySpecification(Long facilityId) {
         Facility facility = getFacilityOrThrow(facilityId);
-        List<FieldDefinition> fields = fieldDefinitionRepository.findByFacilityFacilityIdWithOptions(facilityId);
+        List<FieldDefinition> fields = fieldDefinitionRepository.findByFacilityFacilityIdOrderByDisplayOrderAsc(facilityId);
         FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(facilityId).orElse(null);
 
         List<EmployeeDtos.SpecificationField> specificationFields = fields.stream()
@@ -261,9 +232,9 @@ public class FacilityServiceImpl implements FacilityService {
                         field.getPlaceholder(),
                         field.getValidationJson(),
                         field.getDefaultValue(),
-                        field.getOptions().isEmpty()
+                        field.getFieldOptions() == null || field.getFieldOptions().isBlank()
                                 ? Collections.emptyList()
-                                : field.getOptions().stream().map(o -> o.getOptionValue()).toList()
+                                : Arrays.asList(field.getFieldOptions().split("\\n"))
                 ))
                 .toList();
 
@@ -272,15 +243,7 @@ public class FacilityServiceImpl implements FacilityService {
                 : new EmployeeDtos.SpecificationRule(
                         rule.getBookingDeadline() == null ? null : rule.getBookingDeadline().toString(),
                         rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString(),
-                        rule.getReminderTime() == null ? null : rule.getReminderTime().toString(),
-                        rule.getQrRequired(),
-                        rule.getAllowCancellation(),
-                        rule.getMaximumCapacity(),
-                        rule.getRegularCommuteEnabled(),
-                        rule.getAvailableDays(),
-                        rule.getCancellationDeadline() == null ? null : rule.getCancellationDeadline().toString(),
-                        rule.getEmployeeTypes(),
-                        rule.getRoles()
+                        null, false, true, null, false, null, null, null, null
                 );
 
         return new EmployeeDtos.FacilitySpecificationResponse(
@@ -296,19 +259,22 @@ public class FacilityServiceImpl implements FacilityService {
     public FacilityDtos.FacilityDetailResponse importFacilityFromJson(java.util.Map<String, Object> jsonData) {
         try {
             // Extract facility information
-            String facilityName = (String) jsonData.getOrDefault("facilityName", "Imported Facility");
+            String facilityName = normalizeFacilityName((String) jsonData.getOrDefault("facilityName", "Imported Facility"));
             String description = (String) jsonData.getOrDefault("description", "");
             String category = (String) jsonData.getOrDefault("category", "General");
             String icon = (String) jsonData.getOrDefault("icon", "business");
             Boolean status = (Boolean) jsonData.getOrDefault("status", true);
 
+            if (hasConflictingFacilityName(facilityName, null)) {
+                throw new BadRequestException("A facility named '" + facilityName + "' already exists. Please choose a different name.");
+            }
+
             // Create Facility
             Facility facility = new Facility();
-            facility.setFacilityName(facilityName.trim());
+            facility.setFacilityName(facilityName);
             facility.setDescription(description);
             facility.setCategory(category);
             facility.setIcon(icon);
-            facility.setStatus(status);
             facility.setPublished(false);
             Facility savedFacility = facilityRepository.save(facility);
 
@@ -334,19 +300,12 @@ public class FacilityServiceImpl implements FacilityService {
                         field.setPlaceholder(placeholder);
                         field.setDisplayOrder(order++);
 
-                        FieldDefinition savedField = fieldDefinitionRepository.save(field);
-
-                        // Create options if it's a dropdown/radio/checkbox field
-                        @SuppressWarnings("unchecked")
                         List<String> options = (List<String>) fieldData.get("options");
                         if (options != null && requiresOptions(fieldType)) {
-                            for (String optionValue : options) {
-                                FieldOption option = new FieldOption();
-                                option.setField(savedField);
-                                option.setOptionValue(optionValue);
-                                fieldOptionRepository.save(option);
-                            }
+                            field.setFieldOptions(String.join("\n", options));
                         }
+                        
+                        fieldDefinitionRepository.save(field);
                     } catch (IllegalArgumentException e) {
                         throw new BadRequestException("Invalid field type: " + fieldTypeStr);
                     }
@@ -362,40 +321,14 @@ public class FacilityServiceImpl implements FacilityService {
                 
                 if (rulesData.containsKey("bookingDeadline")) {
                     try {
-                        rule.setBookingDeadline(LocalTime.parse((String) rulesData.get("bookingDeadline")));
+                        if (rulesData.get("bookingDeadline") != null) {
+                            rule.setBookingDeadline(LocalTime.parse((String) rulesData.get("bookingDeadline")));
+                        }
                     } catch (Exception e) {
                         // Skip invalid time format
                     }
                 }
-                if (rulesData.containsKey("reminderTime")) {
-                    try {
-                        rule.setReminderTime(LocalTime.parse((String) rulesData.get("reminderTime")));
-                    } catch (Exception e) {
-                        // Skip invalid time format
-                    }
-                }
-                if (rulesData.containsKey("bookingStartTime")) {
-                    try {
-                        rule.setBookingStartTime(LocalTime.parse((String) rulesData.get("bookingStartTime")));
-                    } catch (Exception e) {
-                        // Skip invalid time format
-                    }
-                }
-                if (rulesData.containsKey("qrRequired")) {
-                    rule.setQrRequired((Boolean) rulesData.getOrDefault("qrRequired", false));
-                }
-                if (rulesData.containsKey("allowCancellation")) {
-                    rule.setAllowCancellation((Boolean) rulesData.getOrDefault("allowCancellation", true));
-                }
-                if (rulesData.containsKey("maximumCapacity")) {
-                    Object capacityObj = rulesData.get("maximumCapacity");
-                    if (capacityObj instanceof Number) {
-                        rule.setMaximumCapacity(((Number) capacityObj).intValue());
-                    }
-                }
-                if (rulesData.containsKey("regularCommuteEnabled")) {
-                    rule.setRegularCommuteEnabled((Boolean) rulesData.getOrDefault("regularCommuteEnabled", false));
-                }
+
                 
                 facilityRuleRepository.save(rule);
             }
@@ -418,7 +351,6 @@ public class FacilityServiceImpl implements FacilityService {
                 facility.getDescription(),
                 facility.getCategory(),
                 facility.getIcon(),
-                facility.getStatus(),
                 facility.getPublished(),
                 facility.getIsTemplate(),
                 facility.getIsPublic(),
@@ -463,7 +395,7 @@ public class FacilityServiceImpl implements FacilityService {
     }
 
     private void validatePublishReadiness(Long facilityId) {
-        List<FieldDefinition> fields = fieldDefinitionRepository.findByFacilityFacilityIdWithOptions(facilityId);
+        List<FieldDefinition> fields = fieldDefinitionRepository.findByFacilityFacilityIdOrderByDisplayOrderAsc(facilityId);
         if (fields.isEmpty()) {
             throw new BadRequestException("Cannot publish facility without dynamic fields");
         }
@@ -473,7 +405,7 @@ public class FacilityServiceImpl implements FacilityService {
                 throw new BadRequestException("Cannot publish facility with empty field label");
             }
 
-            if (requiresOptions(field.getFieldType()) && field.getOptions().isEmpty()) {
+            if (requiresOptions(field.getFieldType()) && (field.getFieldOptions() == null || field.getFieldOptions().isBlank())) {
                 throw new BadRequestException("Cannot publish facility. Options missing for field: " + field.getLabel());
             }
         }
@@ -481,6 +413,27 @@ public class FacilityServiceImpl implements FacilityService {
 
     private boolean requiresOptions(FieldType fieldType) {
         return fieldType == FieldType.DROPDOWN || fieldType == FieldType.RADIO_BUTTON || fieldType == FieldType.CHECKBOX;
+    }
+
+    private String normalizeFacilityName(String name) {
+        if (name == null) {
+            throw new BadRequestException("Facility name is required.");
+        }
+        String normalized = name.trim().replaceAll("\\s+", " ");
+        if (normalized.isBlank()) {
+            throw new BadRequestException("Facility name is required.");
+        }
+        return normalized;
+    }
+
+    private boolean hasConflictingFacilityName(String candidate, Long currentFacilityId) {
+        String normalizedCandidate = normalizeFacilityName(candidate).toLowerCase(Locale.ROOT);
+        return facilityRepository.findAll().stream()
+                .filter(f -> currentFacilityId == null || !f.getFacilityId().equals(currentFacilityId))
+                .map(Facility::getFacilityName)
+                .map(this::normalizeFacilityName)
+                .map(name -> name.toLowerCase(Locale.ROOT))
+                .anyMatch(normalizedCandidate::equals);
     }
 
 }

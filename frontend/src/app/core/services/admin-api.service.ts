@@ -68,12 +68,19 @@ export class AdminApiService {
     });
   }
 
-  getOperationalSummary(bookingDate?: string | null): Observable<OperationalSummaryResponse> {
+  getOperationalSummary(bookingDate?: string | null, facilityId?: number | null): Observable<OperationalSummaryResponse> {
     let params = new HttpParams();
     if (bookingDate) params = params.set('bookingDate', bookingDate.trim());
+    if (facilityId) params = params.set('facilityId', String(facilityId));
 
     return this.http.get<OperationalSummaryResponse>(`${this.baseUrl}/reports/summary`, {
       params,
+      headers: this.authHeader()
+    });
+  }
+
+  getDailyReport(): Observable<{[key: string]: number}> {
+    return this.http.get<{[key: string]: number}>(`${this.baseUrl}/reports/daily`, {
       headers: this.authHeader()
     });
   }

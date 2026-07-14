@@ -104,6 +104,16 @@ export class FacilityBuilderStateService {
               rules: {}
             });
 
+        // Also fetch full rules (includes rules_json fields like reminderTime, availableDays, etc.)
+        try {
+          const fullRules = await firstValueFrom(this.facilityAdminApi.getRules(summary.facilityId));
+          if (fullRules) {
+            record.rules = { ...(record.rules ?? {}), ...fullRules };
+          }
+        } catch {
+          // Rules may not exist yet — keep what we have from the spec
+        }
+
         record.id = detail.facilityId;
         record.facilityName = detail.facilityName;
         record.description = detail.description ?? '';

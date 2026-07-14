@@ -20,46 +20,15 @@ public class FacilityRule {
 
     private LocalTime bookingStartTime;
 
-    private LocalTime reminderTime;
-
-    @Column(nullable = false)
-    private Boolean qrRequired = false;
-
-    @Column(nullable = false)
-    private Boolean allowCancellation = true;
-
-    private Integer maximumCapacity;
-
-    @Column(nullable = false)
-    private Boolean regularCommuteEnabled = false;
-
-    // Comma-separated days: MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY
-    // NULL = available every day
-    @Column(name = "available_days")
-    private String availableDays;
-
-    // Number of days in advance employees can book (e.g., 10 = can book up to 10 days from today)
-    // NULL = unlimited booking window
-    @Column(name = "booking_window_days")
-    private Integer bookingWindowDays;
-// Date range for facility availability
-    // NULL = available for all dates
     @Column(name = "facility_available_from_date")
     private LocalDate facilityAvailableFromDate;
 
     @Column(name = "facility_available_to_date")
     private LocalDate facilityAvailableToDate;
 
-    @Column(name = "cancellation_deadline")
-    private LocalTime cancellationDeadline;
+    @Column(name = "rules_json", columnDefinition = "TEXT")
+    private String rulesJson;
 
-    @Column(name = "employee_types", columnDefinition = "TEXT")
-    private String employeeTypes;
-
-    @Column(name = "roles", columnDefinition = "TEXT")
-    private String roles;
-
-    
     public Long getRuleId() {
         return ruleId;
     }
@@ -84,14 +53,6 @@ public class FacilityRule {
         this.bookingDeadline = bookingDeadline;
     }
 
-    public LocalTime getReminderTime() {
-        return reminderTime;
-    }
-
-    public void setReminderTime(LocalTime reminderTime) {
-        this.reminderTime = reminderTime;
-    }
-
     public LocalTime getBookingStartTime() {
         return bookingStartTime;
     }
@@ -100,44 +61,12 @@ public class FacilityRule {
         this.bookingStartTime = bookingStartTime;
     }
 
-    public Boolean getQrRequired() {
-        return qrRequired;
+    public String getRulesJson() {
+        return rulesJson;
     }
 
-    public void setQrRequired(Boolean qrRequired) {
-        this.qrRequired = qrRequired;
-    }
-
-    public Boolean getAllowCancellation() {
-        return allowCancellation;
-    }
-
-    public void setAllowCancellation(Boolean allowCancellation) {
-        this.allowCancellation = allowCancellation;
-    }
-
-    public Integer getMaximumCapacity() {
-        return maximumCapacity;
-    }
-
-    public void setMaximumCapacity(Integer maximumCapacity) {
-        this.maximumCapacity = maximumCapacity;
-    }
-
-    public Boolean getRegularCommuteEnabled() {
-        return regularCommuteEnabled;
-    }
-
-    public void setRegularCommuteEnabled(Boolean regularCommuteEnabled) {
-        this.regularCommuteEnabled = regularCommuteEnabled;
-    }
-
-    public String getAvailableDays() {
-        return availableDays;
-    }
-
-    public void setAvailableDays(String availableDays) {
-        this.availableDays = availableDays;
+    public void setRulesJson(String rulesJson) {
+        this.rulesJson = rulesJson;
     }
 
     public LocalDate getFacilityAvailableFromDate() {
@@ -154,37 +83,5 @@ public class FacilityRule {
 
     public void setFacilityAvailableToDate(LocalDate facilityAvailableToDate) {
         this.facilityAvailableToDate = facilityAvailableToDate;
-    }
-
-    public Integer getBookingWindowDays() {
-        return bookingWindowDays;
-    }
-
-    public void setBookingWindowDays(Integer bookingWindowDays) {
-        this.bookingWindowDays = bookingWindowDays;
-    }
-
-    public LocalTime getCancellationDeadline() {
-        return cancellationDeadline;
-    }
-
-    public void setCancellationDeadline(LocalTime cancellationDeadline) {
-        this.cancellationDeadline = cancellationDeadline;
-    }
-
-    public String getEmployeeTypes() {
-        return employeeTypes;
-    }
-
-    public void setEmployeeTypes(String employeeTypes) {
-        this.employeeTypes = employeeTypes;
-    }
-
-    public String getRoles() {
-        return roles;
-    }
-
-    public void setRoles(String roles) {
-        this.roles = roles;
     }
 }

@@ -11,6 +11,7 @@ import { AdminNotificationsPageComponent } from './features/admin/pages/admin-no
 import { AdminReportsPageComponent } from './features/admin/pages/admin-reports-page.component';
 import { AdminRulesPageComponent } from './features/admin/pages/admin-rules-page.component';
 import { AdminEmployeesPageComponent } from './features/admin/pages/admin-employees-page.component';
+import { AdminDataStorePageComponent } from './features/admin/pages/admin-data-store-page.component';
 import { BookingDetailComponent } from './features/employee/booking-detail.component';
 import { BookingHistoryComponent } from './features/employee/booking-history.component';
 import { DashboardComponent } from './features/employee/dashboard.component';
@@ -68,6 +69,10 @@ export const routes: Routes = [
       {
         path: 'employees',
         component: AdminEmployeesPageComponent
+      },
+      {
+        path: 'data-store',
+        component: AdminDataStorePageComponent
       },
       {
         path: '',

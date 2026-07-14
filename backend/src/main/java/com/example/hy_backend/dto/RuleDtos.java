@@ -9,37 +9,13 @@ public final class RuleDtos {
 
     public record RuleRequest(
             String bookingDeadline,
-            String bookingStartTime,
-            String reminderTime,
-            Boolean qrRequired,
-            Boolean allowCancellation,
-            @Min(1) Integer maximumCapacity,
-            Boolean regularCommuteEnabled,
-            String availableDays,
-            Integer bookingWindowDays,
-            String facilityAvailableFromDate,
-            String facilityAvailableToDate,
-            String cancellationDeadline,
-            String employeeTypes,
-            String roles
+            String bookingStartTime
     ) {
     }
 
     public record RuleResponse(
             String bookingDeadline,
-            String bookingStartTime,
-            String reminderTime,
-            Boolean qrRequired,
-            Boolean allowCancellation,
-            Integer maximumCapacity,
-            Boolean regularCommuteEnabled,
-            String availableDays,
-            Integer bookingWindowDays,
-            String facilityAvailableFromDate,
-            String facilityAvailableToDate,
-            String cancellationDeadline,
-            String employeeTypes,
-            String roles
+            String bookingStartTime
     ) {
     }
 }

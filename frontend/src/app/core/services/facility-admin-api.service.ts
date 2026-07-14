@@ -82,6 +82,12 @@ export interface FieldDetailResponse {
   options: string[];
 }
 
+export interface FieldSummaryResponse {
+  fieldId: number;
+  label: string;
+  fieldType: string;
+}
+
 export interface RuleRequest {
   bookingDeadline?: string | null;
   bookingStartTime?: string | null;
@@ -95,8 +101,8 @@ export interface RuleRequest {
   bookingWindowDays?: number | null;
   facilityAvailableFromDate?: string | null;
   facilityAvailableToDate?: string | null;
-  employeeTypes?: string | null;
-  roles?: string | null;
+  employeeTypes?: string[] | string | null;
+  roles?: string[] | string | null;
 }
 
 export interface RuleResponse {
@@ -192,6 +198,12 @@ export class FacilityAdminApiService {
     });
   }
 
+  getFacilityFields(facilityId: number): Observable<FieldSummaryResponse[]> {
+    return this.http.get<FieldSummaryResponse[]>(`${this.baseUrl}/facilities/${facilityId}/fields`, {
+      headers: this.authHeader()
+    });
+  }
+
   addFieldOptions(fieldId: number, options: string[]): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.baseUrl}/fields/${fieldId}/options`, { options }, {
       headers: this.authHeader()
@@ -216,8 +228,8 @@ export class FacilityAdminApiService {
     });
   }
 
-  getRules(facilityId: number): Observable<RuleResponse> {
-    return this.http.get<RuleResponse>(`${this.baseUrl}/facilities/${facilityId}/rules`, {
+  getRules(facilityId: number): Observable<Record<string, any>> {
+    return this.http.get<Record<string, any>>(`${this.baseUrl}/facilities/${facilityId}/rules`, {
       headers: this.authHeader()
     });
   }

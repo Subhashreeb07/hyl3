@@ -22,22 +22,22 @@ public class RuleController {
     @Operation(summary = "Save facility rules")
     public ResponseEntity<RuleDtos.RuleResponse> saveRules(
             @PathVariable Long facilityId,
-            @RequestBody RuleDtos.RuleRequest request
+            @RequestBody com.fasterxml.jackson.databind.JsonNode request
     ) {
         return ResponseEntity.ok(ruleService.saveRules(facilityId, request));
     }
 
     @GetMapping
     @Operation(summary = "Get facility rules")
-    public ResponseEntity<RuleDtos.RuleResponse> getRules(@PathVariable Long facilityId) {
-        return ResponseEntity.ok(ruleService.getRules(facilityId));
+    public ResponseEntity<com.fasterxml.jackson.databind.JsonNode> getRules(@PathVariable Long facilityId) {
+        return ResponseEntity.ok(ruleService.getFullRules(facilityId));
     }
 
     @PutMapping
     @Operation(summary = "Update facility rules")
     public ResponseEntity<RuleDtos.RuleResponse> updateRules(
             @PathVariable Long facilityId,
-            @RequestBody RuleDtos.RuleRequest request
+            @RequestBody com.fasterxml.jackson.databind.JsonNode request
     ) {
         return ResponseEntity.ok(ruleService.updateRules(facilityId, request));
     }
