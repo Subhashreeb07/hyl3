@@ -17,7 +17,9 @@ public final class AuthDtos {
             @NotBlank String email,
             @NotBlank @Size(min = 6, max = 100) String password,
             String department,
-            String officeLocation
+            String officeLocation,
+            String workMode,
+            String roleCode
         ) {
         }
 
