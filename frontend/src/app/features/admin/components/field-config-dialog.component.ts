@@ -154,7 +154,7 @@ export interface FieldDialogData {
             <!-- Route label row -->
             <div class="flex items-center gap-2 mb-2">
               <span class="material-icons-outlined text-indigo-400" style="font-size:16px">account_tree</span>
-              <input type="text" [value]="node.label" (input)="updateRouteLabel(ri, $event)"
+              <input type="text" [attr.value]="node.label" (input)="updateRouteLabel(ri, $event)"
                 placeholder="Route / Category name" class="field-input flex-1"
                 style="background:#fff;border-color:#e0e7ff;" />
               <button type="button" (click)="removeRoute(ri)"
@@ -167,7 +167,7 @@ export interface FieldDialogData {
             <div class="ml-6 flex flex-col gap-1.5">
               <div *ngFor="let stop of node.children; let si = index; trackBy: trackByIndex" class="flex items-center gap-2">
                 <span class="material-icons-outlined text-slate-400" style="font-size:13px">subdirectory_arrow_right</span>
-                <input type="text" [value]="stop" (input)="updateStop(ri, si, $event)"
+                <input type="text" [attr.value]="stop" (input)="updateStop(ri, si, $event)"
                   placeholder="Stop name" class="field-input flex-1" style="font-size:0.8rem;" />
                 <button type="button" (click)="removeStop(ri, si)"
                   class="rounded-full p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"

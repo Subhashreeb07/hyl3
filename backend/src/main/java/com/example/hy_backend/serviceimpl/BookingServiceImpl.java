@@ -157,7 +157,6 @@ public class BookingServiceImpl implements BookingService {
             officeLocationRepository.findByLocationNameIgnoreCase(officeLoc)
                     .ifPresent(loc -> {
                         locationService.incrementRequested(facId, loc.getId(), bdStr);
-                        locationService.incrementAcknowledged(facId, loc.getId(), bdStr);
                     });
         } catch (Exception ignored) {
             // stat tracking is non-critical; do not fail the booking
@@ -391,8 +390,21 @@ public class BookingServiceImpl implements BookingService {
                     (field.getFieldType() == FieldType.DROPDOWN || field.getFieldType() == FieldType.RADIO_BUTTON)) {
                 boolean exists = false;
                 if (field.getFieldOptions() != null) {
-                    exists = Arrays.stream(field.getFieldOptions().split("\n"))
-                            .anyMatch(option -> option.trim().equalsIgnoreCase(value));
+                    String raw = field.getFieldOptions().trim();
+                    if (raw.startsWith("[")) {
+                        try {
+                            com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(raw);
+                            if (node.isArray()) {
+                                for (com.fasterxml.jackson.databind.JsonNode item : node) {
+                                    if (item.asText().trim().equalsIgnoreCase(value)) { exists = true; break; }
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    if (!exists) {
+                        exists = Arrays.stream(raw.split("\n"))
+                                .anyMatch(option -> option.trim().equalsIgnoreCase(value));
+                    }
                 }
                 if (!exists) {
                     throw new BadRequestException("Invalid option for field: " + field.getLabel());

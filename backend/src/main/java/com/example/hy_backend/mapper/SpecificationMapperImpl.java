@@ -55,8 +55,24 @@ public class SpecificationMapperImpl implements SpecificationMapper {
 
             ArrayNode optionArray = fieldNode.putArray("options");
             if (field.getFieldOptions() != null && !field.getFieldOptions().isBlank()) {
-                for (String option : field.getFieldOptions().split("\n")) {
-                    optionArray.add(option.trim());
+                try {
+                    JsonNode parsed = objectMapper.readTree(field.getFieldOptions());
+                    if (parsed.isArray()) {
+                        for (JsonNode opt : parsed) {
+                            String v = opt.asText().trim();
+                            if (!v.isEmpty()) optionArray.add(v);
+                        }
+                    } else if (parsed.isTextual()) {
+                        for (String option : parsed.asText().split("\n")) {
+                            String v = option.trim();
+                            if (!v.isEmpty()) optionArray.add(v);
+                        }
+                    }
+                } catch (Exception ignored) {
+                    for (String option : field.getFieldOptions().split("\n")) {
+                        String v = option.trim();
+                        if (!v.isEmpty()) optionArray.add(v);
+                    }
                 }
             }
         }

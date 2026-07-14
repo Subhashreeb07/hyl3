@@ -277,13 +277,14 @@ public class SpecificationServiceImpl implements SpecificationService {
         }
 
         try {
-            if (!objectMapper.readTree(validationJson).isObject()) {
-                throw new BadRequestException("validationJson must be a JSON object");
+            com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(validationJson);
+            if (!node.isObject() && !node.isArray()) {
+                throw new BadRequestException("validationJson must be a JSON object or array");
             }
         } catch (BadRequestException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new BadRequestException("validationJson must be valid JSON object");
+            throw new BadRequestException("validationJson must be valid JSON");
         }
     }
 

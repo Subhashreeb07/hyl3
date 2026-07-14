@@ -128,7 +128,12 @@ public class FieldServiceImpl implements FieldService {
         }
 
         List<String> options = normalizeOptions(request == null ? null : request.options());
-        field.setFieldOptions(options.isEmpty() ? null : String.join("\n", options));
+        try {
+            String jsonArray = objectMapper.writeValueAsString(options);
+            field.setFieldOptions(options.isEmpty() ? null : jsonArray);
+        } catch (Exception e) {
+            field.setFieldOptions(options.isEmpty() ? null : String.join("\n", options));
+        }
         fieldDefinitionRepository.save(field);
     }
 
@@ -190,13 +195,14 @@ public class FieldServiceImpl implements FieldService {
         }
 
         try {
-            if (!objectMapper.readTree(validationJson).isObject()) {
-                throw new BadRequestException("validationJson must be a JSON object");
+            com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(validationJson);
+            if (!node.isObject() && !node.isArray()) {
+                throw new BadRequestException("validationJson must be a JSON object or array");
             }
         } catch (BadRequestException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new BadRequestException("validationJson must be a valid JSON object");
+            throw new BadRequestException("validationJson must be valid JSON");
         }
     }
 

@@ -12,6 +12,8 @@ import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
 import com.example.hy_backend.service.FacilityService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 
 import java.util.ArrayList;
@@ -36,15 +38,18 @@ public class FacilityServiceImpl implements FacilityService {
     private final FacilityRepository facilityRepository;
     private final FieldDefinitionRepository fieldDefinitionRepository;
     private final FacilityRuleRepository facilityRuleRepository;
+    private final ObjectMapper objectMapper;
 
     public FacilityServiceImpl(
             FacilityRepository facilityRepository,
             FieldDefinitionRepository fieldDefinitionRepository,
-            FacilityRuleRepository facilityRuleRepository
+            FacilityRuleRepository facilityRuleRepository,
+            ObjectMapper objectMapper
     ) {
         this.facilityRepository = facilityRepository;
         this.fieldDefinitionRepository = fieldDefinitionRepository;
         this.facilityRuleRepository = facilityRuleRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -118,6 +123,8 @@ public class FacilityServiceImpl implements FacilityService {
         }
         validatePublishReadiness(facilityId);
         List<String> normalizedLocations = normalizeTargetLocations(request == null ? null : request.targetLocations());
+        String locationsStr = normalizedLocations.isEmpty() ? null : String.join(",", normalizedLocations);
+        facility.setTargetLocations(locationsStr);
         facility.setPublished(true);
         facilityRepository.save(facility);
         return new FacilityDtos.PublishResponse(facility.getFacilityId(), "Facility published successfully");
@@ -232,9 +239,7 @@ public class FacilityServiceImpl implements FacilityService {
                         field.getPlaceholder(),
                         field.getValidationJson(),
                         field.getDefaultValue(),
-                        field.getFieldOptions() == null || field.getFieldOptions().isBlank()
-                                ? Collections.emptyList()
-                                : Arrays.asList(field.getFieldOptions().split("\\n"))
+                        parseFieldOptions(field.getFieldOptions())
                 ))
                 .toList();
 
@@ -356,6 +361,29 @@ public class FacilityServiceImpl implements FacilityService {
                 facility.getIsPublic(),
                 splitTargetLocations(facility.getTargetLocations())
         );
+    }
+
+    /** Parses field options stored as JSON array ["Veg","Non-Veg"] or legacy newline-separated text. */
+    private List<String> parseFieldOptions(String raw) {
+        if (raw == null || raw.isBlank()) return Collections.emptyList();
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                JsonNode node = objectMapper.readTree(trimmed);
+                if (node.isArray()) {
+                    List<String> result = new ArrayList<>();
+                    for (JsonNode item : node) {
+                        String v = item.asText().trim();
+                        if (!v.isEmpty()) result.add(v);
+                    }
+                    return result;
+                }
+            } catch (Exception ignored) { /* fall through to newline split */ }
+        }
+        return Arrays.stream(trimmed.split("\\n"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
     private List<String> normalizeTargetLocations(List<String> locations) {

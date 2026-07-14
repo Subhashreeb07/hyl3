@@ -1,1 +1,1 @@
-ALTER TABLE bookings ALTER COLUMN booking_response TYPE jsonb USING booking_response::jsonb;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_response jsonb;

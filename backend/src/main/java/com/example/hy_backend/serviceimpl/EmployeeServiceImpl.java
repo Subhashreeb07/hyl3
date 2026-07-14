@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -232,17 +233,55 @@ public class EmployeeServiceImpl implements EmployeeService {
      * configured employee-type and role restrictions.  If no rule exists or the
      * restriction lists are empty, the facility is visible to everyone.
      * ADMIN role always bypasses role/type restrictions.
+     *
+     * <p>The frontend stores restrictions as comma-separated label strings in
+     * {@code rulesJson.employeeTypes} (e.g. {@code "Remote"} or {@code "On-site,Hybrid"})
+     * and {@code rulesJson.roles} (e.g. {@code "HR"} or {@code "HR,Manager"}).
+     * An empty string means no restriction.
      */
     private boolean facilityAllowedForEmployee(Facility facility, Employee employee) {
-        if (employee == null) return true; // no employee info → show everything
+        if (employee == null) return true;
         if ("ADMIN".equalsIgnoreCase(employee.getRoleCode())) return true;
 
         FacilityRule rule = facilityRuleRepository
                 .findByFacilityFacilityId(facility.getFacilityId())
                 .orElse(null);
-        if (rule == null) return true;
+        if (rule == null || rule.getRulesJson() == null || rule.getRulesJson().isBlank()) return true;
 
-        return true;
+        try {
+            JsonNode rn = objectMapper.readTree(rule.getRulesJson());
+
+            // ── Work-mode filter ─────────────────────────────────────────────
+            // "On-site", "Remote", "Hybrid" comma-separated; empty = no restriction
+            String empTypes = rn.has("employeeTypes") ? rn.get("employeeTypes").asText("").trim() : "";
+            if (!empTypes.isBlank()) {
+                Set<String> typeSet = Arrays.stream(empTypes.split(","))
+                        .map(String::trim).filter(s -> !s.isEmpty())
+                        .collect(java.util.stream.Collectors.toSet());
+                if (!typeSet.contains(normalizeWorkMode(employee.getWorkMode()))) return false;
+            }
+
+            // ── Role filter ──────────────────────────────────────────────────
+            // "HR", "Manager", "Finance", … comma-separated; empty = no restriction
+            String roles = rn.has("roles") ? rn.get("roles").asText("").trim() : "";
+            if (!roles.isBlank()) {
+                Set<String> roleSet = Arrays.stream(roles.split(","))
+                        .map(String::trim).filter(s -> !s.isEmpty())
+                        .collect(java.util.stream.Collectors.toSet());
+                String rc = employee.getRoleCode() == null ? "" : employee.getRoleCode().trim().toUpperCase(Locale.ROOT);
+                // Base EMPLOYEE role: only passes in "Everyone" mode (all 10 specific roles listed)
+                if ("EMPLOYEE".equals(rc)) return roleSet.size() >= 10;
+                if (!roleSet.contains(normalizeRoleCode(rc))) return false;
+            }
+
+            return true;
+        } catch (Exception ignored) {
+            return true;
+        }
+    }
+
+    private boolean boolFlag(JsonNode node, String key) {
+        return node.has(key) && node.get(key).asBoolean(false);
     }
 
     /** Converts DB work_mode value to the display string stored in FacilityRule.employeeTypes. */

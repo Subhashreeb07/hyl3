@@ -148,21 +148,7 @@ import {
           </div>
         </section>
 
-        <!-- ── Stats cards ── -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
-            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">book_online</span></div>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Bookings</p>
-            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.totalBookings ?? 0 }}</p>
-          </div>
-          <!-- Stat Card 3 -->
-          <div class="rounded-xl bg-white p-5 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden transition hover:shadow-md">
-            <div class="absolute top-0 right-0 p-4 opacity-5"><span class="material-icons-outlined text-5xl text-brand-600">pending_actions</span></div>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pending Requests</p>
-            <p class="mt-1.5 text-3xl font-light text-slate-900 tracking-tight">{{ dashStats()?.pendingRequests ?? 0 }}</p>
-          </div>
-        </div>
         <!-- ── Office Locations table ── -->
         <section class="rounded-2xl bg-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">

@@ -10,6 +10,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     boolean existsByEmailIgnoreCase(String email);
 
-
     List<Employee> findAllByOrderByCreatedAtDesc();
+
+    List<Employee> findByOfficeLocationIgnoreCase(String officeLocation);
 }

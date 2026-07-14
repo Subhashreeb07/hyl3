@@ -367,6 +367,7 @@ export class AdminFormBuilderPageComponent {
   });
 
   readonly rulesForm = this.fb.group({
+    bookingMode: ['single'],
     facilityAvailableFromDate: [''],
     facilityAvailableToDate: [''],
     bookingStartTime: ['', Validators.required],
@@ -748,19 +749,19 @@ export class AdminFormBuilderPageComponent {
         cancellationDeadline: parsed.rules?.cancellationDeadline ?? '',
         bookingWindowDays: parsed.rules?.bookingWindowDays ?? null,
         availableDays: parsed.rules?.availableDays ?? '',
-        employeeTypeOnSite: (parsed.rules?.employeeTypes ?? []).includes('On-site'),
-        employeeTypeRemote: (parsed.rules?.employeeTypes ?? []).includes('Remote'),
-        employeeTypeHybrid: (parsed.rules?.employeeTypes ?? []).includes('Hybrid'),
-        roleHR: (parsed.rules?.roles ?? []).includes('HR'),
-        roleManager: (parsed.rules?.roles ?? []).includes('Manager'),
-        roleFinance: (parsed.rules?.roles ?? []).includes('Finance'),
-        roleCloud: (parsed.rules?.roles ?? []).includes('Cloud'),
-        roleRD: (parsed.rules?.roles ?? []).includes('RD'),
-        roleDirector: (parsed.rules?.roles ?? []).includes('Director'),
-        roleIS: (parsed.rules?.roles ?? []).includes('IS'),
-        roleNOC: (parsed.rules?.roles ?? []).includes('NOC'),
-        roleOps: (parsed.rules?.roles ?? []).includes('Ops'),
-        roleDevops: (parsed.rules?.roles ?? []).includes('Devops'),
+        employeeTypeOnSite: this.ruleIncludesOrAll(parsed.rules?.employeeTypes, 'On-site'),
+        employeeTypeRemote: this.ruleIncludesOrAll(parsed.rules?.employeeTypes, 'Remote'),
+        employeeTypeHybrid: this.ruleIncludesOrAll(parsed.rules?.employeeTypes, 'Hybrid'),
+        roleHR: this.ruleIncludesOrAll(parsed.rules?.roles, 'HR'),
+        roleManager: this.ruleIncludesOrAll(parsed.rules?.roles, 'Manager'),
+        roleFinance: this.ruleIncludesOrAll(parsed.rules?.roles, 'Finance'),
+        roleCloud: this.ruleIncludesOrAll(parsed.rules?.roles, 'Cloud'),
+        roleRD: this.ruleIncludesOrAll(parsed.rules?.roles, 'RD'),
+        roleDirector: this.ruleIncludesOrAll(parsed.rules?.roles, 'Director'),
+        roleIS: this.ruleIncludesOrAll(parsed.rules?.roles, 'IS'),
+        roleNOC: this.ruleIncludesOrAll(parsed.rules?.roles, 'NOC'),
+        roleOps: this.ruleIncludesOrAll(parsed.rules?.roles, 'Ops'),
+        roleDevops: this.ruleIncludesOrAll(parsed.rules?.roles, 'Devops'),
       });
 
       const parsedFields = (parsed.fields ?? []).map((field, index) => ({
@@ -812,7 +813,7 @@ export class AdminFormBuilderPageComponent {
       if (field.validationJson && field.validationJson.trim()) {
         try {
           const parsed = JSON.parse(field.validationJson);
-          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          if (typeof parsed !== 'object' || parsed === null) {
             return `Field ${fieldNo}: validation JSON must be an object`;
           }
         } catch {
@@ -865,8 +866,17 @@ export class AdminFormBuilderPageComponent {
   private ruleIncludes(field: string[] | string | null | undefined, value: string): boolean {
     if (!field) return false;
     if (Array.isArray(field)) return field.includes(value);
-    // Handle legacy comma-separated string format
+    // Handle comma-separated string format
     return field.split(',').map(v => v.trim()).includes(value);
+  }
+
+  /**
+   * Like ruleIncludes but returns true when the field is empty/null/undefined/[],
+   * meaning "no restriction" (everyone selected).
+   */
+  private ruleIncludesOrAll(field: string[] | string | null | undefined, value: string): boolean {
+    if (!field || (Array.isArray(field) && field.length === 0)) return true;
+    return this.ruleIncludes(field, value);
   }
 
   private clearForm(): void {
@@ -928,6 +938,7 @@ export class AdminFormBuilderPageComponent {
     });
 
     this.rulesForm.patchValue({
+      bookingMode: (record.rules?.facilityAvailableFromDate || record.rules?.availableDays) ? 'multi' : 'single',
       facilityAvailableFromDate: record.rules?.facilityAvailableFromDate ?? '',
       facilityAvailableToDate: record.rules?.facilityAvailableToDate ?? '',
       bookingStartTime: record.isTemplate ? this.currentTimeString() : (record.rules?.bookingStartTime || this.currentTimeString()),
@@ -939,19 +950,19 @@ export class AdminFormBuilderPageComponent {
       cancellationDeadline: record.rules?.cancellationDeadline ?? '',
       bookingWindowDays: record.rules?.bookingWindowDays ?? null,
       availableDays: record.rules?.availableDays ?? '',
-      employeeTypeOnSite: this.ruleIncludes(record.rules?.employeeTypes, 'On-site'),
-      employeeTypeRemote: this.ruleIncludes(record.rules?.employeeTypes, 'Remote'),
-      employeeTypeHybrid: this.ruleIncludes(record.rules?.employeeTypes, 'Hybrid'),
-      roleHR: this.ruleIncludes(record.rules?.roles, 'HR'),
-      roleManager: this.ruleIncludes(record.rules?.roles, 'Manager'),
-      roleFinance: this.ruleIncludes(record.rules?.roles, 'Finance'),
-      roleCloud: this.ruleIncludes(record.rules?.roles, 'Cloud'),
-      roleRD: this.ruleIncludes(record.rules?.roles, 'RD'),
-      roleDirector: this.ruleIncludes(record.rules?.roles, 'Director'),
-      roleIS: this.ruleIncludes(record.rules?.roles, 'IS'),
-      roleNOC: this.ruleIncludes(record.rules?.roles, 'NOC'),
-      roleOps: this.ruleIncludes(record.rules?.roles, 'Ops'),
-      roleDevops: this.ruleIncludes(record.rules?.roles, 'Devops'),
+      employeeTypeOnSite: this.ruleIncludesOrAll(record.rules?.employeeTypes, 'On-site'),
+      employeeTypeRemote: this.ruleIncludesOrAll(record.rules?.employeeTypes, 'Remote'),
+      employeeTypeHybrid: this.ruleIncludesOrAll(record.rules?.employeeTypes, 'Hybrid'),
+      roleHR: this.ruleIncludesOrAll(record.rules?.roles, 'HR'),
+      roleManager: this.ruleIncludesOrAll(record.rules?.roles, 'Manager'),
+      roleFinance: this.ruleIncludesOrAll(record.rules?.roles, 'Finance'),
+      roleCloud: this.ruleIncludesOrAll(record.rules?.roles, 'Cloud'),
+      roleRD: this.ruleIncludesOrAll(record.rules?.roles, 'RD'),
+      roleDirector: this.ruleIncludesOrAll(record.rules?.roles, 'Director'),
+      roleIS: this.ruleIncludesOrAll(record.rules?.roles, 'IS'),
+      roleNOC: this.ruleIncludesOrAll(record.rules?.roles, 'NOC'),
+      roleOps: this.ruleIncludesOrAll(record.rules?.roles, 'Ops'),
+      roleDevops: this.ruleIncludesOrAll(record.rules?.roles, 'Devops'),
     });
 
     this.draftFields.set(record.fields.map((field) => ({ ...field })));
@@ -1121,23 +1132,29 @@ export class AdminFormBuilderPageComponent {
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
         facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
-        employeeTypes: [
-          this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
-          this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
-          this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
-        ].filter((v): v is string => v !== null).join(','),
-        roles: [
-          this.rulesForm.value.roleHR ? 'HR' : null,
-          this.rulesForm.value.roleManager ? 'Manager' : null,
-          this.rulesForm.value.roleFinance ? 'Finance' : null,
-          this.rulesForm.value.roleCloud ? 'Cloud' : null,
-          this.rulesForm.value.roleRD ? 'RD' : null,
-          this.rulesForm.value.roleDirector ? 'Director' : null,
-          this.rulesForm.value.roleIS ? 'IS' : null,
-          this.rulesForm.value.roleNOC ? 'NOC' : null,
-          this.rulesForm.value.roleOps ? 'Ops' : null,
-          this.rulesForm.value.roleDevops ? 'Devops' : null,
-        ].filter((v): v is string => v !== null).join(',')
+        employeeTypes: (() => {
+          const t = [
+            this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
+            this.rulesForm.value.employeeTypeRemote ? 'Remote' : null,
+            this.rulesForm.value.employeeTypeHybrid ? 'Hybrid' : null,
+          ].filter((v): v is string => v !== null);
+          return t.length === 3 ? '' : t.join(','); // all 3 = no restriction → empty
+        })(),
+        roles: (() => {
+          const r = [
+            this.rulesForm.value.roleHR ? 'HR' : null,
+            this.rulesForm.value.roleManager ? 'Manager' : null,
+            this.rulesForm.value.roleFinance ? 'Finance' : null,
+            this.rulesForm.value.roleCloud ? 'Cloud' : null,
+            this.rulesForm.value.roleRD ? 'RD' : null,
+            this.rulesForm.value.roleDirector ? 'Director' : null,
+            this.rulesForm.value.roleIS ? 'IS' : null,
+            this.rulesForm.value.roleNOC ? 'NOC' : null,
+            this.rulesForm.value.roleOps ? 'Ops' : null,
+            this.rulesForm.value.roleDevops ? 'Devops' : null,
+          ].filter((v): v is string => v !== null);
+          return r.length === 10 ? '' : r.join(','); // all 10 = no restriction → empty
+        })()
       })
     );
 
