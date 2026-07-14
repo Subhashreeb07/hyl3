@@ -233,7 +233,6 @@ export class FieldConfigDialogComponent {
     { type: 'EMAIL',        label: 'Email',      icon: 'alternate_email' },
     { type: 'PHONE',        label: 'Phone',      icon: 'phone' },
     { type: 'FILE_UPLOAD',  label: 'File',       icon: 'attach_file' },
-    { type: 'SIGNATURE',    label: 'Signature',  icon: 'draw' },
     { type: 'TREE_SELECT',  label: 'Tree Select',icon: 'account_tree' },
   ];
 

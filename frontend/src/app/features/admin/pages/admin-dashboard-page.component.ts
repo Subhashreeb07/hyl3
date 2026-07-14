@@ -128,7 +128,7 @@ import {
                     [class.text-white]="d.date === selectedDate()"
                     [class.bg-slate-200]="d.date !== selectedDate()"
                     [class.text-slate-600]="d.date !== selectedDate()">
-                {{ d.eventCount }} Events
+                {{ d.eventCount }} Published
               </span>
             </button>
             <ng-container *ngIf="dateStrip().length === 0">
@@ -142,7 +142,7 @@ import {
                 <span class="text-xs font-semibold">{{ d.label }}</span>
                 <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
                 <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
-                <span class="mt-1.5 rounded-full bg-slate-200 text-slate-600 px-2 py-0.5 text-[10px] font-bold">0 Events</span>
+                <span class="mt-1.5 rounded-full bg-slate-200 text-slate-600 px-2 py-0.5 text-[10px] font-bold">0 Published</span>
               </button>
             </ng-container>
           </div>

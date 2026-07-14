@@ -3,6 +3,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { LocationApiService, LocationResponse } from '../../../core/services/location-api.service';
 import { SessionService } from '../../../core/services/session.service';
 import { firstValueFrom } from 'rxjs';
 
@@ -90,11 +91,7 @@ interface BulkPreviewRow {
           <label class="field-label">
             Office Location
             <select formControlName="officeLocation" class="field-input">
-              <option value="HYDERABAD">Hyderabad</option>
-              <option value="KOLKATA">Kolkata</option>
-              <option value="MUMBAI">Mumbai</option>
-              <option value="DELHI">Delhi</option>
-              <option value="BANGALORE">Bangalore</option>
+              <option *ngFor="let loc of locationOptions()" [value]="loc.locationName.toUpperCase()">{{ loc.locationName | titlecase }}</option>
             </select>
           </label>
           <label class="field-label">
@@ -307,11 +304,13 @@ export class AdminEmployeesPageComponent implements OnInit {
   private pendingFile: File | null = null;
 
   addForm: FormGroup;
+  readonly locationOptions = signal<LocationResponse[]>([]);
 
   constructor(
     private readonly fb: FormBuilder,
     private readonly http: HttpClient,
-    private readonly session: SessionService
+    private readonly session: SessionService,
+    private readonly locationApi: LocationApiService
   ) {
     this.addForm = this.fb.group({
       employeeId:     ['', Validators.required],
@@ -325,7 +324,23 @@ export class AdminEmployeesPageComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void { this.loadEmployees(); }
+  ngOnInit(): void {
+    this.loadEmployees();
+    this.locationApi.getLocations().subscribe({
+      next: (locs) => {
+        this.locationOptions.set(locs);
+        if (locs.length > 0) {
+          this.addForm.patchValue({ officeLocation: locs[0].locationName.toUpperCase() });
+        }
+      },
+      error: () => {
+        this.locationOptions.set([
+          { id: 1, locationName: 'HYDERABAD', employeeCount: 0 },
+          { id: 2, locationName: 'KOLKATA', employeeCount: 0 }
+        ]);
+      }
+    });
+  }
 
   filteredEmployees(): EmployeeRow[] {
     const q = this.searchQuery.toLowerCase().trim();

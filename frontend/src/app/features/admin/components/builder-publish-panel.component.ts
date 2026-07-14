@@ -65,9 +65,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
         <button class="btn-outline" [disabled]="isBusy" (click)="downloadJson.emit()">
           <span class="material-icons-outlined text-[1.2em] mr-1">download</span> Download JSON
         </button>
-        <button class="btn-outline" [disabled]="isBusy" (click)="importJson.emit()">
-          <span class="material-icons-outlined text-[1.2em] mr-1">upload</span> Import JSON
-        </button>
+
       </section>
     </section>
 
@@ -112,7 +110,6 @@ export class BuilderPublishPanelComponent implements OnChanges {
   @Output() publish = new EventEmitter<void>();
   @Output() editJson = new EventEmitter<string>();
   @Output() downloadJson = new EventEmitter<void>();
-  @Output() importJson = new EventEmitter<void>();
 
   editMode = false;
   editBuffer = '';

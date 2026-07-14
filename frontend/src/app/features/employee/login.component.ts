@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthApiService } from '../../core/services/auth-api.service';
+import { LocationApiService, LocationResponse } from '../../core/services/location-api.service';
 import { SessionService } from '../../core/services/session.service';
 import { ToastService } from '../../core/services/toast.service';
 
@@ -125,8 +126,7 @@ import { ToastService } from '../../core/services/toast.service';
                 class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
                 [disabled]="isLoading()"
               >
-                <option value="HYDERABAD">Hyderabad</option>
-                <option value="KOLKATA">Kolkata</option>
+                <option *ngFor="let loc of locations()" [value]="loc.locationName.toUpperCase()">{{ loc.locationName | titlecase }}</option>
               </select>
             </div>
           </div>
@@ -218,10 +218,11 @@ import { ToastService } from '../../core/services/toast.service';
     </section>
   `
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly isLoading = signal(false);
   readonly mode = signal<'SIGN_IN' | 'SIGN_UP'>('SIGN_IN');
+  readonly locations = signal<LocationResponse[]>([]);
 
   readonly loginForm = this.fb.group({
     employeeId: ['', [Validators.required, Validators.minLength(1)]],
@@ -244,8 +245,31 @@ export class LoginComponent {
     private readonly authApi: AuthApiService,
     private readonly sessionService: SessionService,
     private readonly toastService: ToastService,
+    private readonly locationApi: LocationApiService,
     private readonly router: Router
   ) {}
+
+  ngOnInit(): void {
+    this.locationApi.getLocations().subscribe({
+      next: (locs) => {
+        this.locations.set(locs);
+        // Update default value to first location if list loaded
+        if (locs.length > 0) {
+          const first = locs[0].locationName.toUpperCase();
+          if (!this.registerForm.value.officeLocation) {
+            this.registerForm.patchValue({ officeLocation: first });
+          }
+        }
+      },
+      error: () => {
+        // Fallback: show at least Hyderabad and Kolkata
+        this.locations.set([
+          { id: 1, locationName: 'HYDERABAD', employeeCount: 0 },
+          { id: 2, locationName: 'KOLKATA', employeeCount: 0 }
+        ]);
+      }
+    });
+  }
 
   isFieldInvalid(fieldName: string): boolean {
     const field = this.mode() === 'SIGN_IN'

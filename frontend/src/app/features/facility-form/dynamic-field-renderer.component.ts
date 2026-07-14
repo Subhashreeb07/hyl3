@@ -3,7 +3,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { SpecificationField } from '../../core/models/employee-flow.models';
 
-type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'file' | 'signature' | 'tree-select' | 'unsupported';
+type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'file' | 'signature' | 'tree-select' | 'date-picker' | 'time-picker' | 'unsupported';
 
 @Component({
   selector: 'app-dynamic-field-renderer',
@@ -75,6 +75,161 @@ type RenderKind = 'input' | 'textarea' | 'dropdown' | 'radio' | 'checkbox' | 'fi
       <div *ngIf="renderKind() === 'file'" class="grid gap-2">
         <input type="file" (change)="onFileSelected($event)" class="rounded-xl border px-3 py-2" [ngClass]="isInvalid() ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'" />
         <p *ngIf="form.get(controlName)?.value" class="text-xs text-slate-500">Selected: {{ form.get(controlName)?.value }}</p>
+      </div>
+
+      <!-- ── DATE PICKER ─────────────────────────────────────────── -->
+      <div *ngIf="renderKind() === 'date-picker'" class="relative">
+        <button type="button" (click)="toggleCalPicker()"
+                class="group flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:shadow-md"
+                [ngClass]="isInvalid() ? 'border-red-500' : 'border-slate-200'">
+          <span class="material-icons-outlined text-indigo-600 transition-colors group-hover:text-indigo-700" style="font-size:18px">calendar_month</span>
+          <span class="flex-1 text-left" [class.font-normal]="true" [class.text-slate-400]="!form.get(controlName)?.value">
+            {{ getDateLabel() }}
+          </span>
+          <span class="material-icons-outlined text-slate-400 transition-transform duration-200"
+                [style.transform]="showCalPicker ? 'rotate(180deg)' : 'rotate(0deg)'" style="font-size:16px">keyboard_arrow_down</span>
+        </button>
+
+        <!-- Backdrop -->
+        <div *ngIf="showCalPicker" (click)="showCalPicker = false" class="fixed inset-0 z-40"></div>
+
+        <!-- Calendar Panel -->
+        <div *ngIf="showCalPicker"
+             class="absolute left-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white"
+             style="width:min(320px,calc(100vw - 32px));box-shadow:0 25px 50px -12px rgba(0,0,0,0.18),0 0 0 1px rgba(0,0,0,0.04);">
+
+          <!-- Header -->
+          <div class="flex items-center justify-between px-5 py-4"
+               style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1e4d8c 100%)">
+            <button type="button" (click)="prevCalMonth(); $event.stopPropagation()"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 transition-all hover:bg-white/10 hover:text-white">
+              <span class="material-icons-outlined" style="font-size:20px">chevron_left</span>
+            </button>
+            <p class="text-base font-bold tracking-tight text-white">{{ calPickerMonthLabel() }}</p>
+            <button type="button" (click)="nextCalMonth(); $event.stopPropagation()"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 transition-all hover:bg-white/10 hover:text-white">
+              <span class="material-icons-outlined" style="font-size:20px">chevron_right</span>
+            </button>
+          </div>
+
+          <!-- Weekday Labels -->
+          <div class="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
+            <span *ngFor="let wd of weekDayLabels"
+                  class="py-2.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">{{ wd }}</span>
+          </div>
+
+          <!-- Days Grid -->
+          <div class="grid grid-cols-7 gap-0.5 p-3">
+            <ng-container *ngFor="let cell of calPickerDays()">
+              <div *ngIf="cell.date === null" class="h-9 w-full"></div>
+              <button *ngIf="cell.date !== null"
+                      type="button"
+                      (click)="selectCalPickerDate(cell.date); $event.stopPropagation()"
+                      class="relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium transition-all duration-150"
+                      [ngClass]="{
+                        'bg-slate-900 text-white shadow font-bold': cell.date === form.get(controlName)?.value,
+                        'bg-indigo-50 text-indigo-700 font-bold ring-1 ring-inset ring-indigo-200 hover:bg-indigo-100': isCalToday(cell.date) && cell.date !== form.get(controlName)?.value,
+                        'text-slate-700 hover:bg-slate-100': !isCalToday(cell.date) && cell.date !== form.get(controlName)?.value
+                      }">
+                {{ cell.num }}
+                <span *ngIf="isCalToday(cell.date) && cell.date !== form.get(controlName)?.value"
+                      class="absolute bottom-1 left-1/2 h-1 w-1 rounded-full bg-indigo-500"
+                      style="transform:translateX(-50%)"></span>
+              </button>
+            </ng-container>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-3">
+            <button type="button" (click)="selectCalToday(); $event.stopPropagation()"
+                    class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700">Today</button>
+            <p class="text-xs font-medium text-slate-500">
+              {{ form.get(controlName)?.value ? (form.get(controlName)?.value | date:'EEE, MMM d') : 'No date selected' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TIME PICKER ─────────────────────────────────────────── -->
+      <div *ngIf="renderKind() === 'time-picker'" class="relative">
+        <button type="button" (click)="toggleTimePicker()"
+                class="group flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:shadow-md"
+                [ngClass]="isInvalid() ? 'border-red-500' : 'border-slate-200'">
+          <span class="material-icons-outlined text-indigo-600 transition-colors group-hover:text-indigo-700" style="font-size:18px">schedule</span>
+          <span class="flex-1 text-left" [class.text-slate-400]="!form.get(controlName)?.value">
+            {{ getTimeLabel() }}
+          </span>
+          <span class="material-icons-outlined text-slate-400 transition-transform duration-200"
+                [style.transform]="showTimePicker ? 'rotate(180deg)' : 'rotate(0deg)'" style="font-size:16px">keyboard_arrow_down</span>
+        </button>
+
+        <!-- Backdrop -->
+        <div *ngIf="showTimePicker" (click)="showTimePicker = false" class="fixed inset-0 z-40"></div>
+
+        <!-- Time Panel -->
+        <div *ngIf="showTimePicker"
+             class="absolute left-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white"
+             style="width:260px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.18),0 0 0 1px rgba(0,0,0,0.04);">
+
+          <!-- Header -->
+          <div class="px-5 py-4 text-center"
+               style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1e4d8c 100%)">
+            <p class="text-lg font-bold tracking-tight text-white">{{ getTimeLabel() }}</p>
+            <p class="text-[11px] text-white/50 mt-0.5">Select time</p>
+          </div>
+
+          <!-- Columns -->
+          <div class="flex gap-1 p-3">
+
+            <!-- Hours -->
+            <div class="flex-1">
+              <p class="mb-1.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">Hour</p>
+              <div class="flex flex-col gap-0.5 max-h-48 overflow-y-auto">
+                <button *ngFor="let h of tpHours" type="button"
+                        (click)="selectTpHour(h); $event.stopPropagation()"
+                        class="flex h-8 items-center justify-center rounded-lg text-sm font-medium transition-all"
+                        [ngClass]="tpHour === h ? 'bg-slate-900 text-white font-bold shadow' : 'text-slate-700 hover:bg-slate-100'">
+                  {{ h }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Separator -->
+            <div class="flex items-start justify-center pt-8">
+              <span class="text-xl font-bold text-slate-300">:</span>
+            </div>
+
+            <!-- Minutes -->
+            <div class="flex-1">
+              <p class="mb-1.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">Min</p>
+              <div class="flex flex-col gap-0.5 max-h-48 overflow-y-auto">
+                <button *ngFor="let m of tpMinutes" type="button"
+                        (click)="selectTpMinute(m); $event.stopPropagation()"
+                        class="flex h-8 items-center justify-center rounded-lg text-sm font-medium transition-all"
+                        [ngClass]="tpMinute === m ? 'bg-slate-900 text-white font-bold shadow' : 'text-slate-700 hover:bg-slate-100'">
+                  {{ formatMinute(m) }}
+                </button>
+              </div>
+            </div>
+
+            <!-- AM / PM -->
+            <div class="flex flex-col items-center gap-1.5 pt-7">
+              <button type="button" (click)="selectTpAmPm('AM'); $event.stopPropagation()"
+                      class="flex h-8 w-11 items-center justify-center rounded-lg text-xs font-bold transition-all"
+                      [ngClass]="tpAmPm === 'AM' ? 'bg-indigo-600 text-white shadow' : 'border border-slate-200 text-slate-600 hover:bg-slate-100'">AM</button>
+              <button type="button" (click)="selectTpAmPm('PM'); $event.stopPropagation()"
+                      class="flex h-8 w-11 items-center justify-center rounded-lg text-xs font-bold transition-all"
+                      [ngClass]="tpAmPm === 'PM' ? 'bg-indigo-600 text-white shadow' : 'border border-slate-200 text-slate-600 hover:bg-slate-100'">PM</button>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-3">
+            <button type="button" (click)="selectTimeNow(); $event.stopPropagation()"
+                    class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700">Now</button>
+            <p class="text-xs font-medium text-slate-500">{{ getTimeLabel() }}</p>
+          </div>
+        </div>
       </div>
 
       <input
@@ -224,8 +379,8 @@ export class DynamicFieldRendererComponent implements OnInit {
     DROPDOWN: 'dropdown',
     RADIO_BUTTON: 'radio',
     CHECKBOX: 'checkbox',
-    DATE_PICKER: 'input',
-    TIME_PICKER: 'input',
+    DATE_PICKER: 'date-picker',
+    TIME_PICKER: 'time-picker',
     NUMBER: 'input',
     EMAIL: 'input',
     PHONE: 'input',
@@ -276,6 +431,149 @@ export class DynamicFieldRendererComponent implements OnInit {
     const ctrl = this.form.get(this.controlName);
     return !!ctrl && ctrl.invalid && (ctrl.touched || ctrl.dirty);
   }
+
+  // ── Calendar picker state ─────────────────────────────────────────
+  showCalPicker = false;
+  calViewYear = new Date().getFullYear();
+  calViewMonth = new Date().getMonth();
+  readonly weekDayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  toggleCalPicker(): void {
+    if (!this.showCalPicker) {
+      const val = this.form.get(this.controlName)?.value as string | null;
+      if (val) {
+        const d = new Date(val + 'T00:00:00');
+        if (!isNaN(d.getTime())) { this.calViewYear = d.getFullYear(); this.calViewMonth = d.getMonth(); }
+      }
+    }
+    this.showCalPicker = !this.showCalPicker;
+  }
+
+  prevCalMonth(): void {
+    if (this.calViewMonth === 0) { this.calViewMonth = 11; this.calViewYear--; }
+    else { this.calViewMonth--; }
+  }
+
+  nextCalMonth(): void {
+    if (this.calViewMonth === 11) { this.calViewMonth = 0; this.calViewYear++; }
+    else { this.calViewMonth++; }
+  }
+
+  calPickerMonthLabel(): string {
+    return new Date(this.calViewYear, this.calViewMonth, 1)
+      .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+
+  calPickerDays(): Array<{ date: string | null; num: number | null }> {
+    const year = this.calViewYear;
+    const month = this.calViewMonth;
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: Array<{ date: string | null; num: number | null }> = [];
+    for (let i = 0; i < firstDay; i++) { days.push({ date: null, num: null }); }
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push({
+        date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+        num: d
+      });
+    }
+    return days;
+  }
+
+  selectCalPickerDate(date: string): void {
+    this.form.get(this.controlName)?.setValue(date);
+    this.form.get(this.controlName)?.markAsDirty();
+    this.showCalPicker = false;
+  }
+
+  selectCalToday(): void {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    this.calViewYear = d.getFullYear();
+    this.calViewMonth = d.getMonth();
+    this.selectCalPickerDate(today);
+  }
+
+  isCalToday(date: string): boolean {
+    const d = new Date();
+    return date === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  getDateLabel(): string {
+    const val = this.form.get(this.controlName)?.value as string | null;
+    if (!val) return (this.field.placeholder as string | undefined) || 'Select date';
+    const d = new Date(val + 'T00:00:00');
+    if (isNaN(d.getTime())) return val;
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // ── Time picker state ─────────────────────────────────────────────
+  showTimePicker = false;
+  tpHour = 12;
+  tpMinute = 0;
+  tpAmPm: 'AM' | 'PM' = 'AM';
+  readonly tpHours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  readonly tpMinutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+  toggleTimePicker(): void {
+    if (!this.showTimePicker) {
+      const val = this.form.get(this.controlName)?.value as string | null;
+      if (val) { this.parseTimeToState(val); }
+    }
+    this.showTimePicker = !this.showTimePicker;
+  }
+
+  selectTpHour(h: number): void { this.tpHour = h; this.applyTime(); }
+  selectTpMinute(m: number): void { this.tpMinute = m; this.applyTime(); }
+  selectTpAmPm(v: 'AM' | 'PM'): void { this.tpAmPm = v; this.applyTime(); }
+
+  selectTimeNow(): void {
+    const now = new Date();
+    this.tpHour = now.getHours() % 12 || 12;
+    this.tpMinute = Math.round(now.getMinutes() / 5) * 5 % 60;
+    this.tpAmPm = now.getHours() < 12 ? 'AM' : 'PM';
+    this.applyTime();
+    this.showTimePicker = false;
+  }
+
+  applyTime(): void {
+    this.form.get(this.controlName)?.setValue(this.stateToTime24());
+    this.form.get(this.controlName)?.markAsDirty();
+  }
+
+  getTimeLabel(): string {
+    const val = this.form.get(this.controlName)?.value as string | null;
+    if (!val) return (this.field.placeholder as string | undefined) || 'Select time';
+    const parts = val.split(':');
+    if (parts.length < 2) return val;
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    const period = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${period}`;
+  }
+
+  formatMinute(m: number): string {
+    return m.toString().padStart(2, '0');
+  }
+
+  private parseTimeToState(val: string): void {
+    const parts = val.split(':');
+    if (parts.length < 2) return;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    this.tpAmPm = h >= 12 ? 'PM' : 'AM';
+    this.tpHour = h % 12 || 12;
+    this.tpMinute = Math.round(m / 5) * 5 % 60;
+  }
+
+  private stateToTime24(): string {
+    let h = this.tpHour;
+    if (this.tpAmPm === 'AM') { h = h === 12 ? 0 : h; }
+    else { h = h === 12 ? 12 : h + 12; }
+    return `${String(h).padStart(2, '0')}:${String(this.tpMinute).padStart(2, '0')}`;
+  }
+  // ─────────────────────────────────────────────────────────────────
 
   getErrorMessage(): string {
     const ctrl = this.form.get(this.controlName);
