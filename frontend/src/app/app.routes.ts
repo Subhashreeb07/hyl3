@@ -22,6 +22,7 @@ import { LandingRedirectComponent } from './features/employee/landing-redirect.c
 import { LoginComponent } from './features/employee/login.component';
 import { ProfileComponent } from './features/employee/profile.component';
 import { NotificationSchedulesComponent } from './features/employee/notification-schedules.component';
+import { SavedPreferencesComponent } from './features/employee/saved-preferences.component';
 
 export const routes: Routes = [
   {
@@ -113,6 +114,10 @@ export const routes: Routes = [
       {
         path: 'bookings/:bookingId',
         component: BookingDetailComponent
+      },
+      {
+        path: 'preferences',
+        component: SavedPreferencesComponent
       },
       {
         path: '',

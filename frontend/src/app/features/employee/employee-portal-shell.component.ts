@@ -195,6 +195,7 @@ export class EmployeePortalShellComponent implements OnInit, OnDestroy {
     { label: 'Overview', icon: 'dashboard', link: '/employee/dashboard' },
     { label: 'Notifications', icon: 'notifications', link: '/employee/notifications' },
     { label: 'Booking Records', icon: 'event_note', link: '/employee/history' },
+    { label: 'My Preferences', icon: 'bookmark', link: '/employee/preferences' },
     { label: 'Profile', icon: 'badge', link: '/employee/profile' }
   ];
   readonly unreadNotifications = signal(0);

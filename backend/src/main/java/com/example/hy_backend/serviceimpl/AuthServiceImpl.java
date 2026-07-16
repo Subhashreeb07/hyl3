@@ -54,10 +54,10 @@ public class AuthServiceImpl implements AuthService {
         employee.setEmployeeId(employeeId);
         employee.setFullName(normalizeName(request.name()));
         employee.setEmail(email);
-        employee.setRoleCode("EMPLOYEE");
+        employee.setRoleCode(normalizeRoleCode(request.roleCode()));
         employee.setDepartment(normalizeDepartment(request.department()));
         employee.setOfficeLocation(normalizeOfficeLocation(request.officeLocation()));
-        employee.setWorkMode("HYBRID");
+        employee.setWorkMode(normalizeWorkMode(request.workMode()));
         employee.setPasswordHash(hashPassword(password));
 
         Employee saved = employeeRepository.save(employee);
@@ -229,10 +229,29 @@ public class AuthServiceImpl implements AuthService {
         if (location == null || location.isBlank()) {
             return DEFAULT_LOCATION;
         }
-        String canonical = location.trim().toUpperCase(Locale.ROOT);
-        if (!"HYDERABAD".equals(canonical) && !"KOLKATA".equals(canonical)) {
-            throw new BadRequestException("officeLocation must be HYDERABAD or KOLKATA");
+        return location.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeWorkMode(String workMode) {
+        if (workMode == null || workMode.isBlank()) {
+            return "HYBRID";
         }
-        return canonical;
+        return switch (workMode.trim().toUpperCase(Locale.ROOT)) {
+            case "ON_SITE", "ONSITE", "ON-SITE" -> "ON_SITE";
+            case "REMOTE"                        -> "REMOTE";
+            default                              -> "HYBRID";
+        };
+    }
+
+    private String normalizeRoleCode(String roleCode) {
+        if (roleCode == null || roleCode.isBlank()) {
+            return "EMPLOYEE";
+        }
+        String rc = roleCode.trim().toUpperCase(Locale.ROOT);
+        // Prevent self-assignment of privileged roles
+        if ("ADMIN".equals(rc)) {
+            return "EMPLOYEE";
+        }
+        return rc;
     }
 }

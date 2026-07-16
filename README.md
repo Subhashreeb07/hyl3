@@ -1,185 +1,235 @@
 # Facilities App
 
-> Status: Active Development
+> **Status:** 🚧 Active Development
 
-A web application for managing Hyland India employee facility bookings. This repository is currently focused on the employee flow only.
+A web application for managing facility bookings at Hyland India, including food services, cab bookings, and event registrations.
 
 ## Overview
 
-The app provides a single place for employees to:
+The Facilities App streamlines the process of booking essential facilities for Hyland India employees. The application provides a centralized platform where employees can manage their daily food and cab requirements, while administrators maintain full control over booking windows and event creation.
 
-- View hybrid workday dashboard status
-- Choose a booking date from calendar chips
-- Run Book My Workday (Lunch + Cab)
-- Submit facility-specific bookings
-- Review booking history and booking details
-- Cancel bookings where allowed
+## Features
 
-## Employee Features (Implemented)
+### For Employees
+- **Food Booking**
+  - Browse and select meal options
+  - Choose preferred time slots
+  - Cancel existing bookings
+  - View booking history
 
-- Authentication
-   - Login, current-user, logout
-- Dashboard
-   - Employee home summary
-   - Date chip selection for booking day
-   - Quick setup entry to workday booking
-- Book My Workday
-   - Date-aware quick setup flow
-   - Confirm Lunch / Confirm Cab
-   - Combined confirm workday action
-- Facility Booking
-   - Dynamic form rendering from backend specification
-- Booking Management
-   - History, detail, and cancellation
-- Profile and Invitations
+- **Cab Booking**
+  - Book pickup/drop service from predetermined spots
+  - Select convenient time slots
+  - Manage and cancel cab bookings
+
+- **Event Registration**
+  - Sign up for company events that require food and cab arrangements
+  - View upcoming events
+  - Manage event registrations
+
+- **Dashboard**
+  - Unified view of all active bookings
+  - Quick access to booking history
+  - Easy cancellation and modification
+
+### For Administrators
+- **Booking Management**
+  - Open/close booking windows for food and cab services
+  - View all employee bookings
+  - Generate reports on facility usage
+
+- **Event Management**
+  - Create new events
+  - Configure event details (date, time, facilities required)
+  - Manage event registrations
 
 ## Tech Stack
 
 ### Frontend
-
-- Angular 19
-- Tailwind CSS
-- npm
+- **Framework:** Angular
+- **UI Library:** Hyland Design Library (Satori)
+- **Package Manager:** npm
 
 ### Backend
+- **Framework:** Java 17 + Spring Boot
+- **Build Tool:** Maven
+- **Database:** PostgreSQL
+- **Authentication:** JWT-based (SSO integration planned)
 
-- Java 21 + Spring Boot 3.5
-- Maven Wrapper
-- Spring Data JPA
-- PostgreSQL (default local runtime)
-- Embedded PostgreSQL for Spring Boot integration tests
-- OpenAPI / Swagger
+### Deployment
+- **Platform:** AWS
+- **Domain:** `indiafacilities.hyland.com` (planned)
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Java Development Kit (JDK) 17**
+- **Maven 3.6+**
+- **Node.js 18+ and npm**
+- **PostgreSQL 14+**
+- **Angular CLI** (`npm install -g @angular/cli`)
 
 ## Project Structure
 
+```
 facilities-app/
-├── backend/            # Spring Boot application
-├── frontend/           # Angular application
-├── docs/               # Flow and reference docs
-└── swagger/            # API references
+├── backend/              # Spring Boot application
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   └── resources/
+│   │   └── test/
+│   └── pom.xml
+├── frontend/             # Angular application
+│   ├── src/
+│   │   ├── app/
+│   │   ├── assets/
+│   │   └── environments/
+│   ├── package.json
+│   └── angular.json
+└── README.md
+```
 
 ## Getting Started
 
-### Prerequisites
+### 1. Clone the Repository
 
-- JDK 21+
-- Node.js 18+
-
-### 1. Backend Setup
-
-Windows PowerShell:
-
-```powershell
-Set-Location backend
-Copy-Item .env.example .env -ErrorAction SilentlyContinue
-docker compose -f docker-compose.postgres.yml up -d
-.\mvnw.cmd test
-.\mvnw.cmd spring-boot:run
+```bash
+git clone <repository-url>
+cd facilities-app
 ```
 
-Backend runs at:
+### 2. Database Setup
 
-- http://localhost:8080
+```bash
+# Create PostgreSQL database
+createdb facilities_db
 
-Swagger UI:
-
-- http://localhost:8080/swagger-ui.html
-
-Notes:
-
-- The backend now defaults to the `postgres` Spring profile.
-- `spring-boot:run` and the `local` profile both use `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` from your environment if you set them, otherwise they fall back to the defaults in the PostgreSQL property files.
-- The frontend does not connect to PostgreSQL directly; it uses the backend API, so this backend database setup covers the full app.
-
-### 1b. Backend with explicit PostgreSQL environment
-
-Windows PowerShell:
-
-```powershell
-Set-Location backend
-Copy-Item .env.example .env -ErrorAction SilentlyContinue
-docker compose -f docker-compose.postgres.yml up -d
-$env:DB_URL = "jdbc:postgresql://localhost:5432/hyhub"
-$env:DB_USERNAME = "hyhub_app"
-$env:DB_PASSWORD = "hyhub_app"
-.\mvnw.cmd spring-boot:run
+# Update database configuration in backend/src/main/resources/application.properties
 ```
 
-Details:
+### 3. Backend Setup
 
-- docs/postgresql-integration.md
+```bash
+cd backend
 
-### 1c. Backend with explicit local PostgreSQL profile
+# Install dependencies and build
+mvn clean install
 
-```powershell
-Set-Location backend
-$env:SPRING_PROFILES_ACTIVE = "local"
-docker compose -f docker-compose.postgres.yml up -d
-.\mvnw.cmd spring-boot:run
+# Run the application
+mvn spring-boot:run
 ```
 
-Tests:
+The backend server will start on `http://localhost:8080`
 
-- `./mvnw test` now runs Spring Boot integration tests against embedded PostgreSQL instead of H2, so test SQL behavior stays much closer to production.
+### 4. Frontend Setup
 
-### 2. Frontend Setup
+```bash
+cd frontend
 
-Windows PowerShell:
-
-```powershell
-Set-Location frontend
+# Install dependencies
 npm install
-npm start
+
+# Start development server
+ng serve
 ```
 
-Frontend runs at:
+The frontend application will be available at `http://localhost:4200`
 
-- http://localhost:4200
+## Configuration
 
-## Employee Flow Routes
+### Backend Configuration
 
-- /login
-- 
+Create an `application-local.properties` file in `backend/src/main/resources/`:
 
+```properties
+# Database
+spring.datasource.url=jdbc:postgresql://localhost:5432/facilities_db
+spring.datasource.username=your_username
+spring.datasource.password=your_password
 
+# JWT Configuration (when implemented)
+jwt.secret=your_secret_key
+jwt.expiration=86400000
 
+# SSO Configuration (when implemented)
+sso.provider.url=
+sso.client.id=
+sso.client.secret=
+```
 
+### Frontend Configuration
 
+Update `frontend/src/environments/environment.ts`:
 
+```typescript
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:8080/api'
+};
+```
 
+## Development
 
+### Running Tests
 
+**Backend:**
+```bash
+cd backend
+mvn test
+```
 
+**Frontend:**
+```bash
+cd frontend
+ng test
+```
 
+### Building for Production
 
+**Backend:**
+```bash
+cd backend
+mvn clean package
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- /employee/workday-setup
-- /employee/facility/:facilityId/book
-- /employee/history
-- /employee/bookings/:bookingId
-- /employee/invitations
-- /employee/profile
-
-Detailed sequence and API mapping:
-
-- docs/employee-flow.md
+**Frontend:**
+```bash
+cd frontend
+ng build --configuration production
+```
 
 ## API Documentation
 
-Once backend is running:
+Once the backend is running, API documentation will be available at:
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
 
-- Swagger UI: http://localhost:8080/swagger-ui.html
+## Roadmap
+
+### Current Sprint
+- [ ] Complete SSO authentication integration
+- [ ] Finalize JWT token implementation
+- [ ] Set up AWS deployment infrastructure
+
+### Upcoming Features
+- [ ] Email notifications for booking confirmations
+- [ ] SMS alerts for cab bookings
+- [ ] Mobile-responsive dashboard improvements
+- [ ] Recurring booking options
+- [ ] Integration with calendar applications
+- [ ] Analytics dashboard for administrators
+
+## Known Issues
+
+- Authentication is work in progress
+- Deployment configuration pending
+- Email notification system not yet implemented
+
+## Support
+
+For questions or issues related to this project, please contact the development team through internal channels.
+
+---
+
+**Note:** This application is intended for internal use by Hyland India employees only.

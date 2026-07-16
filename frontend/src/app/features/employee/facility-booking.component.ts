@@ -13,6 +13,7 @@ import { BookingApiService } from '../../core/services/booking-api.service';
 import { EmployeeApiService } from '../../core/services/employee-api.service';
 import { SessionService } from '../../core/services/session.service';
 import { ToastService } from '../../core/services/toast.service';
+import { SavedPreferencesService } from '../../core/services/saved-preferences.service';
 
 @Component({
   selector: 'app-facility-booking',
@@ -52,16 +53,24 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <p class="mb-6 text-sm text-slate-500">Complete the form below to submit your service request through the portal.</p>
 
-      <div class="mb-4 flex flex-wrap items-center gap-3" *ngIf="data.rules?.regularCommuteEnabled">
-        <button
+      <!-- Preference action bar -->
+      <div class="mb-5 flex flex-wrap items-center gap-2">
+        <button *ngIf="hasSavedPref()"
           type="button"
-          class="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
-          [disabled]="prefillLoading()"
-          (click)="applyRegularPreferences()"
-        >
-          {{ prefillLoading() ? 'Applying...' : 'Use My Regular Preferences' }}
+          class="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+          (click)="applySavedPreference()">
+          <span class="material-icons-outlined" style="font-size:16px">bookmark</span>
+          Use Saved Preference
         </button>
-        <span class="text-xs text-slate-500">Autofills this form using your majority choices from previous confirmed bookings.</span>
+        <button *ngIf="data.rules?.regularCommuteEnabled"
+          type="button"
+          class="flex items-center gap-1.5 rounded-xl border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+          [disabled]="prefillLoading()"
+          (click)="applyRegularPreferences()">
+          <span class="material-icons-outlined" style="font-size:16px">history</span>
+          {{ prefillLoading() ? 'Applying...' : 'Use Regular Preferences' }}
+        </button>
+        <span *ngIf="!hasSavedPref() && !data.rules?.regularCommuteEnabled" class="text-xs text-slate-400">Fill the form and save as your preference for quick reuse.</span>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4 md:grid-cols-2">
@@ -69,10 +78,18 @@ import { ToastService } from '../../core/services/toast.service';
           <app-dynamic-field-renderer [field]="field" [form]="form" [controlName]="controlName(field)" />
         </ng-container>
 
-        <div class="md:col-span-2 mt-4 pt-4 border-t border-slate-100 flex items-center gap-4">
-          <button type="submit" class="rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors shadow-sm">Submit Request</button>
-          <span *ngIf="message()" class="text-sm font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">{{ message() }}</span>
-          <span *ngIf="error()" class="text-sm font-medium text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg">{{ error() }}</span>
+        <div class="md:col-span-2 mt-4 pt-4 border-t border-slate-100">
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="submit" class="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors shadow-sm">Submit Request</button>
+            <button type="button"
+                    class="flex items-center gap-1.5 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    (click)="savePreference()">
+              <span class="material-icons-outlined" style="font-size:16px">{{ prefSaveDone() ? 'bookmark' : 'bookmark_border' }}</span>
+              {{ prefSaveDone() ? 'Preference Saved!' : (hasSavedPref() ? 'Update Preference' : 'Save as Preference') }}
+            </button>
+          </div>
+          <span *ngIf="message()" class="mt-3 block text-sm font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">{{ message() }}</span>
+          <span *ngIf="error()" class="mt-3 block text-sm font-medium text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg">{{ error() }}</span>
         </div>
       </form>
       </div>
@@ -86,6 +103,8 @@ export class FacilityBookingComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly accessBlocked = signal<string | null>(null);
   readonly prefillLoading = signal(false);
+  readonly hasSavedPref = signal(false);
+  readonly prefSaveDone = signal(false);
   bookingDate: string | null = null;
 
   readonly orderedFields = computed(() => {
@@ -100,7 +119,8 @@ export class FacilityBookingComponent implements OnInit {
     private readonly employeeApi: EmployeeApiService,
     private readonly bookingApi: BookingApiService,
     private readonly sessionService: SessionService,
-    private readonly toastService: ToastService
+    private readonly toastService: ToastService,
+    private readonly prefService: SavedPreferencesService
   ) {}
 
   ngOnInit(): void {
@@ -364,11 +384,63 @@ export class FacilityBookingComponent implements OnInit {
       next: (data) => {
         this.spec.set(data);
         this.rebuildForm(data.fields);
+        this.hasSavedPref.set(this.prefService.load(data.facilityId) !== null);
       },
       error: () => {
         this.error.set('Facility specification could not be loaded at this time.');
       }
     });
+  }
+
+  savePreference(): void {
+    const facility = this.spec();
+    if (!facility) return;
+
+    const values = facility.fields
+      .map((field) => {
+        const raw = this.form.get(this.controlName(field))?.value;
+        const value = Array.isArray(raw)
+          ? (raw as string[]).join(',')
+          : String(raw ?? '').trim();
+        return { fieldId: field.fieldId, label: field.label, value };
+      })
+      .filter((v) => v.value.length > 0);
+
+    this.prefService.save({
+      facilityId: facility.facilityId,
+      facilityName: facility.facilityName,
+      savedAt: new Date().toISOString(),
+      values
+    });
+
+    this.hasSavedPref.set(true);
+    this.prefSaveDone.set(true);
+    this.toastService.show(`Preferences saved for ${facility.facilityName}`, 'success');
+    setTimeout(() => this.prefSaveDone.set(false), 3000);
+  }
+
+  applySavedPreference(): void {
+    const facility = this.spec();
+    if (!facility) return;
+
+    const pref = this.prefService.load(facility.facilityId);
+    if (!pref) return;
+
+    const byFieldId = new Map(pref.values.map((v) => [v.fieldId, v.value]));
+
+    for (const field of facility.fields) {
+      const val = byFieldId.get(field.fieldId);
+      if (val === undefined) continue;
+      const ctrl = this.form.get(this.controlName(field));
+      if (!ctrl) continue;
+      if (field.type.toUpperCase() === 'CHECKBOX') {
+        ctrl.setValue(val.split(',').map((v) => v.trim()).filter((v) => v.length > 0));
+      } else {
+        ctrl.setValue(val);
+      }
+    }
+
+    this.toastService.show('Saved preference applied!', 'success');
   }
 
   private todayIsoDate(): string {

@@ -115,10 +115,10 @@ createdb facilities_db
 cd backend
 
 # Install dependencies and build
-mvn clean install
+./mvnw clean install
 
 # Run the application
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 The backend server will start on `http://localhost:8080`
@@ -132,7 +132,7 @@ cd frontend
 npm install
 
 # Start development server
-ng serve
+npm start
 ```
 
 The frontend application will be available at `http://localhost:4200`
@@ -177,7 +177,7 @@ export const environment = {
 **Backend:**
 ```bash
 cd backend
-mvn test
+./mvnw test
 ```
 
 **Frontend:**
@@ -191,7 +191,7 @@ ng test
 **Backend:**
 ```bash
 cd backend
-mvn clean package
+./mvnw clean package
 ```
 
 **Frontend:**
@@ -203,7 +203,7 @@ ng build --configuration production
 ## API Documentation
 
 Once the backend is running, API documentation will be available at:
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 
 ## Roadmap
 

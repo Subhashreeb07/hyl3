@@ -198,11 +198,6 @@ import { FacilityField } from '../../../core/models/specification.models';
                     {{ getTreeSelection(i) }}
                   </div>
 
-                  <!-- SIGNATURE -->
-                  <div *ngSwitchCase="'SIGNATURE'" style="border:1.5px dashed #e2e8f0;border-radius:7px;padding:8px;background:#f8fafc;display:flex;align-items:center;justify-content:center;height:36px;">
-                    <span style="font-size:8.5px;color:#94a3b8;">Sign here</span>
-                  </div>
-
                   <!-- DEFAULT -->
                   <div *ngSwitchDefault style="border:1px solid #e2e8f0;border-radius:7px;padding:5px 8px;background:#f8fafc;">
                     <span style="font-size:9px;color:#94a3b8;">{{ field.placeholder || 'Enter value...' }}</span>

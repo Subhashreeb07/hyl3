@@ -213,26 +213,22 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
       <section class="rules-card">
         <h4>Timing Rules</h4>
         <p class="subtitle" *ngIf="isSingleDay">Set the booking start and end time for each day.</p>
-        <p class="subtitle" *ngIf="!isSingleDay">Set the booking start and end datetime (date + time) for the multi-day period.</p>
+        <p class="subtitle" *ngIf="!isSingleDay">Set the booking start and end time for the multi-day period.</p>
 
         <div class="grid gap-6 md:grid-cols-2">
           <label class="admin-field">
-            Booking Start {{ isSingleDay ? 'Time' : 'Date & Time' }} *
-            <input *ngIf="isSingleDay" type="time" formControlName="bookingStartTime" required
-                   [class.border-red-500]="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched" />
-            <input *ngIf="!isSingleDay" type="datetime-local" formControlName="bookingStartTime" required
+            Booking Start Time *
+            <input type="time" formControlName="bookingStartTime" required
                    [class.border-red-500]="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched" />
             <span *ngIf="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched"
-                  class="text-[11px] text-red-500 font-medium">Start {{ isSingleDay ? 'time' : 'date & time' }} is required</span>
+                  class="text-[11px] text-red-500 font-medium">Start time is required</span>
           </label>
           <label class="admin-field">
-            Booking End {{ isSingleDay ? 'Time' : 'Date & Time' }} *
-            <input *ngIf="isSingleDay" type="time" formControlName="bookingDeadline" required
-                   [class.border-red-500]="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched" />
-            <input *ngIf="!isSingleDay" type="datetime-local" formControlName="bookingDeadline" required
+            Booking End Time *
+            <input type="time" formControlName="bookingDeadline" required
                    [class.border-red-500]="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched" />
             <span *ngIf="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched"
-                  class="text-[11px] text-red-500 font-medium">End {{ isSingleDay ? 'time' : 'date & time' }} is required</span>
+                  class="text-[11px] text-red-500 font-medium">End time is required</span>
           </label>
         </div>
 
