@@ -59,6 +59,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         return facilityRepository.findByPublishedTrue().stream()
                 .filter(facility -> facilityVisibleForOffice(facility, officeLocation))
+                .filter(facility -> facilityAllowedForEmployeeId(facility, normalizedEmployeeId))
                 .filter(facility -> facilityAllowedForEmployee(facility, employeeOpt.orElse(null)))
                 .map(f -> new EmployeeDtos.DashboardFacilityResponse(
                         f.getFacilityId(),
@@ -89,6 +90,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         List<EmployeeDtos.HomeServiceCard> services = facilities.stream()
                 .filter(f -> facilityVisibleForOffice(f, officeLocation))
+                .filter(f -> facilityAllowedForEmployeeId(f, normalizedEmployeeId))
                 .filter(f -> facilityAllowedForEmployee(f, employee))
                 .map(facility -> {
                     Booking booking = bookingByFacility.get(facility.getFacilityId());
@@ -196,11 +198,24 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
         private boolean facilityVisibleForOffice(Facility facility, String officeLocation) {
+                // If specific employee IDs are targeted, location check is bypassed (handled by facilityAllowedForEmployee).
+                if (facility.getTargetEmployeeIds() != null && !facility.getTargetEmployeeIds().isBlank()) {
+                        return true;
+                }
                 List<String> targetedLocations = splitTargetLocations(facility.getTargetLocations());
                 if (targetedLocations.isEmpty() || officeLocation == null) {
                         return true;
                 }
                 return targetedLocations.contains(officeLocation);
+        }
+
+        private boolean facilityAllowedForEmployeeId(Facility facility, String employeeId) {
+                String raw = facility.getTargetEmployeeIds();
+                if (raw == null || raw.isBlank()) return true;
+                Set<String> allowed = Arrays.stream(raw.split(","))
+                        .map(String::trim).filter(s -> !s.isEmpty())
+                        .collect(java.util.stream.Collectors.toSet());
+                return allowed.contains(employeeId);
         }
 
         private List<String> splitTargetLocations(String raw) {
@@ -328,6 +343,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         List<Facility> publishedFacilities = facilityRepository.findByPublishedTrue()
                 .stream()
                 .filter(f -> facilityVisibleForOffice(f, officeLocation))
+                .filter(f -> facilityAllowedForEmployeeId(f, normalizedEmployeeId))
                 .filter(f -> facilityAllowedForEmployee(f, employee))
                 .toList();
 

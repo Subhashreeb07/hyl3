@@ -258,49 +258,6 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
           <span class="material-icons-outlined text-[1.2em] mr-1">check_circle</span> Available on: {{ selectedDaysLabel }}
         </p>
       </section>
-
-      <!-- ── Employee Type ── -->
-      <section class="rules-card">
-        <h4>Employee Type Access</h4>
-        <p class="subtitle">Which work modes can use this facility?</p>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="pill font-bold" [class.active]="allTypesSelected"
-                  style="border-color:#4f46e5;background:#eef2ff;color:#4338ca;" (click)="toggleAllTypes()">
-            ✦ Everyone
-          </button>
-          <label class="pill" [class.active]="form.value.employeeTypeOnSite">
-            <input type="checkbox" formControlName="employeeTypeOnSite" class="sr-only" /> On-site
-          </label>
-          <label class="pill" [class.active]="form.value.employeeTypeRemote">
-            <input type="checkbox" formControlName="employeeTypeRemote" class="sr-only" /> Remote
-          </label>
-          <label class="pill" [class.active]="form.value.employeeTypeHybrid">
-            <input type="checkbox" formControlName="employeeTypeHybrid" class="sr-only" /> Hybrid
-          </label>
-        </div>
-      </section>
-
-      <!-- ── Applicable Roles ── -->
-      <section class="rules-card">
-        <h4>Applicable Roles</h4>
-        <p class="subtitle">Which job roles can access or book this facility?</p>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="pill font-bold" [class.active]="allRolesSelected"
-                  style="border-color:#4f46e5;background:#eef2ff;color:#4338ca;" (click)="toggleAllRoles()">
-            ✦ Everyone
-          </button>
-          <label class="pill" [class.active]="form.value.roleHR"><input type="checkbox" formControlName="roleHR" class="sr-only" /> HR</label>
-          <label class="pill" [class.active]="form.value.roleManager"><input type="checkbox" formControlName="roleManager" class="sr-only" /> Manager</label>
-          <label class="pill" [class.active]="form.value.roleFinance"><input type="checkbox" formControlName="roleFinance" class="sr-only" /> Finance</label>
-          <label class="pill" [class.active]="form.value.roleCloud"><input type="checkbox" formControlName="roleCloud" class="sr-only" /> Cloud</label>
-          <label class="pill" [class.active]="form.value.roleRD"><input type="checkbox" formControlName="roleRD" class="sr-only" /> R&amp;D</label>
-          <label class="pill" [class.active]="form.value.roleDirector"><input type="checkbox" formControlName="roleDirector" class="sr-only" /> Director</label>
-          <label class="pill" [class.active]="form.value.roleIS"><input type="checkbox" formControlName="roleIS" class="sr-only" /> IS</label>
-          <label class="pill" [class.active]="form.value.roleNOC"><input type="checkbox" formControlName="roleNOC" class="sr-only" /> NOC</label>
-          <label class="pill" [class.active]="form.value.roleOps"><input type="checkbox" formControlName="roleOps" class="sr-only" /> Ops</label>
-          <label class="pill" [class.active]="form.value.roleDevops"><input type="checkbox" formControlName="roleDevops" class="sr-only" /> DevOps</label>
-        </div>
-      </section>
     </form>
   `
 })

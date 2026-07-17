@@ -35,6 +35,9 @@ public class Facility {
     @Column(name = "target_locations", length = 255)
     private String targetLocations;
 
+    @Column(name = "target_employee_ids", columnDefinition = "TEXT")
+    private String targetEmployeeIds;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -129,6 +132,14 @@ public class Facility {
 
     public void setTargetLocations(String targetLocations) {
         this.targetLocations = targetLocations;
+    }
+
+    public String getTargetEmployeeIds() {
+        return targetEmployeeIds;
+    }
+
+    public void setTargetEmployeeIds(String targetEmployeeIds) {
+        this.targetEmployeeIds = targetEmployeeIds;
     }
 
     public LocalDateTime getCreatedAt() {

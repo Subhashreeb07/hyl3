@@ -54,7 +54,7 @@ public final class FacilityDtos {
     ) {
     }
 
-    public record PublishRequest(List<String> targetLocations) {
+    public record PublishRequest(List<String> targetLocations, List<String> targetEmployeeIds) {
     }
 
     public record PublishResponse(Long facilityId, String message) {

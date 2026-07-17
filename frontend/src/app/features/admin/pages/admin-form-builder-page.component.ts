@@ -17,7 +17,7 @@ import { BuilderPublishPanelComponent } from '../components/builder-publish-pane
 import { BuilderPreviewStepComponent } from '../components/builder-preview-step.component';
 import { BuilderRulesFormComponent } from '../components/builder-rules-form.component';
 import { FieldConfigDialogComponent } from '../components/field-config-dialog.component';
-import { PublishLocationsDialogComponent } from '../components/publish-locations-dialog.component';
+import { PublishLocationsDialogComponent, PublishDialogData } from '../components/publish-locations-dialog.component';
 import { SpecificationImportDialogComponent } from '../components/specification-import-dialog.component';
 import { FacilityBuilderRecord, FacilityBuilderStateService } from '../state/facility-builder-state.service';
 import { FacilityField, FacilitySpecification } from '../../../core/models/specification.models';
@@ -670,8 +670,27 @@ export class AdminFormBuilderPageComponent {
       const publishConfig = await firstValueFrom(
         this.dialog
           .open(PublishLocationsDialogComponent, {
-            width: '420px',
-            maxWidth: '95vw'
+            width: '520px',
+            maxWidth: '95vw',
+            data: {
+              workModes: {
+                onSite:  !!this.rulesForm.value.employeeTypeOnSite,
+                remote:  !!this.rulesForm.value.employeeTypeRemote,
+                hybrid:  !!this.rulesForm.value.employeeTypeHybrid,
+              },
+              roles: {
+                HR:       !!this.rulesForm.value.roleHR,
+                Manager:  !!this.rulesForm.value.roleManager,
+                Finance:  !!this.rulesForm.value.roleFinance,
+                Cloud:    !!this.rulesForm.value.roleCloud,
+                RD:       !!this.rulesForm.value.roleRD,
+                Director: !!this.rulesForm.value.roleDirector,
+                IS:       !!this.rulesForm.value.roleIS,
+                NOC:      !!this.rulesForm.value.roleNOC,
+                Ops:      !!this.rulesForm.value.roleOps,
+                Devops:   !!this.rulesForm.value.roleDevops,
+              }
+            } as PublishDialogData
           })
           .afterClosed()
       );
@@ -680,7 +699,7 @@ export class AdminFormBuilderPageComponent {
         return;
       }
 
-      const persisted = await this.persistBuilder(true, publishConfig.targetLocations);
+      const persisted = await this.persistBuilder(true, publishConfig.targetLocations, publishConfig.targetEmployeeIds ?? []);
       this.state.upsertFacility(persisted);
       this.state.publishFacility(persisted.id);
       this.refreshJson();
@@ -1075,7 +1094,7 @@ export class AdminFormBuilderPageComponent {
     this.snackBar.open(message, action, { duration });
   }
 
-  private async persistBuilder(publishAfterSave: boolean, publishLocations: string[] = []): Promise<FacilityBuilderRecord> {
+  private async persistBuilder(publishAfterSave: boolean, publishLocations: string[] = [], publishEmployeeIds: string[] = []): Promise<FacilityBuilderRecord> {
     const base = this.currentRecord(false);
     const existing = this.state.activeFacility();
 
@@ -1190,7 +1209,10 @@ export class AdminFormBuilderPageComponent {
     );
 
     if (publishAfterSave) {
-      await firstValueFrom(this.facilityAdminApi.publishFacility(facilityId, { targetLocations: publishLocations }));
+      await firstValueFrom(this.facilityAdminApi.publishFacility(facilityId, {
+        targetLocations: publishLocations,
+        targetEmployeeIds: publishEmployeeIds
+      }));
     }
 
     await this.state.loadFromBackend();

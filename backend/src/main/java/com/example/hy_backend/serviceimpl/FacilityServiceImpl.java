@@ -125,6 +125,14 @@ public class FacilityServiceImpl implements FacilityService {
         List<String> normalizedLocations = normalizeTargetLocations(request == null ? null : request.targetLocations());
         String locationsStr = normalizedLocations.isEmpty() ? null : String.join(",", normalizedLocations);
         facility.setTargetLocations(locationsStr);
+
+        // Store selected employee IDs (comma-separated); null = no restriction
+        List<String> empIds = (request != null && request.targetEmployeeIds() != null)
+                ? request.targetEmployeeIds().stream()
+                        .map(String::trim).filter(s -> !s.isEmpty()).toList()
+                : Collections.emptyList();
+        facility.setTargetEmployeeIds(empIds.isEmpty() ? null : String.join(",", empIds));
+
         facility.setPublished(true);
         facilityRepository.save(facility);
         return new FacilityDtos.PublishResponse(facility.getFacilityId(), "Facility published successfully");

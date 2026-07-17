@@ -54,6 +54,7 @@ export interface PublishResponse {
 
 export interface PublishRequest {
   targetLocations: string[];
+  targetEmployeeIds?: string[];
 }
 
 export interface FieldRequest {
