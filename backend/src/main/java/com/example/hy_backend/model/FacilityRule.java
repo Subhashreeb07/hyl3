@@ -1,6 +1,9 @@
 package com.example.hy_backend.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -26,7 +29,8 @@ public class FacilityRule {
     @Column(name = "facility_available_to_date")
     private LocalDate facilityAvailableToDate;
 
-    @Column(name = "rules_json", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "rules_json", columnDefinition = "jsonb")
     private String rulesJson;
 
     public Long getRuleId() {

@@ -2,6 +2,7 @@ package com.example.hy_backend.serviceimpl;
 
 import com.example.hy_backend.dto.EmployeeDtos;
 import com.example.hy_backend.dto.FacilityDtos;
+import com.example.hy_backend.dto.NotificationDtos;
 import com.example.hy_backend.exception.BadRequestException;
 import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.model.Facility;
@@ -12,6 +13,7 @@ import com.example.hy_backend.repository.FacilityRuleRepository;
 import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
 import com.example.hy_backend.service.FacilityService;
+import com.example.hy_backend.service.NotificationAdminService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -27,10 +29,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class FacilityServiceImpl implements FacilityService {
+
+    private static final Logger log = LoggerFactory.getLogger(FacilityServiceImpl.class);
 
     private static final Set<String> ALLOWED_LOCATIONS = Set.of("HYDERABAD", "KOLKATA");
     private static final List<String> DEFAULT_PUBLISH_LOCATIONS = List.of("HYDERABAD", "KOLKATA");
@@ -38,17 +44,20 @@ public class FacilityServiceImpl implements FacilityService {
     private final FacilityRepository facilityRepository;
     private final FieldDefinitionRepository fieldDefinitionRepository;
     private final FacilityRuleRepository facilityRuleRepository;
+    private final NotificationAdminService notificationAdminService;
     private final ObjectMapper objectMapper;
 
     public FacilityServiceImpl(
             FacilityRepository facilityRepository,
             FieldDefinitionRepository fieldDefinitionRepository,
             FacilityRuleRepository facilityRuleRepository,
+            NotificationAdminService notificationAdminService,
             ObjectMapper objectMapper
     ) {
         this.facilityRepository = facilityRepository;
         this.fieldDefinitionRepository = fieldDefinitionRepository;
         this.facilityRuleRepository = facilityRuleRepository;
+        this.notificationAdminService = notificationAdminService;
         this.objectMapper = objectMapper;
     }
 
@@ -135,7 +144,78 @@ public class FacilityServiceImpl implements FacilityService {
 
         facility.setPublished(true);
         facilityRepository.save(facility);
+        sendPublishReminderEmails(facility, normalizedLocations);
         return new FacilityDtos.PublishResponse(facility.getFacilityId(), "Facility published successfully");
+    }
+
+    private void sendPublishReminderEmails(Facility facility, List<String> targetLocations) {
+        String locationFilter = targetLocations.isEmpty() ? "ALL" : String.join(",", targetLocations);
+        List<String> targetEmployeeIds = facility.getTargetEmployeeIds() == null || facility.getTargetEmployeeIds().isBlank()
+            ? null
+            : Arrays.stream(facility.getTargetEmployeeIds().split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
+        String subject = "Facility published: " + facility.getFacilityName();
+        String message = "A new facility has been published and is ready for booking."
+                + " Please log in and complete your registration preferences for "
+                + facility.getFacilityName()
+                + ".";
+
+        NotificationDtos.BroadcastNotificationRequest payload = new NotificationDtos.BroadcastNotificationRequest(
+                "FACILITY_PUBLISHED",
+                List.of("EMAIL"),
+                subject,
+                message,
+                targetEmployeeIds,
+                locationFilter,
+                "ALL",
+                "ALL",
+                true,
+                false
+        );
+
+        try {
+            NotificationDtos.BroadcastNotificationResponse result = notificationAdminService.sendBroadcast(payload);
+            log.info("Facility publish email reminders sent for facility {}. matched={}, sent={}",
+                    facility.getFacilityId(),
+                    result.matchedEmployees(),
+                    result.notificationsCreated());
+        } catch (Exception ex) {
+            // Keep publish operation successful even if email transport has a transient failure.
+            log.warn("Facility {} published but reminder email dispatch failed: {}", facility.getFacilityId(), ex.getMessage());
+        }
+    }
+
+    private void sendCreateReminderEmails(Facility facility) {
+        String locationFilter = String.join(",", DEFAULT_PUBLISH_LOCATIONS);
+        String subject = "New facility created: " + facility.getFacilityName();
+        String message = "A new facility has been created on HY Hub."
+                + " You will receive a follow-up once it is published for booking."
+                + " Facility: " + facility.getFacilityName() + ".";
+
+        NotificationDtos.BroadcastNotificationRequest payload = new NotificationDtos.BroadcastNotificationRequest(
+                "FACILITY_CREATED",
+                List.of("EMAIL"),
+                subject,
+                message,
+                null,
+                locationFilter,
+                "ALL",
+                "ALL",
+                true,
+                false
+        );
+
+        try {
+            NotificationDtos.BroadcastNotificationResponse result = notificationAdminService.sendBroadcast(payload);
+            log.info("Facility creation email reminders sent for facility {}. matched={}, sent={}",
+                    facility.getFacilityId(),
+                    result.matchedEmployees(),
+                    result.notificationsCreated());
+        } catch (Exception ex) {
+            log.warn("Facility {} created but reminder email dispatch failed: {}", facility.getFacilityId(), ex.getMessage());
+        }
     }
 
     @Override

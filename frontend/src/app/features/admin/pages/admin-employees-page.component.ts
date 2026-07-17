@@ -144,7 +144,7 @@ interface BulkPreviewRow {
           <div class="flex-1">
             <p class="font-semibold text-slate-800">Download Excel Template</p>
             <p class="text-sm text-slate-500 mt-0.5">
-              Fill in the template with employee data. Required columns: <code class="bg-white px-1 rounded text-xs">employee_id, full_name, email</code>. All others are optional.
+              Fill in the template exactly. All columns are required for bulk upload and blank fields will be rejected with row-wise errors.
             </p>
           </div>
           <button (click)="downloadTemplate()"
@@ -201,9 +201,9 @@ interface BulkPreviewRow {
                   <td class="px-4 py-2.5 font-mono text-xs">{{ row.employee_id }}</td>
                   <td class="px-4 py-2.5">{{ row.full_name }}</td>
                   <td class="px-4 py-2.5 text-slate-500 text-xs">{{ row.email }}</td>
-                  <td class="px-4 py-2.5"><span class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">{{ row.role_code || 'EMPLOYEE' }}</span></td>
-                  <td class="px-4 py-2.5 text-xs text-slate-600">{{ row.work_mode || 'HYBRID' }}</td>
-                  <td class="px-4 py-2.5 text-xs text-slate-600">{{ row.office_location || 'HYDERABAD' }}</td>
+                  <td class="px-4 py-2.5"><span class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">{{ row.role_code || '—' }}</span></td>
+                  <td class="px-4 py-2.5 text-xs text-slate-600">{{ row.work_mode || '—' }}</td>
+                  <td class="px-4 py-2.5 text-xs text-slate-600">{{ row.office_location || '—' }}</td>
                   <td class="px-4 py-2.5">
                     <span *ngIf="!row._status" class="text-slate-400 text-xs">—</span>
                     <span *ngIf="row._status === 'ok'" class="text-green-600 text-xs font-medium flex items-center gap-1">
@@ -222,6 +222,9 @@ interface BulkPreviewRow {
             <span class="text-green-600 font-semibold">✓ {{ bulkResult()!.created }} created</span>
             <span *ngIf="bulkResult()!.skipped > 0" class="text-orange-500 font-semibold">⚠ {{ bulkResult()!.skipped }} skipped</span>
           </div>
+          <div *ngIf="bulkResult()?.errors?.length" class="px-5 pb-4 text-xs text-red-600 space-y-1">
+            <div *ngFor="let e of bulkResult()!.errors">{{ e }}</div>
+          </div>
         </div>
       </div>
 
@@ -232,6 +235,9 @@ interface BulkPreviewRow {
           <input [(ngModel)]="searchQuery" [ngModelOptions]="{standalone: true}"
             placeholder="Search name / ID / email..."
             class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 w-64 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+        </div>
+        <div *ngIf="loadError()" class="px-5 py-3 text-sm text-red-500 border-b border-slate-100">
+          {{ loadError() }}
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -294,6 +300,7 @@ export class AdminEmployeesPageComponent implements OnInit {
   readonly submitting = signal(false);
   readonly addSuccess = signal(false);
   readonly addError = signal('');
+  readonly loadError = signal('');
   readonly dragOver = signal(false);
   readonly selectedFileName = signal('');
   readonly previewRows = signal<BulkPreviewRow[]>([]);
@@ -363,10 +370,12 @@ export class AdminEmployeesPageComponent implements OnInit {
     this.addSuccess.set(false);
     this.addError.set('');
     try {
-      await firstValueFrom(this.http.post<EmployeeRow>(
+      const created = await firstValueFrom(this.http.post<EmployeeRow>(
         `${this.baseUrl}/admin/employees`, this.addForm.value, { headers: this.authHeaders() }
       ));
       this.addSuccess.set(true);
+      this.employees.update(list => [created, ...list.filter(e => e.employeeId !== created.employeeId)]);
+      this.activeTab.set('list');
       this.addForm.reset({ roleCode: 'EMPLOYEE', workMode: 'HYBRID', officeLocation: 'HYDERABAD' });
       this.loadEmployees();
       setTimeout(() => this.addSuccess.set(false), 3000);
@@ -459,14 +468,20 @@ export class AdminEmployeesPageComponent implements OnInit {
       this.loadEmployees();
     } catch (err: any) {
       console.error('Bulk upload failed', err);
+      const message = err?.error?.message ?? 'Bulk upload failed. Check template and required fields.';
+      this.bulkResult.set({ created: 0, skipped: 0, errors: [message] });
     } finally {
       this.bulkSubmitting.set(false);
     }
   }
 
   private loadEmployees(): void {
+    this.loadError.set('');
     this.http.get<EmployeeRow[]>(`${this.baseUrl}/admin/employees`, { headers: this.authHeaders() })
-      .subscribe(list => this.employees.set(list));
+      .subscribe({
+        next: list => this.employees.set(list),
+        error: () => this.loadError.set('Failed to load employees from server')
+      });
   }
 
   private authHeaders(): HttpHeaders {

@@ -51,9 +51,9 @@ import { NotificationStreamService } from '../../core/services/notification-stre
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
             <img
               class="hyland-logo hyland-logo-sidebar"
-              src="https://www.keymarkinc.com/wp-content/uploads/2025/05/Hyland-logos_CMYK-scaled.png"
+              src="https://www.gartner.com/pi/vendorimages/hyland-software_bpm-platform-based-case-management-frameworks_1742417574803.png"
               alt="Hyland logo"
-              style="width: 140px; height: auto;"
+              style="width: 160px; height: 42px; object-fit: contain; object-position: left center;"
             />
             <button type="button"
                     (click)="toggleSidebar()"

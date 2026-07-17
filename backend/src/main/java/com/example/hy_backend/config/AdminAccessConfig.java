@@ -21,6 +21,8 @@ public class AdminAccessConfig implements WebMvcConfigurer {
                         "/api/reports/**",
                         "/api/audit/**",
                         "/api/bookings/admin/**",
+                    "/api/notifications/broadcast",
+                    "/api/notifications/history",
                         "/api/notifications/process",
                         "/api/notifications/ops/**"
                 );

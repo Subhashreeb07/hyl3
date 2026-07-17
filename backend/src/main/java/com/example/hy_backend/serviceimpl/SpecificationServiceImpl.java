@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -212,9 +213,23 @@ public class SpecificationServiceImpl implements SpecificationService {
         rule.setFacility(facility);
         rule.setBookingDeadline(parseOptionalTime(rulesNode, "bookingDeadline"));
         rule.setBookingStartTime(parseOptionalTime(rulesNode, "bookingStartTime"));
-        rule.setRulesJson(rulesNode.toString());
+        rule.setFacilityAvailableFromDate(parseOptionalDate(rulesNode, "facilityAvailableFromDate"));
+        rule.setFacilityAvailableToDate(parseOptionalDate(rulesNode, "facilityAvailableToDate"));
+        rule.setRulesJson(buildRulesJson(rulesNode, rule));
 
         return rule;
+    }
+
+    private String buildRulesJson(JsonNode rulesNode, FacilityRule rule) {
+        ObjectNode result = objectMapper.createObjectNode();
+        putNullableText(result, "bookingDeadline", rule.getBookingDeadline() == null ? null : rule.getBookingDeadline().toString());
+        putNullableText(result, "bookingStartTime", rule.getBookingStartTime() == null ? null : rule.getBookingStartTime().toString());
+        putNullableText(result, "availableDays", optionalTrimmedText(rulesNode, "availableDays"));
+        putNullableText(result, "facilityAvailableFromDate", rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString());
+        putNullableText(result, "facilityAvailableToDate", rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString());
+        putNullableText(result, "employeeTypes", optionalTextOrEmpty(rulesNode, "employeeTypes"));
+        putNullableText(result, "roles", optionalTextOrEmpty(rulesNode, "roles"));
+        return result.toString();
     }
 
     private LocalTime parseOptionalTime(JsonNode node, String key) {
@@ -230,6 +245,44 @@ public class SpecificationServiceImpl implements SpecificationService {
         } catch (DateTimeParseException ex) {
             throw new BadRequestException("Invalid time format for '" + key + "'. Use HH:mm or HH:mm:ss");
         }
+    }
+
+    private LocalDate parseOptionalDate(JsonNode node, String key) {
+        if (!node.hasNonNull(key)) {
+            return null;
+        }
+        String value = node.path(key).asText().trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
+            throw new BadRequestException("Invalid date format for '" + key + "'. Use yyyy-MM-dd");
+        }
+    }
+
+    private String optionalTrimmedText(JsonNode node, String key) {
+        if (!node.has(key) || node.get(key).isNull()) {
+            return null;
+        }
+        String value = node.path(key).asText("").trim();
+        return value.isBlank() ? null : value;
+    }
+
+    private String optionalTextOrEmpty(JsonNode node, String key) {
+        if (!node.has(key) || node.get(key).isNull()) {
+            return "";
+        }
+        return node.path(key).asText("").trim();
+    }
+
+    private void putNullableText(ObjectNode node, String key, String value) {
+        if (value == null) {
+            node.putNull(key);
+            return;
+        }
+        node.put(key, value);
     }
 
     private FieldType parseFieldType(String rawType) {

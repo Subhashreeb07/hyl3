@@ -18,11 +18,17 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class AdminEmployeeServiceImpl implements AdminEmployeeService {
 
     private static final String DEFAULT_PASSWORD = "password123";
+    private static final Set<String> ALLOWED_ROLES = Set.of(
+            "EMPLOYEE", "HR", "MANAGER", "FINANCE", "CLOUD", "RD", "DIRECTOR", "IS", "NOC", "OPS", "DEVOPS"
+    );
+    private static final Set<String> ALLOWED_WORK_MODES = Set.of("HYBRID", "ON_SITE", "REMOTE");
+    private static final Set<String> ALLOWED_OFFICE_LOCATIONS = Set.of("HYDERABAD", "KOLKATA", "MUMBAI");
     private static final String[] TEMPLATE_HEADERS = {
         "employee_id", "full_name", "email", "department",
         "role_code", "work_mode", "office_location", "password"
@@ -30,7 +36,7 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
     private static final String[] TEMPLATE_NOTES = {
         "e.g. EMP100 (unique)", "Full display name", "Work email",
         "e.g. Engineering", "EMPLOYEE / HR / MANAGER / FINANCE / CLOUD / RD / DIRECTOR / IS / NOC / OPS / DEVOPS",
-        "HYBRID / ON_SITE / REMOTE", "HYDERABAD / KOLKATA / MUMBAI", "Leave blank = password123"
+        "HYBRID / ON_SITE / REMOTE", "HYDERABAD / KOLKATA / MUMBAI", "Required"
     };
 
     private final EmployeeRepository employeeRepository;
@@ -83,6 +89,7 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
             AdminEmployeeDtos.EmployeeCreateRequest req = rows.get(i);
             int rowNum = i + 3; // data starts at row 3 (1-indexed: row1=header, row2=notes)
             try {
+                validateBulkRow(req);
                 createEmployee(req);
                 created++;
             } catch (BadRequestException ex) {
@@ -190,12 +197,13 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
         List<AdminEmployeeDtos.EmployeeCreateRequest> result = new ArrayList<>();
         try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = wb.getSheetAt(0);
+            validateTemplateHeaders(sheet);
             // Row 0 = header, Row 1 = notes, data starts at row 2
             for (int r = 2; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
+                if (!rowHasAnyValue(row)) continue;
                 String id = cellStr(row, 0);
-                if (id.isBlank()) continue; // skip empty rows
                 result.add(new AdminEmployeeDtos.EmployeeCreateRequest(
                         id,
                         cellStr(row, 1),
@@ -209,6 +217,76 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
             }
         }
         return result;
+    }
+
+    private void validateTemplateHeaders(Sheet sheet) {
+        Row headerRow = sheet.getRow(0);
+        if (headerRow == null) {
+            throw new BadRequestException("Invalid template: header row is missing.");
+        }
+
+        for (int i = 0; i < TEMPLATE_HEADERS.length; i++) {
+            String actual = cellStr(headerRow, i).toLowerCase(Locale.ROOT);
+            String expected = TEMPLATE_HEADERS[i];
+            if (!expected.equals(actual)) {
+                throw new BadRequestException("Invalid template header at column " + (i + 1)
+                        + ". Expected '" + expected + "' but found '" + (actual.isBlank() ? "<blank>" : actual) + "'.");
+            }
+        }
+    }
+
+    private boolean rowHasAnyValue(Row row) {
+        for (int col = 0; col < TEMPLATE_HEADERS.length; col++) {
+            if (!cellStr(row, col).isBlank()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void validateBulkRow(AdminEmployeeDtos.EmployeeCreateRequest req) {
+        if (req.employeeId() == null || req.employeeId().isBlank()) {
+            throw new BadRequestException("employee_id is required");
+        }
+        if (req.fullName() == null || req.fullName().isBlank()) {
+            throw new BadRequestException("full_name is required");
+        }
+        if (req.email() == null || req.email().isBlank()) {
+            throw new BadRequestException("email is required");
+        }
+        if (!req.email().contains("@")) {
+            throw new BadRequestException("email must be a valid email address");
+        }
+        if (req.department() == null || req.department().isBlank()) {
+            throw new BadRequestException("department is required");
+        }
+        if (req.roleCode() == null || req.roleCode().isBlank()) {
+            throw new BadRequestException("role_code is required");
+        }
+        String normalizedRole = req.roleCode().trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_ROLES.contains(normalizedRole)) {
+            throw new BadRequestException("role_code must be one of: " + String.join(", ", ALLOWED_ROLES));
+        }
+
+        if (req.workMode() == null || req.workMode().isBlank()) {
+            throw new BadRequestException("work_mode is required");
+        }
+        String normalizedWorkMode = req.workMode().trim().toUpperCase(Locale.ROOT).replace("-", "_").replace(" ", "_");
+        if (!ALLOWED_WORK_MODES.contains(normalizedWorkMode)) {
+            throw new BadRequestException("work_mode must be one of: " + String.join(", ", ALLOWED_WORK_MODES));
+        }
+
+        if (req.officeLocation() == null || req.officeLocation().isBlank()) {
+            throw new BadRequestException("office_location is required");
+        }
+        String normalizedOffice = req.officeLocation().trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_OFFICE_LOCATIONS.contains(normalizedOffice)) {
+            throw new BadRequestException("office_location must be one of: " + String.join(", ", ALLOWED_OFFICE_LOCATIONS));
+        }
+
+        if (req.password() == null || req.password().isBlank()) {
+            throw new BadRequestException("password is required for bulk upload");
+        }
     }
 
     private String cellStr(Row row, int col) {

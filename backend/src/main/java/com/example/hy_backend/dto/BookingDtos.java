@@ -43,6 +43,7 @@ public final class BookingDtos {
             String employeeId,
             String status,
             String bookingDate,
+            String bookingDeadline,
             String createdAt,
             List<BookingAnswer> responses
     ) {

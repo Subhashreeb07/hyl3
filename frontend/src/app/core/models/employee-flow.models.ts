@@ -209,6 +209,7 @@ export interface BookingDetail {
   employeeId: string;
   status: string;
   bookingDate: string;
+  bookingDeadline?: string | null;
   createdAt: string;
   qrCode?: string | null;
   responses: BookingAnswer[];

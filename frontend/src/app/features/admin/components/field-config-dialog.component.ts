@@ -116,6 +116,46 @@ export interface FieldDialogData {
           <input formControlName="helpText" type="text" placeholder="Short hint shown below the field" class="field-input" />
         </div>
 
+        <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Validation</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Configure validation rules for the generated employee form.</p>
+          </div>
+
+          <div *ngIf="usesLengthValidation(form.value.fieldType)" class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-semibold text-slate-500">Min Length</label>
+              <input formControlName="minLength" type="number" min="0" class="field-input" placeholder="0" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-semibold text-slate-500">Max Length</label>
+              <input formControlName="maxLength" type="number" min="0" class="field-input" placeholder="255" />
+            </div>
+          </div>
+
+          <div *ngIf="usesNumericValidation(form.value.fieldType)" class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-semibold text-slate-500">Min Value</label>
+              <input formControlName="min" type="number" class="field-input" placeholder="0" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-semibold text-slate-500">Max Value</label>
+              <input formControlName="max" type="number" class="field-input" placeholder="100" />
+            </div>
+          </div>
+
+          <div *ngIf="supportsCustomPattern(form.value.fieldType)" class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-slate-500">Regex Pattern</label>
+            <input formControlName="pattern" type="text" placeholder="Optional custom regex pattern" class="field-input" />
+          </div>
+
+          <div *ngIf="form.value.fieldType === 'EMAIL'" class="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-[11px] font-medium text-indigo-700">
+            Email fields are automatically restricted to addresses ending with &#64;hyland.com.
+          </div>
+
+          <span *ngIf="validationError" class="text-[10px] text-red-500">{{ validationError }}</span>
+        </div>
+
         <!-- Options (DROPDOWN / CHECKBOX / RADIO) -->
         <div *ngIf="usesOptions(form.value.fieldType)" class="flex flex-col gap-2">
           <label class="text-xs font-semibold text-slate-500">Options</label>
@@ -220,6 +260,8 @@ export class FieldConfigDialogComponent {
   readonly data = inject<FieldDialogData>(MAT_DIALOG_DATA);
   readonly dialogRef = inject(MatDialogRef<FieldConfigDialogComponent>);
   private readonly fb = inject(FormBuilder);
+  private readonly hylandEmailPattern = '^[A-Za-z0-9._%+-]+@hyland\\.com$';
+  private readonly initialValidationRules = this.parseValidationJson(this.data.field?.validationJson);
 
   readonly fieldTypes: { type: FieldType; label: string; icon: string }[] = [
     { type: 'TEXTBOX',      label: 'Text',       icon: 'short_text' },
@@ -243,6 +285,11 @@ export class FieldConfigDialogComponent {
     helpText:     [this.data.field?.helpText     ?? ''],
     displayOrder: [this.data.field?.displayOrder ?? this.data.displayOrder, [Validators.required, Validators.min(1)]],
     required:     [this.data.field?.required     ?? false],
+    minLength:    [this.numberRule('minLength')],
+    maxLength:    [this.numberRule('maxLength')],
+    min:          [this.numberRule('min')],
+    max:          [this.numberRule('max')],
+    pattern:      [this.stringRule('pattern')],
   });
 
   optionsList: string[] = this.data.field?.options?.length
@@ -262,6 +309,7 @@ export class FieldConfigDialogComponent {
 
   showOptionsError = false;
   showTreeError = false;
+  validationError = '';
 
   trackByIndex(index: number): number {
     return index;
@@ -269,6 +317,18 @@ export class FieldConfigDialogComponent {
 
   usesTree(type: FieldType | null | undefined): boolean {
     return type === 'TREE_SELECT';
+  }
+
+  usesLengthValidation(type: FieldType | null | undefined): boolean {
+    return type === 'TEXTBOX' || type === 'TEXTAREA' || type === 'EMAIL' || type === 'PHONE';
+  }
+
+  usesNumericValidation(type: FieldType | null | undefined): boolean {
+    return type === 'NUMBER';
+  }
+
+  supportsCustomPattern(type: FieldType | null | undefined): boolean {
+    return type === 'TEXTBOX' || type === 'TEXTAREA' || type === 'PHONE';
   }
 
   optionIcon(type: FieldType | null | undefined): string {
@@ -316,6 +376,7 @@ export class FieldConfigDialogComponent {
   save(): void {
     this.showOptionsError = false;
     this.showTreeError = false;
+    this.validationError = '';
     let hasCustomError = false;
 
     if (this.usesOptions(this.form.value.fieldType)) {
@@ -334,12 +395,18 @@ export class FieldConfigDialogComponent {
       }
     }
 
+    const validationJson = this.buildValidationJson();
+    if (validationJson === null) {
+      hasCustomError = true;
+    }
+
     if (this.form.invalid || hasCustomError) {
       this.form.markAllAsTouched();
       return;
     }
     
     const v = this.form.getRawValue();
+    const safeValidationJson = validationJson ?? undefined;
     const isTree = v.fieldType === 'TREE_SELECT';
     const field: FacilityField = {
       ...(this.data.field?.fieldId ? { fieldId: this.data.field.fieldId } : {}),
@@ -352,8 +419,88 @@ export class FieldConfigDialogComponent {
       options:        this.usesOptions(v.fieldType) ? this.optionsList.map(s => s.trim()).filter(Boolean) : [],
       validationJson: isTree
         ? JSON.stringify(this.treeNodes.map(n => ({ label: n.label.trim(), children: n.children.map(c => c.trim()).filter(Boolean) })))
-        : undefined,
+        : safeValidationJson,
     };
     this.dialogRef.close(field);
+  }
+
+  private numberRule(key: 'minLength' | 'maxLength' | 'min' | 'max'): number | null {
+    const value = this.initialValidationRules[key];
+    return typeof value === 'number' ? value : null;
+  }
+
+  private stringRule(key: 'pattern'): string {
+    const value = this.initialValidationRules[key];
+    return typeof value === 'string' ? value : '';
+  }
+
+  private parseValidationJson(raw?: string): Record<string, unknown> {
+    if (!raw?.trim()) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private buildValidationJson(): string | undefined | null {
+    const fieldType = this.form.value.fieldType as FieldType | null | undefined;
+    if (!fieldType || this.usesTree(fieldType)) {
+      return undefined;
+    }
+
+    const raw = this.form.getRawValue();
+    const rules: Record<string, unknown> = {};
+    const minLength = raw.minLength == null ? null : Number(raw.minLength);
+    const maxLength = raw.maxLength == null ? null : Number(raw.maxLength);
+    const min = raw.min == null ? null : Number(raw.min);
+    const max = raw.max == null ? null : Number(raw.max);
+    const pattern = String(raw.pattern ?? '').trim();
+
+    if (minLength !== null && (!Number.isInteger(minLength) || minLength < 0)) {
+      this.validationError = 'Min length must be a non-negative whole number.';
+      return null;
+    }
+    if (maxLength !== null && (!Number.isInteger(maxLength) || maxLength < 0)) {
+      this.validationError = 'Max length must be a non-negative whole number.';
+      return null;
+    }
+    if (minLength !== null && maxLength !== null && minLength > maxLength) {
+      this.validationError = 'Min length must be less than or equal to max length.';
+      return null;
+    }
+    if (min !== null && max !== null && min > max) {
+      this.validationError = 'Min value must be less than or equal to max value.';
+      return null;
+    }
+    if (pattern) {
+      try {
+        new RegExp(pattern);
+      } catch {
+        this.validationError = 'Regex pattern is invalid.';
+        return null;
+      }
+    }
+
+    if (this.usesLengthValidation(fieldType)) {
+      if (minLength !== null) rules['minLength'] = minLength;
+      if (maxLength !== null) rules['maxLength'] = maxLength;
+    }
+    if (this.usesNumericValidation(fieldType)) {
+      if (min !== null) rules['min'] = min;
+      if (max !== null) rules['max'] = max;
+    }
+    if (this.supportsCustomPattern(fieldType) && pattern) {
+      rules['pattern'] = pattern;
+    }
+    if (fieldType === 'EMAIL') {
+      rules['pattern'] = this.hylandEmailPattern;
+      rules['patternMessage'] = 'Email must end with @hyland.com';
+    }
+
+    return Object.keys(rules).length > 0 ? JSON.stringify(rules) : undefined;
   }
 }

@@ -50,9 +50,9 @@ import { FacilityBuilderStateService } from './state/facility-builder-state.serv
               <!-- Logo -->
               <img *ngIf="isMobile() || !isCollapsed()"
                 class="hyland-logo"
-                src="https://hyland.atlassian.net/s/-s1g255/b/0/23f31f9f9a8155235832888b764f7e4e/_/jira-logo-scaled.png"
+                src="https://www.gartner.com/pi/vendorimages/hyland-software_bpm-platform-based-case-management-frameworks_1742417574803.png"
                 alt="Hyland logo"
-                style="height: 24px; filter:brightness(0);opacity:0.9;"
+                style="width: 138px; height: 40px; object-fit: contain; object-position: left center;"
               />
               <!-- Desktop collapse toggle -->
               <button *ngIf="!isMobile()" type="button"
@@ -138,8 +138,9 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     { label: 'Facilities', icon: 'apartment', link: '/admin/facilities' },
     { label: 'Form Builder', icon: 'construction', link: '/admin/form-builder' },
     { label: 'Rules', icon: 'rule', link: '/admin/rules' },
+    { label: 'Notifications', icon: 'notifications_active', link: '/admin/notifications' },
     { label: 'Reports', icon: 'bar_chart', link: '/admin/reports' },
-    { label: 'Data Store', icon: 'database', link: '/admin/data-store' },
+    { label: 'Data Store', icon: 'storage', link: '/admin/data-store' },
     { label: 'Employees', icon: 'group', link: '/admin/employees' }
   ];
   @ViewChild('drawer') private drawerRef!: MatSidenav;

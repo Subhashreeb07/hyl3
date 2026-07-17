@@ -50,6 +50,9 @@ public class Facility {
     @OneToOne(mappedBy = "facility", cascade = CascadeType.ALL, orphanRemoval = true)
     private FacilityRule rule;
 
+    @OneToMany(mappedBy = "facility", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Booking> bookings = new ArrayList<>();
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -172,5 +175,13 @@ public class Facility {
 
     public void setRule(FacilityRule rule) {
         this.rule = rule;
+    }
+
+    public List<Booking> getBookings() {
+        return bookings;
+    }
+
+    public void setBookings(List<Booking> bookings) {
+        this.bookings = bookings;
     }
 }

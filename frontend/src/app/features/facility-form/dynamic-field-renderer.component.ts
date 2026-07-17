@@ -584,7 +584,31 @@ export class DynamicFieldRendererComponent implements OnInit {
     if (ctrl.errors['maxlength']) return `Maximum length is ${ctrl.errors['maxlength'].requiredLength}`;
     if (ctrl.errors['min']) return `Minimum value is ${ctrl.errors['min'].min}`;
     if (ctrl.errors['max']) return `Maximum value is ${ctrl.errors['max'].max}`;
-    if (ctrl.errors['pattern']) return 'Invalid format';
+    if (ctrl.errors['pattern']) {
+      const validationRules = this.parseValidationJson();
+      if (typeof validationRules['patternMessage'] === 'string' && validationRules['patternMessage'].trim()) {
+        return validationRules['patternMessage'] as string;
+      }
+      if (this.fieldType() === 'EMAIL') {
+        return 'Email must end with @hyland.com';
+      }
+      if (this.fieldType() === 'PHONE') {
+        return 'Please enter a valid phone number';
+      }
+      return 'Invalid format';
+    }
     return 'Invalid input';
+  }
+
+  private parseValidationJson(): Record<string, unknown> {
+    if (!this.field.validationJson?.trim()) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(this.field.validationJson);
+      return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
   }
 }

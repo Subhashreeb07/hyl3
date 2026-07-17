@@ -248,6 +248,10 @@ public class BookingServiceImpl implements BookingService {
         }
 
         List<BookingDtos.BookingAnswer> answers = parseBookingAnswers(booking.getBookingResponse());
+        FacilityRule rule = facilityRuleRepository.findByFacilityFacilityId(booking.getFacility().getFacilityId()).orElse(null);
+        String bookingDeadline = rule == null || rule.getBookingDeadline() == null
+                ? null
+                : rule.getBookingDeadline().toString();
 
         return new BookingDtos.BookingDetail(
                 booking.getBookingId(),
@@ -256,6 +260,7 @@ public class BookingServiceImpl implements BookingService {
                 booking.getEmployeeId(),
                 booking.getStatus().name(),
                 booking.getBookingDate().toString(),
+                bookingDeadline,
                 booking.getCreatedAt().toString(),
                 answers
         );

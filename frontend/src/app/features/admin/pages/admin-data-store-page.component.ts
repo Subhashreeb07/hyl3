@@ -20,7 +20,10 @@ import { ToastService } from '../../../core/services/toast.service';
   template: `
     <div class="space-y-6">
       <header class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="text-[11px] font-bold uppercase tracking-widest text-brand-600">Admin Data Store</p>
+        <div class="flex items-center gap-2 mb-3">
+          <mat-icon class="text-brand-600 !text-[22px]">storage</mat-icon>
+          <p class="text-[11px] font-bold uppercase tracking-widest text-brand-600">Admin Data Store</p>
+        </div>
         <h2 class="mt-1 text-2xl font-bold text-slate-900">Employee Submission Data</h2>
         <p class="mt-1 text-sm text-slate-500">Use multi-select and advanced filters to find precise submissions, then export clean Excel reports.</p>
       </header>

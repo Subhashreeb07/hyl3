@@ -16,32 +16,22 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(12,71,138,0.10),_transparent_55%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.08),_transparent_45%)]"></div>
 
       <div class="relative grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[#dbe5ef] bg-white shadow-[0_30px_70px_-45px_rgba(15,23,42,0.6)] lg:grid-cols-2">
-        <aside class="hidden bg-gradient-to-br from-[#0b2948] via-[#103b63] to-[#0f2239] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-          <div>
-            <img
-              class="hyland-logo"
-              src="https://www.keymarkinc.com/wp-content/uploads/2025/05/Hyland-logos_CMYK-scaled.png"
-              alt="Hyland logo"
-              style="width: 140px; height: auto;"
-            />
-            <p class="mt-8 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/90">
-              Enterprise Access
-            </p>
-            <h1 class="mt-4 text-3xl font-semibold leading-tight">Secure sign-in for your Hyland workspace</h1>
-            <p class="mt-4 max-w-sm text-sm leading-6 text-slate-200">
-              Access employee tools, booking workflows, and internal operations through a protected enterprise portal.
-            </p>
-          </div>
-          <p class="text-xs text-slate-300">Authorized employees only. Activity may be monitored for security and compliance.</p>
+        <aside class="hidden bg-gradient-to-br from-[#0b2948] via-[#103b63] to-[#0f2239] p-10 text-white lg:flex lg:flex-col lg:items-center lg:justify-center">
+          <img
+            class="hyland-logo"
+            src="https://www.gartner.com/pi/vendorimages/hyland-software_bpm-platform-based-case-management-frameworks_1742417574803.png"
+            alt="Hyland logo"
+            style="width: 200px; height: 60px; object-fit: contain;"
+          />
         </aside>
 
         <div class="p-6 sm:p-8 lg:p-10">
           <div class="mb-8 lg:hidden">
             <img
               class="hyland-logo"
-              src="https://www.keymarkinc.com/wp-content/uploads/2025/05/Hyland-logos_CMYK-scaled.png"
+              src="https://www.gartner.com/pi/vendorimages/hyland-software_bpm-platform-based-case-management-frameworks_1742417574803.png"
               alt="Hyland logo"
-              style="width: 130px; height: auto;"
+              style="width: 132px; height: 36px; padding-left: 10px; object-fit: contain; object-position: left center;"
             />
             <h1 class="mt-4 text-2xl font-semibold text-[#0f172a]">Employee access portal</h1>
             <p class="mt-1 text-sm text-slate-600">Sign in with your corporate credentials.</p>
@@ -210,6 +200,12 @@ import { ToastService } from '../../core/services/toast.service';
               <span>{{ mode() === 'SIGN_IN' ? 'Signing in...' : 'Creating account...' }}</span>
             </span>
           </button>
+
+          <div *ngIf="mode() === 'SIGN_IN'" class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+            <div class="font-semibold">Default admin login</div>
+            <div class="mt-1 text-xs">Employee ID: ADMIN001</div>
+            <div class="text-xs">Password: password123</div>
+          </div>
         </form>
 
           <p class="mt-6 text-center text-xs text-slate-500">Hyland employee systems access.</p>

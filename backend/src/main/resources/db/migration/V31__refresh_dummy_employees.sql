@@ -1,5 +1,3 @@
--- Dummy employees for verifying facility type/role filtering.
--- All use default password "password123" (null hash = backend fallback).
 DO $$
 BEGIN
     IF EXISTS (
@@ -11,6 +9,7 @@ BEGIN
     ) THEN
         INSERT INTO employees (employee_id, full_name, email, role_code, work_mode, office_location, active)
         VALUES
+        
           ('EMP_ONSITE',  'Ravi Kumar',       'ravi.kumar@hyhub.local',       'EMPLOYEE', 'ON_SITE', 'HYDERABAD', TRUE),
           ('EMP_REMOTE',  'Priya Sharma',     'priya.sharma@hyhub.local',     'EMPLOYEE', 'REMOTE',  'HYDERABAD', TRUE),
           ('EMP_HYBRID',  'Arjun Nair',       'arjun.nair@hyhub.local',       'EMPLOYEE', 'HYBRID',  'HYDERABAD', TRUE),

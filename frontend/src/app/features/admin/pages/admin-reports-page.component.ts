@@ -261,6 +261,36 @@ import { NgApexchartsModule } from 'ng-apexcharts';
         </div>
       </section>
 
+      <!-- Field Response Charts (shown when facility is selected) -->
+      <section *ngIf="selectedFacilityId && fieldCharts().length > 0" class="space-y-6">
+        <h3 class="text-lg font-bold text-slate-900">Field Response Breakdown</h3>
+        <div class="grid gap-6 lg:grid-cols-2">
+          <article *ngFor="let fieldChart of fieldCharts()" class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">{{ fieldChart.fieldType }}</p>
+              <h4 class="text-base font-bold text-slate-900 mt-1">{{ fieldChart.fieldLabel }}</h4>
+              <p class="text-xs text-slate-400 mt-1">Based on {{ fieldChart.totalBookings }} booking(s)</p>
+            </div>
+            <div class="p-6">
+              <apx-chart *ngIf="fieldChart.series[0].data.length > 0"
+                [series]="fieldChart.series"
+                [chart]="{ type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit' }"
+                [plotOptions]="{ bar: { horizontal: false, columnWidth: '60%', borderRadius: 6 } }"
+                [xaxis]="{ categories: fieldChart.categories, labels: { style: { cssClass: 'text-xs font-medium fill-slate-500' }, rotate: -45 } }"
+                [yaxis]="{ labels: { style: { cssClass: 'text-xs font-medium fill-slate-500' } } }"
+                [dataLabels]="{ enabled: true }"
+                [colors]="['#06b6d4']"
+                [grid]="{ borderColor: '#f1f5f9', strokeDashArray: 4 }"
+              ></apx-chart>
+              <div *ngIf="fieldChart.series[0].data.length === 0" class="flex flex-col items-center justify-center py-12 text-center text-slate-500">
+                <mat-icon class="!text-[32px] !h-8 !w-8 text-slate-300 mb-2">pie_chart_outline</mat-icon>
+                <p class="text-sm font-semibold text-slate-700">No responses yet</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <!-- Field Breakdown Modal -->
       <div *ngIf="chartData()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col overflow-hidden shadow-brand-500/10">
@@ -315,6 +345,7 @@ export class AdminReportsPageComponent implements OnInit {
   readonly loadingTrend = signal(false);
   readonly exporting = signal(false);
   readonly chartData = signal<{ facilityName: string, totalBookings: number, series: any[], categories: string[] } | null>(null);
+  readonly fieldCharts = signal<Array<{ fieldId: number, fieldLabel: string, fieldType: string, series: any[], categories: string[], totalBookings: number }>>([]);
 
 
   readonly statCards = computed(() => {
@@ -402,11 +433,57 @@ export class AdminReportsPageComponent implements OnInit {
     if (!fac) return;
     
     try {
+      // Load facility fields
+      const fields = await firstValueFrom(this.facilityApi.getFacilityFields(fac.facilityId));
+      
+      // Load bookings for this facility
       const bookings = await firstValueFrom(this.adminApi.searchBookings({
         facilityId: fac.facilityId,
         bookingDate: this.reportDate || null
       }));
 
+      // Build field charts by grouping answers by fieldId
+      const fieldChartsData: Array<{ fieldId: number, fieldLabel: string, fieldType: string, series: any[], categories: string[], totalBookings: number }> = [];
+      
+      // Create a map of field info
+      const fieldMap = new Map(fields.map(f => [f.fieldId, { label: f.label, fieldType: f.fieldType }]));
+      
+      // Group answers by fieldId
+      const fieldAnswers = new Map<number, Map<string, number>>();
+      
+      for (const booking of bookings) {
+        if (booking.answers && booking.answers.length > 0) {
+          for (const answer of booking.answers) {
+            if (!fieldAnswers.has(answer.fieldId)) {
+              fieldAnswers.set(answer.fieldId, new Map());
+            }
+            const answerMap = fieldAnswers.get(answer.fieldId)!;
+            answerMap.set(answer.value, (answerMap.get(answer.value) || 0) + 1);
+          }
+        }
+      }
+      
+      // Create charts for fields that have answers
+      for (const [fieldId, answerMap] of fieldAnswers.entries()) {
+        const fieldInfo = fieldMap.get(fieldId);
+        if (fieldInfo && answerMap.size > 0) {
+          const categories = Array.from(answerMap.keys());
+          const data = Array.from(answerMap.values());
+          
+          fieldChartsData.push({
+            fieldId,
+            fieldLabel: fieldInfo.label,
+            fieldType: fieldInfo.fieldType,
+            categories,
+            series: [{ name: 'Responses', data }],
+            totalBookings: bookings.length
+          });
+        }
+      }
+      
+      this.fieldCharts.set(fieldChartsData);
+      
+      // Also keep the legacy chart data for backwards compatibility
       const counts: Record<string, number> = {};
       let hasAnswers = false;
       for (const b of bookings) {
@@ -439,6 +516,7 @@ export class AdminReportsPageComponent implements OnInit {
 
   closeChart() {
     this.chartData.set(null);
+    this.fieldCharts.set([]);
   }
 
   getLinePoints(): string {

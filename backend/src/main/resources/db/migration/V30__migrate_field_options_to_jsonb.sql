@@ -1,9 +1,15 @@
-UPDATE facility_fields ff
-SET field_options = (
-    SELECT jsonb_agg(fo.option_value ORDER BY fo.display_order)
-    FROM field_options fo
-    WHERE fo.field_id = ff.field_id
-)
-WHERE EXISTS (
-    SELECT 1 FROM field_options fo WHERE fo.field_id = ff.field_id
-);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'facility_fields'
+          AND column_name = 'field_options'
+          AND udt_name = 'json'
+    ) THEN
+        ALTER TABLE facility_fields
+            ALTER COLUMN field_options TYPE jsonb
+            USING field_options::jsonb;
+    END IF;
+END $$;

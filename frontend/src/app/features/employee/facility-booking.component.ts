@@ -97,6 +97,7 @@ import { SavedPreferencesService } from '../../core/services/saved-preferences.s
   `
 })
 export class FacilityBookingComponent implements OnInit {
+  private readonly hylandEmailPattern = /^[A-Za-z0-9._%+-]+@hyland\.com$/i;
   readonly spec = signal<FacilitySpecificationResponse | null>(null);
   readonly form: FormGroup = this.fb.group({});
   readonly message = signal<string | null>(null);
@@ -295,6 +296,7 @@ export class FacilityBookingComponent implements OnInit {
     const type = field.type.toUpperCase();
     if (type === 'EMAIL') {
       validators.push(Validators.email);
+      validators.push(Validators.pattern(this.hylandEmailPattern));
     }
 
     if (type === 'NUMBER') {
