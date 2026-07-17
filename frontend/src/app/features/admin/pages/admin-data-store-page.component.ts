@@ -244,12 +244,59 @@ import { ToastService } from '../../../core/services/toast.service';
                 <td class="px-4 py-3 text-slate-600 text-xs">{{ row.createdAt | date:'MMM d, y · h:mm a' }}</td>
                 <td class="px-4 py-3 text-slate-600 text-xs">{{ row.cancelledAt ? (row.cancelledAt | date:'MMM d, y · h:mm a') : '—' }}</td>
                 <td class="px-4 py-3 text-xs text-slate-700">
-                  <div *ngIf="(row.answers ?? []).length > 0; else noAnswers" class="space-y-1">
-                    <div *ngFor="let ans of (row.answers ?? [])">
-                      <span class="font-semibold">{{ ans.label }}:</span>
-                      <span class="ml-1">{{ ans.value }}</span>
+                  <!-- Mobility: show parsed route + stop -->
+                  <ng-container *ngIf="isMobility(row); else nonMobility">
+                    <div *ngIf="row.selectedRoute || row.selectedStop; else noAnswers" class="space-y-1">
+                      <div *ngIf="row.selectedRoute" class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-500">Route:</span>
+                        <span class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold text-blue-700">{{ row.selectedRoute }}</span>
+                      </div>
+                      <div *ngIf="row.selectedStop" class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-500">Stop:</span>
+                        <span class="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">{{ row.selectedStop }}</span>
+                      </div>
                     </div>
-                  </div>
+                  </ng-container>
+
+                  <!-- Food or Team Event (food answers) -->
+                  <ng-template #nonMobility>
+                    <div *ngIf="(row.answers ?? []).length > 0; else noAnswers" class="space-y-1">
+                      <ng-container *ngFor="let ans of (row.answers ?? [])">
+                        <!-- Veg / Non-veg answer: show coloured badge -->
+                        <ng-container *ngIf="isVegAnswer(ans.value); else genericAnswer">
+                          <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-slate-500">{{ ans.label }}:</span>
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold border"
+                                  [ngClass]="{
+                                    'bg-emerald-50 text-emerald-700 border-emerald-200': isVeg(ans.value),
+                                    'bg-orange-50 text-orange-700 border-orange-200': !isVeg(ans.value)
+                                  }">
+                              {{ ans.value }}
+                            </span>
+                          </div>
+                        </ng-container>
+                        <!-- Generic answer (non food) -->
+                        <ng-template #genericAnswer>
+                          <div>
+                            <span class="font-semibold">{{ ans.label }}:</span>
+                            <span class="ml-1">{{ ans.value }}</span>
+                          </div>
+                        </ng-template>
+                        <!-- Team Event: also show route/stop if present -->
+                      </ng-container>
+                      <!-- Team Event may also have cab selection -->
+                      <ng-container *ngIf="isTeamEvent(row) && (row.selectedRoute || row.selectedStop)">
+                        <div *ngIf="row.selectedRoute" class="flex items-center gap-1.5 mt-1">
+                          <span class="font-semibold text-slate-500">Route:</span>
+                          <span class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold text-blue-700">{{ row.selectedRoute }}</span>
+                        </div>
+                        <div *ngIf="row.selectedStop" class="flex items-center gap-1.5">
+                          <span class="font-semibold text-slate-500">Stop:</span>
+                          <span class="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">{{ row.selectedStop }}</span>
+                        </div>
+                      </ng-container>
+                    </div>
+                  </ng-template>
                   <ng-template #noAnswers>—</ng-template>
                 </td>
               </tr>
@@ -288,6 +335,24 @@ export class AdminDataStorePageComponent implements OnInit {
       answers: item.answers ?? []
     }))
   );
+
+  // ── Category helpers ──
+  isMobility(row: AdminBookingSearchItem): boolean {
+    return (row.facilityCategory ?? '').toLowerCase() === 'mobility';
+  }
+  isTeamEvent(row: AdminBookingSearchItem): boolean {
+    const cat = (row.facilityCategory ?? '').toLowerCase();
+    return cat === 'events' || cat === 'team event' || cat === 'team events';
+  }
+  /** True if the answer value looks like a veg/non-veg food preference. */
+  isVegAnswer(value: string): boolean {
+    const v = (value ?? '').trim().toLowerCase();
+    return v === 'veg' || v === 'non-veg' || v === 'non veg' || v === 'vegetarian' || v === 'non-vegetarian';
+  }
+  isVeg(value: string): boolean {
+    const v = (value ?? '').trim().toLowerCase();
+    return v === 'veg' || v === 'vegetarian';
+  }
 
   constructor(
     private readonly adminApi: AdminApiService,
@@ -354,6 +419,9 @@ export class AdminDataStorePageComponent implements OnInit {
       )
     );
 
+    // Include route/stop columns when any row has cab data
+    const hasCabData = rows.some((r) => r.selectedRoute || r.selectedStop);
+
     const escape = (value: unknown): string =>
       String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -364,6 +432,7 @@ export class AdminDataStorePageComponent implements OnInit {
     const headers = [
       'Booking ID',
       'Facility',
+      'Category',
       'Employee ID',
       'Employee Name',
       'Department',
@@ -371,7 +440,8 @@ export class AdminDataStorePageComponent implements OnInit {
       'Booking Date',
       'Created At',
       'Cancelled At',
-      ...answerColumns
+      ...answerColumns,
+      ...(hasCabData ? ['Selected Route', 'Selected Stop'] : [])
     ];
 
     const tableRows = rows.map((row) => {
@@ -386,6 +456,7 @@ export class AdminDataStorePageComponent implements OnInit {
       const cells = [
         row.bookingId,
         row.facilityName,
+        row.facilityCategory ?? '',
         row.employeeId,
         row.employeeName ?? '',
         row.department ?? '',
@@ -393,7 +464,8 @@ export class AdminDataStorePageComponent implements OnInit {
         row.bookingDate,
         row.createdAt,
         row.cancelledAt ?? '',
-        ...answerColumns.map((col) => answerMap.get(col) ?? '')
+        ...answerColumns.map((col) => answerMap.get(col) ?? ''),
+        ...(hasCabData ? [row.selectedRoute ?? '', row.selectedStop ?? ''] : [])
       ];
 
       return `<tr>${cells.map((cell) => `<td>${escape(cell)}</td>`).join('')}</tr>`;

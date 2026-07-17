@@ -43,6 +43,14 @@ public class Booking {
     @Column(name = "booking_response", columnDefinition = "jsonb")
     private String bookingResponse;
 
+    /** Populated only for TREE_SELECT (cab) bookings: the parent route node. */
+    @Column(name = "selected_route", length = 500)
+    private String selectedRoute;
+
+    /** Populated only for TREE_SELECT (cab) bookings: the leaf stop node. */
+    @Column(name = "selected_stop", length = 500)
+    private String selectedStop;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -123,5 +131,21 @@ public class Booking {
 
     public void setBookingResponse(String bookingResponse) {
         this.bookingResponse = bookingResponse;
+    }
+
+    public String getSelectedRoute() {
+        return selectedRoute;
+    }
+
+    public void setSelectedRoute(String selectedRoute) {
+        this.selectedRoute = selectedRoute;
+    }
+
+    public String getSelectedStop() {
+        return selectedStop;
+    }
+
+    public void setSelectedStop(String selectedStop) {
+        this.selectedStop = selectedStop;
     }
 }

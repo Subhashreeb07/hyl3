@@ -2,6 +2,7 @@ export interface AdminBookingSearchItem {
   bookingId: number;
   facilityId: number;
   facilityName: string;
+  facilityCategory: string | null;
   employeeId: string;
   employeeName: string | null;
   department: string | null;
@@ -10,6 +11,8 @@ export interface AdminBookingSearchItem {
   createdAt: string;
   cancelledAt: string | null;
   answers: { fieldId: number; label: string; value: string }[];
+  selectedRoute: string | null;
+  selectedStop: string | null;
 }
 
 export interface BookingSummaryResponse {

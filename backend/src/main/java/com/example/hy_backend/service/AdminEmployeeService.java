@@ -9,6 +9,7 @@ import java.util.Map;
 
 public interface AdminEmployeeService {
     List<AdminEmployeeDtos.EmployeeResponse> listEmployees();
+    List<String> listDistinctRoles();
     AdminEmployeeDtos.EmployeeResponse createEmployee(AdminEmployeeDtos.EmployeeCreateRequest req);
     AdminEmployeeDtos.BulkUploadResult bulkCreate(MultipartFile file) throws IOException;
     byte[] generateTemplate() throws IOException;

@@ -40,12 +40,15 @@ public final class BookingDtos {
             Long bookingId,
             Long facilityId,
             String facilityName,
+            String facilityCategory,
             String employeeId,
             String status,
             String bookingDate,
             String bookingDeadline,
             String createdAt,
-            List<BookingAnswer> responses
+            List<BookingAnswer> responses,
+            String selectedRoute,
+            String selectedStop
     ) {
     }
 
@@ -67,6 +70,7 @@ public final class BookingDtos {
             Long bookingId,
             Long facilityId,
             String facilityName,
+            String facilityCategory,
             String employeeId,
             String employeeName,
             String department,
@@ -74,7 +78,9 @@ public final class BookingDtos {
             String bookingDate,
             String createdAt,
             String cancelledAt,
-            List<BookingAnswer> answers
+            List<BookingAnswer> answers,
+            String selectedRoute,
+            String selectedStop
         ) {
         }
 

@@ -31,6 +31,12 @@ public class AdminEmployeeController {
         return ResponseEntity.ok(service.listEmployees());
     }
 
+    @GetMapping("/roles")
+    @Operation(summary = "Get distinct role codes from employees table")
+    public ResponseEntity<List<String>> distinctRoles() {
+        return ResponseEntity.ok(service.listDistinctRoles());
+    }
+
     @PostMapping
     @Operation(summary = "Create a single employee")
     public ResponseEntity<AdminEmployeeDtos.EmployeeResponse> create(

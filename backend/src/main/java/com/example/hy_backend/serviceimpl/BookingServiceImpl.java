@@ -257,12 +257,15 @@ public class BookingServiceImpl implements BookingService {
                 booking.getBookingId(),
                 booking.getFacility().getFacilityId(),
                 booking.getFacility().getFacilityName(),
+                booking.getFacility().getCategory(),
                 booking.getEmployeeId(),
                 booking.getStatus().name(),
                 booking.getBookingDate().toString(),
                 bookingDeadline,
                 booking.getCreatedAt().toString(),
-                answers
+                answers,
+                booking.getSelectedRoute(),
+                booking.getSelectedStop()
         );
     }
 
@@ -426,7 +429,15 @@ public class BookingServiceImpl implements BookingService {
         List<BookingDtos.BookingAnswer> answers = new ArrayList<>();
         for (Map.Entry<Long, String> entry : responseMap.entrySet()) {
             FieldDefinition field = fieldMap.get(entry.getKey());
-            answers.add(new BookingDtos.BookingAnswer(field.getFieldId(), field.getLabel(), entry.getValue()));
+            String rawValue = entry.getValue();
+            answers.add(new BookingDtos.BookingAnswer(field.getFieldId(), field.getLabel(), rawValue));
+
+            // TREE_SELECT stores "route>stop" — parse into dedicated columns
+            if (field.getFieldType() == FieldType.TREE_SELECT && rawValue != null && rawValue.contains(">")) {
+                int sep = rawValue.indexOf('>');
+                booking.setSelectedRoute(rawValue.substring(0, sep).trim());
+                booking.setSelectedStop(rawValue.substring(sep + 1).trim());
+            }
         }
         try {
             booking.setBookingResponse(objectMapper.writeValueAsString(answers));
@@ -461,6 +472,7 @@ public class BookingServiceImpl implements BookingService {
                 booking.getBookingId(),
                 booking.getFacility().getFacilityId(),
                 booking.getFacility().getFacilityName(),
+                booking.getFacility().getCategory(),
                 booking.getEmployeeId(),
             employeeName,
             department,
@@ -468,7 +480,9 @@ public class BookingServiceImpl implements BookingService {
                 booking.getBookingDate().toString(),
                 booking.getCreatedAt() == null ? null : booking.getCreatedAt().toString(),
                 booking.getCancelledAt() == null ? null : booking.getCancelledAt().toString(),
-                answers
+                answers,
+                booking.getSelectedRoute(),
+                booking.getSelectedStop()
         );
     }
 

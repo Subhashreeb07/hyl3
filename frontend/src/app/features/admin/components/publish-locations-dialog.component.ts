@@ -105,17 +105,12 @@ interface EmployeeRow {
 
       <div>
         <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Employee Role</p>
-        <div class="flex flex-wrap gap-2">
-          <span class="pill" [class.active]="roles()['HR']"       (click)="toggleRole('HR')">HR</span>
-          <span class="pill" [class.active]="roles()['Manager']"  (click)="toggleRole('Manager')">Manager</span>
-          <span class="pill" [class.active]="roles()['Finance']"  (click)="toggleRole('Finance')">Finance</span>
-          <span class="pill" [class.active]="roles()['Cloud']"    (click)="toggleRole('Cloud')">Cloud</span>
-          <span class="pill" [class.active]="roles()['RD']"       (click)="toggleRole('RD')">R&amp;D</span>
-          <span class="pill" [class.active]="roles()['Director']" (click)="toggleRole('Director')">Director</span>
-          <span class="pill" [class.active]="roles()['IS']"       (click)="toggleRole('IS')">IS</span>
-          <span class="pill" [class.active]="roles()['NOC']"      (click)="toggleRole('NOC')">NOC</span>
-          <span class="pill" [class.active]="roles()['Ops']"      (click)="toggleRole('Ops')">Ops</span>
-          <span class="pill" [class.active]="roles()['Devops']"   (click)="toggleRole('Devops')">DevOps</span>
+        <div *ngIf="rolesLoading()" class="text-xs text-slate-400 italic">Loading roles…</div>
+        <div *ngIf="!rolesLoading()" class="flex flex-wrap gap-2">
+          <span *ngFor="let role of roleKeys()"
+                class="pill" [class.active]="roles()[role]"
+                (click)="toggleRole(role)">{{ role }}</span>
+          <span *ngIf="roleKeys().length === 0" class="text-xs text-slate-400 italic">No roles found.</span>
         </div>
       </div>
     </div>
@@ -205,10 +200,9 @@ export class PublishLocationsDialogComponent implements OnInit {
   readonly wfOnSite  = signal(true);
   readonly wfRemote  = signal(true);
   readonly wfHybrid  = signal(true);
-  readonly roles     = signal<Record<string, boolean>>({
-    HR: true, Manager: true, Finance: true, Cloud: true, RD: true,
-    Director: true, IS: true, NOC: true, Ops: true, Devops: true
-  });
+  /** Keys are DB role codes (uppercase); values are whether the pill is active. Loaded from /api/admin/employees/roles */
+  readonly roles     = signal<Record<string, boolean>>({});
+  readonly rolesLoading = signal(true);
 
   // Step 2 - Employees
   readonly empLoading    = signal(false);
@@ -227,7 +221,8 @@ export class PublishLocationsDialogComponent implements OnInit {
     const activeModes   = [onSite && 'on-site', remote && 'remote', hybrid && 'hybrid'].filter(Boolean) as string[];
     const activeRoles   = Object.entries(r).filter(([, v]) => v).map(([k]) => k.toLowerCase());
     const allModes      = activeModes.length === 3;
-    const allRoles      = activeRoles.length === 10;
+    const totalRoles    = Object.keys(r).length;
+    const allRoles      = totalRoles === 0 || activeRoles.length === totalRoles;
 
     return employees.filter(e => {
       if (!e.active) return false;
@@ -235,7 +230,9 @@ export class PublishLocationsDialogComponent implements OnInit {
       // work_mode in DB: ON_SITE / REMOTE / HYBRID — normalise to match pill values
       const dbMode    = (e.workMode ?? '').replace('_', '-').toLowerCase(); // on-site, remote, hybrid
       const modeMatch = allModes || activeModes.includes(dbMode);
-      const roleMatch = allRoles || activeRoles.includes(e.roleCode?.toLowerCase() ?? '');
+      // EMPLOYEE role code has no pill — treat it as always matching (generic employee)
+      const dbRole    = e.roleCode?.toLowerCase() ?? '';
+      const roleMatch = allRoles || dbRole === 'employee' || activeRoles.includes(dbRole);
       return locMatch && modeMatch && roleMatch;
     });
   });
@@ -259,17 +256,36 @@ export class PublishLocationsDialogComponent implements OnInit {
   private readonly data         = inject<PublishDialogData | null>(MAT_DIALOG_DATA, { optional: true });
 
   ngOnInit(): void {
+    // Load distinct role codes from employees table
+    const token = this.session.state()?.token ?? '';
+    this.http.get<string[]>(`${environment.apiUrl}/admin/employees/roles`, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
+    }).subscribe({
+      next: (roleCodes) => {
+        // Build initial roles map: all true by default
+        const map: Record<string, boolean> = {};
+        roleCodes.forEach(r => { map[r] = true; });
+        // Apply overrides from dialog data only if at least one is true
+        const dr = this.data?.roles;
+        if (dr && Object.values(dr).some(v => v)) {
+          // Match by uppercase key — dialog data keys may differ in casing
+          Object.entries(dr).forEach(([k, v]) => {
+            const match = Object.keys(map).find(r => r.toUpperCase() === k.toUpperCase());
+            if (match) map[match] = v;
+          });
+        }
+        this.roles.set(map);
+        this.rolesLoading.set(false);
+      },
+      error: () => this.rolesLoading.set(false)
+    });
+
     // Only apply workMode overrides if at least one is explicitly enabled
     const wm = this.data?.workModes;
     if (wm && (wm.onSite || wm.remote || wm.hybrid)) {
       this.wfOnSite.set(!!wm.onSite);
       this.wfRemote.set(!!wm.remote);
       this.wfHybrid.set(!!wm.hybrid);
-    }
-    // Only apply role overrides if at least one role is explicitly enabled
-    const dr = this.data?.roles;
-    if (dr && Object.values(dr).some(v => v)) {
-      this.roles.set({ ...this.roles(), ...dr });
     }
 
     this.locationApi.getLocations().subscribe({
@@ -280,6 +296,11 @@ export class PublishLocationsDialogComponent implements OnInit {
       },
       error: () => this.locLoading.set(false)
     });
+  }
+
+  /** Sorted list of role keys for *ngFor in the template. */
+  roleKeys(): string[] {
+    return Object.keys(this.roles()).sort();
   }
 
   goBack(): void {

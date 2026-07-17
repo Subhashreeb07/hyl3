@@ -53,6 +53,11 @@ public class AdminEmployeeServiceImpl implements AdminEmployeeService {
     }
 
     @Override
+    public List<String> listDistinctRoles() {
+        return employeeRepository.findDistinctRoleCodes();
+    }
+
+    @Override
     public AdminEmployeeDtos.EmployeeResponse createEmployee(AdminEmployeeDtos.EmployeeCreateRequest req) {
         String id = normalizeId(req.employeeId());
         if (id.isBlank()) throw new BadRequestException("employee_id is required");

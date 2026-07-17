@@ -426,7 +426,10 @@ export class AdminFacilitiesPageComponent {
       return;
     }
 
-    this.facilityAdminApi.publishFacility(id, { targetLocations: publishConfig.targetLocations }).subscribe({
+    this.facilityAdminApi.publishFacility(id, {
+      targetLocations: publishConfig.targetLocations,
+      targetEmployeeIds: publishConfig.targetEmployeeIds ?? []
+    }).subscribe({
       next: () => {
         this.state.publishFacility(id);
         this.snackBar.open('Facility published', 'OK', { duration: 2000 });
