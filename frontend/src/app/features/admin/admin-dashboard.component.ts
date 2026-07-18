@@ -80,20 +80,6 @@ import {
           </div>
 
           <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group">
-            <div class="absolute inset-0 bg-gradient-to-br from-rose-500 to-rose-700 opacity-0 group-hover:opacity-5 transition-opacity"></div>
-            <div class="flex items-center justify-between relative z-10">
-              <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">PENDING</span>
-              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 shadow-sm transition-transform group-hover:scale-110">
-                <mat-icon class="!text-[22px]">pending_actions</mat-icon>
-              </div>
-            </div>
-            <div class="mt-5 relative z-10">
-              <p class="text-3xl font-black tracking-tight text-slate-900">{{ dashStats()?.pendingRequests ?? 0 }}</p>
-              <p class="text-xs font-semibold text-slate-500 mt-1">Pending Requests</p>
-            </div>
-          </div>
-
-          <div class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all group">
             <div class="absolute inset-0 bg-gradient-to-br from-amber-500 to-amber-700 opacity-0 group-hover:opacity-5 transition-opacity"></div>
             <div class="flex items-center justify-between relative z-10">
               <span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">CUTOFF</span>
@@ -257,7 +243,6 @@ import {
                   <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Category</th>
                   <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Requested</th>
                   <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Acknowledged</th>
-                  <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Pending</th>
                   <th class="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 min-w-[160px]">Progress</th>
                 </tr>
               </thead>
@@ -273,9 +258,6 @@ import {
                   <td class="px-5 py-4 align-middle text-center">
                     <span class="text-base font-black text-emerald-600">{{ row.acknowledged }}</span>
                   </td>
-                  <td class="px-5 py-4 align-middle text-center">
-                    <span class="text-base font-black text-amber-600">{{ row.totalRequested - row.acknowledged }}</span>
-                  </td>
                   <td class="px-5 py-4 align-middle">
                     <div class="flex items-center gap-3">
                       <div class="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
@@ -286,7 +268,7 @@ import {
                   </td>
                 </tr>
                 <tr *ngIf="locationStats()!.facilityStats.length === 0">
-                  <td colspan="6" class="px-5 py-16 text-center">
+                  <td colspan="5" class="px-5 py-16 text-center">
                     <div class="flex flex-col items-center justify-center gap-2">
                       <div class="text-4xl opacity-50 mb-2">📊</div>
                       <p class="text-sm font-semibold text-slate-600">No published facilities</p>

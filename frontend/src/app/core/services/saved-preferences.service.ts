@@ -1,47 +1,42 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { SessionService } from './session.service';
 
-export interface SavedPreferenceValue {
-  fieldId: number;
+/** One saved label→value entry (matches backend PreferenceService.PreferenceEntry) */
+export interface SavedPreferenceEntry {
   label: string;
   value: string;
 }
 
-export interface SavedPreference {
-  facilityId: number;
-  facilityName: string;
-  savedAt: string;
-  values: SavedPreferenceValue[];
-}
-
 @Injectable({ providedIn: 'root' })
 export class SavedPreferencesService {
-  private readonly PREFIX = 'hyhub_pref_';
+  private readonly http = inject(HttpClient);
+  private readonly session = inject(SessionService);
 
-  save(pref: SavedPreference): void {
-    localStorage.setItem(`${this.PREFIX}${pref.facilityId}`, JSON.stringify(pref));
+  private authHeader(): HttpHeaders {
+    const token = this.session.getToken();
+    return new HttpHeaders(token ? { Authorization: `Bearer ${token}` } : {});
   }
 
-  load(facilityId: number): SavedPreference | null {
-    const raw = localStorage.getItem(`${this.PREFIX}${facilityId}`);
-    if (!raw) return null;
-    try { return JSON.parse(raw) as SavedPreference; } catch { return null; }
+  /** Returns label→value map for the logged-in employee. */
+  getAll(): Observable<Record<string, string>> {
+    return this.http.get<Record<string, string>>('/api/employee/preferences', {
+      headers: this.authHeader()
+    });
   }
 
-  delete(facilityId: number): void {
-    localStorage.removeItem(`${this.PREFIX}${facilityId}`);
+  /** Upserts a batch of label→value entries. */
+  saveAll(entries: SavedPreferenceEntry[]): Observable<void> {
+    return this.http.put<void>('/api/employee/preferences', entries, {
+      headers: this.authHeader()
+    });
   }
 
-  getAll(): SavedPreference[] {
-    const result: SavedPreference[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(this.PREFIX)) {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          try { result.push(JSON.parse(raw) as SavedPreference); } catch { /* skip corrupt */ }
-        }
-      }
-    }
-    return result.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  /** Deletes one label entry. */
+  deleteByLabel(label: string): Observable<void> {
+    return this.http.delete<void>(`/api/employee/preferences/${encodeURIComponent(label)}`, {
+      headers: this.authHeader()
+    });
   }
 }

@@ -12,4 +12,6 @@ public interface AuthService {
     AuthDtos.CurrentUserResponse currentUser(String bearerToken);
 
     String resolveRole(String bearerToken);
+
+    String resolveEmployeeId(String bearerToken);
 }

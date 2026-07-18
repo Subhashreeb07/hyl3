@@ -240,7 +240,6 @@ import {
                 <th class="px-6 py-3">Category</th>
                 <th class="px-6 py-3 text-center">Total Requested</th>
                 <th class="px-6 py-3 text-center">Acknowledged</th>
-                <th class="px-6 py-3 text-center">Pending</th>
                 <th class="px-6 py-3">Progress</th>
               </tr>
             </thead>
@@ -253,7 +252,6 @@ import {
                 </td>
                 <td class="px-6 py-4 text-center text-lg font-bold text-indigo-600">{{ row.totalRequested }}</td>
                 <td class="px-6 py-4 text-center text-lg font-bold text-emerald-600">{{ row.acknowledged }}</td>
-                <td class="px-6 py-4 text-center text-lg font-bold text-amber-600">{{ row.totalRequested - row.acknowledged }}</td>
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-2">
                     <div class="flex-1 rounded-full bg-slate-100 h-2 overflow-hidden min-w-[80px]">
@@ -264,7 +262,7 @@ import {
                 </td>
               </tr>
               <tr *ngIf="locationStats()!.facilityStats.length === 0">
-                <td colspan="6" class="px-6 py-10 text-center text-slate-400 text-sm">
+                <td colspan="5" class="px-6 py-10 text-center text-slate-400 text-sm">
                   No bookings found for this location on the selected date.
                 </td>
               </tr>

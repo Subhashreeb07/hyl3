@@ -143,6 +143,11 @@ public class AuthServiceImpl implements AuthService {
         return currentUser(bearerToken).role();
     }
 
+    @Override
+    public String resolveEmployeeId(String bearerToken) {
+        return currentUser(bearerToken).employeeId();
+    }
+
     private String extractToken(String bearerToken) {
         if (bearerToken == null || bearerToken.isBlank()) {
             throw new BadRequestException("Authorization token is required");

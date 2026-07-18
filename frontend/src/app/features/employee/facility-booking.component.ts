@@ -13,7 +13,7 @@ import { BookingApiService } from '../../core/services/booking-api.service';
 import { EmployeeApiService } from '../../core/services/employee-api.service';
 import { SessionService } from '../../core/services/session.service';
 import { ToastService } from '../../core/services/toast.service';
-import { SavedPreferencesService } from '../../core/services/saved-preferences.service';
+import { SavedPreferencesService, SavedPreferenceEntry } from '../../core/services/saved-preferences.service';
 
 @Component({
   selector: 'app-facility-booking',
@@ -106,6 +106,7 @@ export class FacilityBookingComponent implements OnInit {
   readonly prefillLoading = signal(false);
   readonly hasSavedPref = signal(false);
   readonly prefSaveDone = signal(false);
+  readonly savedPrefMap = signal<Record<string, string>>({});
   bookingDate: string | null = null;
 
   readonly orderedFields = computed(() => {
@@ -386,7 +387,19 @@ export class FacilityBookingComponent implements OnInit {
       next: (data) => {
         this.spec.set(data);
         this.rebuildForm(data.fields);
-        this.hasSavedPref.set(this.prefService.load(data.facilityId) !== null);
+        // load saved preferences from DB and auto-fill matching fields
+        this.prefService.getAll().subscribe({
+          next: (prefMap) => {
+            this.savedPrefMap.set(prefMap);
+            const labels = Object.keys(prefMap);
+            const hasMatch = data.fields.some(f => labels.includes(f.label));
+            this.hasSavedPref.set(hasMatch);
+            if (hasMatch) {
+              this.applyPrefMapToForm(prefMap, data.fields);
+            }
+          },
+          error: () => { /* silent — preferences are non-critical */ }
+        });
       },
       error: () => {
         this.error.set('Facility specification could not be loaded at this time.');
@@ -398,40 +411,40 @@ export class FacilityBookingComponent implements OnInit {
     const facility = this.spec();
     if (!facility) return;
 
-    const values = facility.fields
+    const entries: SavedPreferenceEntry[] = facility.fields
       .map((field) => {
         const raw = this.form.get(this.controlName(field))?.value;
         const value = Array.isArray(raw)
           ? (raw as string[]).join(',')
           : String(raw ?? '').trim();
-        return { fieldId: field.fieldId, label: field.label, value };
+        return { label: field.label, value };
       })
-      .filter((v) => v.value.length > 0);
+      .filter((e) => e.value.length > 0);
 
-    this.prefService.save({
-      facilityId: facility.facilityId,
-      facilityName: facility.facilityName,
-      savedAt: new Date().toISOString(),
-      values
+    this.prefService.saveAll(entries).subscribe({
+      next: () => {
+        const newMap: Record<string, string> = { ...this.savedPrefMap() };
+        entries.forEach(e => { newMap[e.label] = e.value; });
+        this.savedPrefMap.set(newMap);
+        this.hasSavedPref.set(true);
+        this.prefSaveDone.set(true);
+        this.toastService.show(`Preferences saved for ${facility.facilityName}`, 'success');
+        setTimeout(() => this.prefSaveDone.set(false), 3000);
+      },
+      error: () => this.toastService.show('Could not save preferences. Please try again.', 'error')
     });
-
-    this.hasSavedPref.set(true);
-    this.prefSaveDone.set(true);
-    this.toastService.show(`Preferences saved for ${facility.facilityName}`, 'success');
-    setTimeout(() => this.prefSaveDone.set(false), 3000);
   }
 
   applySavedPreference(): void {
     const facility = this.spec();
     if (!facility) return;
+    this.applyPrefMapToForm(this.savedPrefMap(), facility.fields);
+    this.toastService.show('Saved preference applied!', 'success');
+  }
 
-    const pref = this.prefService.load(facility.facilityId);
-    if (!pref) return;
-
-    const byFieldId = new Map(pref.values.map((v) => [v.fieldId, v.value]));
-
-    for (const field of facility.fields) {
-      const val = byFieldId.get(field.fieldId);
+  private applyPrefMapToForm(prefMap: Record<string, string>, fields: SpecificationField[]): void {
+    for (const field of fields) {
+      const val = prefMap[field.label];
       if (val === undefined) continue;
       const ctrl = this.form.get(this.controlName(field));
       if (!ctrl) continue;
@@ -441,8 +454,6 @@ export class FacilityBookingComponent implements OnInit {
         ctrl.setValue(val);
       }
     }
-
-    this.toastService.show('Saved preference applied!', 'success');
   }
 
   private todayIsoDate(): string {
