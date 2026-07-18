@@ -78,12 +78,24 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthDtos.LoginResponse login(AuthDtos.LoginRequest request) {
-        String employeeId = normalizeEmployeeId(request.employeeId());
-        Employee profile = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new BadRequestException("Invalid employee ID or password"));
+        Employee profile;
+
+        if (request.email() != null && !request.email().isBlank()) {
+            String email = normalizeEmail(request.email());
+            profile = employeeRepository.findByEmailIgnoreCaseOrderByCreatedAtDesc(email)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Invalid email or password"));
+        } else if (request.employeeId() != null && !request.employeeId().isBlank()) {
+            String employeeId = normalizeEmployeeId(request.employeeId());
+            profile = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new BadRequestException("Invalid employee ID or password"));
+        } else {
+            throw new BadRequestException("email is required");
+        }
 
         if (!matchesPassword(profile, request.password())) {
-            throw new BadRequestException("Invalid employee ID or password");
+            throw new BadRequestException("Invalid email or password");
         }
 
         auditService.logAction(

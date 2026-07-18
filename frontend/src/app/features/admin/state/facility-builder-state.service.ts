@@ -12,6 +12,7 @@ export interface FacilityBuilderRecord {
   description: string;
   category: string;
   icon: string;
+  facilityType: 'FACILITY' | 'EVENT';
   colorTheme: string;
   status: boolean;
   published: boolean;
@@ -98,6 +99,7 @@ export class FacilityBuilderStateService {
               description: detail.description,
               category: detail.category,
               icon: detail.icon,
+              facilityType: detail.facilityType,
               status: detail.status,
               published: detail.published,
               fields: [],
@@ -119,6 +121,7 @@ export class FacilityBuilderStateService {
         record.description = detail.description ?? '';
         record.category = detail.category ?? 'General';
         record.icon = detail.icon ?? 'inventory_2';
+        record.facilityType = detail.facilityType ?? 'FACILITY';
         record.status = detail.status;
         record.published = detail.published;
         record.isTemplate = detail.isTemplate ?? false;
@@ -146,6 +149,7 @@ export class FacilityBuilderStateService {
       description: '',
       category: 'General',
       icon: 'inventory_2',
+      facilityType: 'FACILITY',
       colorTheme: '#0f6cbd',
       status: true,
       published: false,
@@ -199,6 +203,7 @@ export class FacilityBuilderStateService {
           description: detail.description,
           category: detail.category,
           icon: detail.icon,
+          facilityType: detail.facilityType,
           status: detail.status,
           published: detail.published,
           fields: [],
@@ -210,6 +215,7 @@ export class FacilityBuilderStateService {
     record.description = detail.description ?? '';
     record.category = detail.category ?? 'General';
     record.icon = detail.icon ?? 'inventory_2';
+    record.facilityType = detail.facilityType ?? 'FACILITY';
     record.status = detail.status;
     record.published = detail.published;
     record.isTemplate = false;
@@ -268,6 +274,7 @@ export class FacilityBuilderStateService {
       description: record.description,
       category: record.category,
       icon: record.icon,
+      facilityType: record.facilityType,
       status: record.status,
       published: record.published,
       fields: record.fields
@@ -279,12 +286,14 @@ export class FacilityBuilderStateService {
   }
 
   fromSpecification(spec: FacilitySpecification): FacilityBuilderRecord {
+    const nestedFacility = (spec as any)?.facility ?? {};
     return {
-      id: spec.facilityId ?? this.idCounter++,
-      facilityName: spec.facilityName,
-      description: spec.description ?? '',
-      category: spec.category ?? 'General',
-      icon: spec.icon ?? 'inventory_2',
+      id: spec.facilityId ?? nestedFacility.facilityId ?? this.idCounter++,
+      facilityName: spec.facilityName ?? nestedFacility.facilityName,
+      description: spec.description ?? nestedFacility.description ?? '',
+      category: spec.category ?? nestedFacility.category ?? 'General',
+      icon: spec.icon ?? nestedFacility.icon ?? 'inventory_2',
+      facilityType: (spec.facilityType ?? nestedFacility.facilityType ?? 'FACILITY'),
       colorTheme: '#0f6cbd',
       status: spec.status ?? true,
       published: spec.published ?? false,

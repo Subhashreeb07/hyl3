@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthApiService } from '../../../core/services/auth-api.service';
+import { FacilityAdminApiService, FacilityDetailResponse, RuleResponse } from '../../../core/services/facility-admin-api.service';
 import { SessionService } from '../../../core/services/session.service';
 import {
   DateEventCount,
@@ -123,13 +124,6 @@ import {
               <span class="text-xs font-semibold">{{ d.label }}</span>
               <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
               <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
-              <span class="mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                    [class.bg-slate-700]="d.date === selectedDate()"
-                    [class.text-white]="d.date === selectedDate()"
-                    [class.bg-slate-200]="d.date !== selectedDate()"
-                    [class.text-slate-600]="d.date !== selectedDate()">
-                {{ d.eventCount }} Published
-              </span>
             </button>
             <ng-container *ngIf="dateStrip().length === 0">
               <button *ngFor="let d of fallbackStrip"
@@ -142,9 +136,62 @@ import {
                 <span class="text-xs font-semibold">{{ d.label }}</span>
                 <span class="mt-0.5 text-2xl font-bold">{{ d.date | date:'d' }}</span>
                 <span class="mt-0.5 text-xs">{{ d.date | date:'MMM' }}</span>
-                <span class="mt-1.5 rounded-full bg-slate-200 text-slate-600 px-2 py-0.5 text-[10px] font-bold">0 Published</span>
               </button>
             </ng-container>
+          </div>
+        </section>
+
+        <!-- ── Published on selected date ── -->
+        <section class="rounded-2xl bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Published on {{ selectedDate() | date:'mediumDate' }}</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Click a date in calendar to refresh this list.</p>
+            </div>
+            <button class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    (click)="goFacilities()">
+              Manage Facilities
+            </button>
+          </div>
+
+          <div *ngIf="loadingPublishedOnDate()" class="px-6 py-8 text-sm text-slate-500">Loading published items...</div>
+
+          <div *ngIf="!loadingPublishedOnDate()" class="grid gap-4 px-6 py-5 md:grid-cols-2">
+            <div class="rounded-xl border border-slate-200 p-4">
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-600">Facilities</h3>
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ publishedFacilitiesOnDate().length }}</span>
+              </div>
+              <div *ngIf="publishedFacilitiesOnDate().length === 0" class="text-xs text-slate-400">No facilities published for this date.</div>
+              <div *ngFor="let row of publishedFacilitiesOnDate()" class="mb-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <p class="text-sm font-semibold text-slate-900">{{ row.detail.facilityName }}</p>
+                <p class="text-xs text-slate-500">{{ row.detail.category || 'Facility' }}</p>
+                <p *ngIf="row.rules?.facilityAvailableFromDate || row.rules?.facilityAvailableToDate"
+                   class="mt-1 text-[11px] text-slate-500">
+                  Window: {{ formatDateRange(row.rules?.facilityAvailableFromDate, row.rules?.facilityAvailableToDate) }}
+                </p>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4">
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wide text-slate-600">Events</h3>
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ publishedEventsOnDate().length }}</span>
+              </div>
+              <div *ngIf="publishedEventsOnDate().length === 0" class="text-xs text-slate-400">No events published for this date.</div>
+              <div *ngFor="let row of publishedEventsOnDate()" class="mb-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <p class="text-sm font-semibold text-slate-900">{{ row.detail.facilityName }}</p>
+                <p class="text-xs text-slate-500">{{ row.detail.category || 'Event' }}</p>
+                <p *ngIf="row.rules?.registrationOpenDate || row.rules?.registrationCloseDate"
+                   class="mt-1 text-[11px] text-slate-500">
+                  Registration: {{ formatDateRange(row.rules?.registrationOpenDate, row.rules?.registrationCloseDate) }}
+                </p>
+                <p *ngIf="(!row.rules?.registrationOpenDate && !row.rules?.registrationCloseDate) && (row.rules?.facilityAvailableFromDate || row.rules?.facilityAvailableToDate)"
+                   class="mt-1 text-[11px] text-slate-500">
+                  Event window: {{ formatDateRange(row.rules?.facilityAvailableFromDate, row.rules?.facilityAvailableToDate) }}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -277,11 +324,17 @@ import {
 })
 export class AdminDashboardPageComponent implements OnInit {
 
+  private readonly dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
   selectedDate  = signal<string>(this.today());
   dateStrip     = signal<DateEventCount[]>([]);
   dashStats     = signal<DashboardStatsResponse | null>(null);
 
   readonly fallbackStrip = this.buildFallbackStrip();
+
+  publishedFacilitiesOnDate = signal<Array<{ detail: FacilityDetailResponse; rules: RuleResponse | null }>>([]);
+  publishedEventsOnDate = signal<Array<{ detail: FacilityDetailResponse; rules: RuleResponse | null }>>([]);
+  loadingPublishedOnDate = signal(false);
 
   locations        = signal<LocationResponse[]>([]);
   selectedLocation = signal<LocationResponse | null>(null);
@@ -301,6 +354,7 @@ export class AdminDashboardPageComponent implements OnInit {
 
   constructor(
     private readonly locationApi: LocationApiService,
+    private readonly facilityAdminApi: FacilityAdminApiService,
     private readonly sessionService: SessionService,
     private readonly authApi: AuthApiService,
     private readonly router: Router
@@ -309,6 +363,7 @@ export class AdminDashboardPageComponent implements OnInit {
   ngOnInit(): void {
     this.loadDashboard();
     this.loadLocations();
+    this.loadPublishedForDate();
   }
 
   private async loadDashboard(): Promise<void> {
@@ -322,7 +377,119 @@ export class AdminDashboardPageComponent implements OnInit {
   selectDate(date: string): void {
     this.selectedDate.set(date);
     this.loadDashboard();
+    this.loadPublishedForDate();
     if (this.selectedLocation()) this.loadLocationStats(this.selectedLocation()!);
+  }
+
+  private async loadPublishedForDate(): Promise<void> {
+    this.loadingPublishedOnDate.set(true);
+    try {
+      const summaries = await firstValueFrom(this.facilityAdminApi.getFacilities());
+      const details = await Promise.all(
+        summaries.map(async (s) => {
+          try {
+            return await firstValueFrom(this.facilityAdminApi.getFacility(s.facilityId));
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const published = details
+        .filter((d): d is FacilityDetailResponse => !!d)
+        .filter((d) => d.published && !d.isTemplate);
+
+      const rows = await Promise.all(
+        published.map(async (detail) => {
+          try {
+            const rules = await firstValueFrom(this.facilityAdminApi.getRules(detail.facilityId));
+            return { detail, rules: rules as RuleResponse };
+          } catch {
+            return { detail, rules: null };
+          }
+        })
+      );
+
+      const selectedDate = this.selectedDate();
+      const visible = rows.filter((row) => this.matchesSelectedDate(row.detail, row.rules, selectedDate));
+
+      this.publishedFacilitiesOnDate.set(visible.filter((row) => row.detail.facilityType !== 'EVENT'));
+      this.publishedEventsOnDate.set(visible.filter((row) => row.detail.facilityType === 'EVENT'));
+    } finally {
+      this.loadingPublishedOnDate.set(false);
+    }
+  }
+
+  private matchesSelectedDate(detail: FacilityDetailResponse, rules: RuleResponse | null, selectedDate: string): boolean {
+    const target = this.parseDate(selectedDate);
+    if (!target) {
+      return false;
+    }
+
+    let from = this.parseDate(rules?.facilityAvailableFromDate ?? null);
+    let to = this.parseDate(rules?.facilityAvailableToDate ?? null);
+
+    if (detail.facilityType === 'EVENT' && !from && !to) {
+      from = this.parseDate(rules?.registrationOpenDate ?? null);
+      to = this.parseDate(rules?.registrationCloseDate ?? null);
+    }
+
+    if (!from && to) {
+      from = to;
+    }
+    if (!to && from) {
+      to = from;
+    }
+
+    if (from && to && (target < from || target > to)) {
+      return false;
+    }
+
+    if (detail.facilityType !== 'EVENT') {
+      const availableDays = (rules?.availableDays ?? '').trim();
+      if (availableDays) {
+        const allowed = availableDays
+          .split(',')
+          .map((d) => d.trim().toUpperCase())
+          .filter(Boolean);
+        const dayName = this.dayNames[target.getDay()];
+        if (!allowed.includes(dayName)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private parseDate(value: string | null | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+    const raw = value.trim();
+    if (!raw) {
+      return null;
+    }
+    const normalized = raw.length >= 10 ? raw.substring(0, 10) : raw;
+    const date = new Date(normalized + 'T00:00:00');
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  formatDateRange(from: string | null | undefined, to: string | null | undefined): string {
+    const fromDate = this.parseDate(from);
+    const toDate = this.parseDate(to);
+
+    const text = (d: Date | null) => d
+      ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+
+    const fromText = text(fromDate);
+    const toText = text(toDate);
+
+    if (fromText && toText) {
+      return `${fromText} - ${toText}`;
+    }
+    return fromText || toText || 'Not specified';
   }
 
   onDatePick(event: Event): void {

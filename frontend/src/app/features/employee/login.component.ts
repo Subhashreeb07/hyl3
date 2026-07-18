@@ -71,14 +71,14 @@ import { ToastService } from '../../core/services/toast.service';
           </div>
 
           <div>
-            <label for="employeeId" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Employee ID</label>
+            <label for="loginEmail" class="block text-xs font-semibold uppercase tracking-wider text-[#475569]">Email</label>
             <input
-              id="employeeId"
-              type="text"
-              formControlName="employeeId"
-              [class.border-red-500]="isFieldInvalid('employeeId')"
+              id="loginEmail"
+              type="email"
+              formControlName="email"
+              [class.border-red-500]="isFieldInvalid('email')"
               class="mt-2 w-full rounded-lg border border-[#dbe3ed] bg-white px-4 py-3 text-sm text-[#0f172a] transition placeholder-[#94a3b8] focus:border-[#1d4f82] focus:outline-none focus:ring-4 focus:ring-[#1d4f82]/10"
-              placeholder="Enter your corporate employee ID"
+              placeholder="Enter your corporate email"
               [disabled]="isLoading()"
             />
           </div>
@@ -200,10 +200,7 @@ import { ToastService } from '../../core/services/toast.service';
               <span>{{ mode() === 'SIGN_IN' ? 'Signing in...' : 'Creating account...' }}</span>
             </span>
           </button>
-
-         
         </form>
-
           <p class="mt-6 text-center text-xs text-slate-500">Hyland employee systems access.</p>
         </div>
       </div>
@@ -217,7 +214,7 @@ export class LoginComponent implements OnInit {
   readonly locations = signal<LocationResponse[]>([]);
 
   readonly loginForm = this.fb.group({
-    employeeId: ['', [Validators.required, Validators.minLength(1)]],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
@@ -299,10 +296,10 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    const employeeId = (this.loginForm.value.employeeId ?? '').trim().toUpperCase();
+    const email = (this.loginForm.value.email ?? '').trim().toLowerCase();
     const password = (this.loginForm.value.password ?? '').trim();
 
-    this.doLogin(employeeId, password);
+    this.doLogin(email, password);
   }
 
   private submitSignUp(): void {
@@ -344,9 +341,9 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  private doLogin(employeeId: string, password: string): void {
+  private doLogin(email: string, password: string): void {
     this.isLoading.set(true);
-    const payload = { employeeId, password };
+    const payload = { email, password };
 
     this.authApi.login(payload).subscribe({
       next: (response) => {

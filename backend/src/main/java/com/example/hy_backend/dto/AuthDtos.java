@@ -8,7 +8,7 @@ public final class AuthDtos {
     private AuthDtos() {
     }
 
-    public record LoginRequest(@NotBlank String employeeId, @NotBlank String password) {
+    public record LoginRequest(String email, String employeeId, @NotBlank String password) {
     }
 
         public record RegisterRequest(

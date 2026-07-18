@@ -9,6 +9,7 @@ import com.example.hy_backend.model.BookingStatus;
 import com.example.hy_backend.model.Employee;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
+import com.example.hy_backend.model.FacilityType;
 import com.example.hy_backend.model.FieldDefinition;
 import com.example.hy_backend.model.FieldType;
 import com.example.hy_backend.repository.BookingRepository;
@@ -83,6 +84,7 @@ public class FacilityServiceImpl implements FacilityService {
         facility.setDescription(request.description());
         facility.setCategory(request.category());
         facility.setIcon(request.icon());
+        facility.setFacilityType(parseFacilityType(request.facilityType()));
         facility.setPublished(false);
         facility.setIsTemplate(request.isTemplate() != null && request.isTemplate());
         facility.setIsPublic(request.isPublic() == null || request.isPublic());
@@ -97,6 +99,7 @@ public class FacilityServiceImpl implements FacilityService {
                 .map(f -> new FacilityDtos.FacilitySummaryResponse(
                         f.getFacilityId(),
                         f.getFacilityName(),
+                    f.getFacilityType().name(),
                         f.getIsTemplate(),
                         f.getIsPublic()
                 ))
@@ -119,6 +122,7 @@ public class FacilityServiceImpl implements FacilityService {
         facility.setFacilityName(name);
         facility.setDescription(request.description());
         facility.setCategory(request.category());
+        facility.setFacilityType(parseFacilityType(request.facilityType()));
         if (request.isPublic() != null) {
             facility.setIsPublic(request.isPublic());
         }
@@ -335,6 +339,7 @@ public class FacilityServiceImpl implements FacilityService {
         copy.setDescription(template.getDescription());
         copy.setCategory(template.getCategory());
         copy.setIcon(template.getIcon());
+        copy.setFacilityType(template.getFacilityType());
         copy.setPublished(false);
         copy.setIsTemplate(false);
         copy.setIsPublic(template.getIsPublic());
@@ -447,6 +452,7 @@ public class FacilityServiceImpl implements FacilityService {
             String category = (String) jsonData.getOrDefault("category", "General");
             String icon = (String) jsonData.getOrDefault("icon", "business");
             Boolean status = (Boolean) jsonData.getOrDefault("status", true);
+            String facilityTypeRaw = (String) jsonData.getOrDefault("facilityType", "FACILITY");
 
             if (hasConflictingFacilityName(facilityName, null)) {
                 throw new BadRequestException("A facility named '" + facilityName + "' already exists. Please choose a different name.");
@@ -458,6 +464,7 @@ public class FacilityServiceImpl implements FacilityService {
             facility.setDescription(description);
             facility.setCategory(category);
             facility.setIcon(icon);
+            facility.setFacilityType(parseFacilityType(facilityTypeRaw));
             facility.setPublished(false);
             Facility savedFacility = facilityRepository.save(facility);
 
@@ -534,11 +541,23 @@ public class FacilityServiceImpl implements FacilityService {
                 facility.getDescription(),
                 facility.getCategory(),
                 facility.getIcon(),
+                facility.getFacilityType().name(),
                 facility.getPublished(),
                 facility.getIsTemplate(),
                 facility.getIsPublic(),
                 splitTargetLocations(facility.getTargetLocations())
         );
+    }
+
+    private FacilityType parseFacilityType(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return FacilityType.FACILITY;
+        }
+        try {
+            return FacilityType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid facilityType. Allowed values: FACILITY, EVENT");
+        }
     }
 
     /** Parses field options stored as JSON array ["Veg","Non-Veg"] or legacy newline-separated text. */

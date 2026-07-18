@@ -9,6 +9,7 @@ export interface FacilityCreateRequest {
   description?: string;
   category?: string;
   icon?: string;
+  facilityType?: 'FACILITY' | 'EVENT';
   status: boolean;
   isTemplate?: boolean;
   isPublic?: boolean;
@@ -24,6 +25,7 @@ export interface FacilityCreateResponse {
 export interface FacilitySummaryResponse {
   facilityId: number;
   facilityName: string;
+  facilityType: 'FACILITY' | 'EVENT';
   status: boolean;
   isTemplate: boolean;
   isPublic: boolean;
@@ -35,6 +37,7 @@ export interface FacilityDetailResponse {
   description?: string;
   category?: string;
   icon?: string;
+  facilityType: 'FACILITY' | 'EVENT';
   status: boolean;
   published: boolean;
   isTemplate: boolean;
@@ -108,6 +111,10 @@ export interface FieldSummaryResponse {
 export interface RuleRequest {
   bookingDeadline?: string | null;
   bookingStartTime?: string | null;
+  registrationOpenDate?: string | null;
+  registrationOpenTime?: string | null;
+  registrationCloseDate?: string | null;
+  registrationCloseTime?: string | null;
   cancellationDeadline?: string | null;
   reminderTime?: string | null;
   qrRequired?: boolean;
@@ -125,6 +132,10 @@ export interface RuleRequest {
 export interface RuleResponse {
   bookingDeadline?: string | null;
   bookingStartTime?: string | null;
+  registrationOpenDate?: string | null;
+  registrationOpenTime?: string | null;
+  registrationCloseDate?: string | null;
+  registrationCloseTime?: string | null;
   cancellationDeadline?: string | null;
   reminderTime?: string | null;
   qrRequired?: boolean;

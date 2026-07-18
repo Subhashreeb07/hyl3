@@ -308,6 +308,10 @@ public class RuleServiceImpl implements RuleService {
         ObjectNode result = objectMapper.createObjectNode();
         putNullableText(result, "bookingDeadline", bookingDeadline == null ? null : bookingDeadline.toString());
         putNullableText(result, "bookingStartTime", bookingStartTime == null ? null : bookingStartTime.toString());
+        putNullableText(result, "registrationOpenDate", optionalTrimmedText(request, "registrationOpenDate"));
+        putNullableText(result, "registrationOpenTime", optionalTrimmedText(request, "registrationOpenTime"));
+        putNullableText(result, "registrationCloseDate", optionalTrimmedText(request, "registrationCloseDate"));
+        putNullableText(result, "registrationCloseTime", optionalTrimmedText(request, "registrationCloseTime"));
         putNullableText(result, "availableDays", optionalTrimmedText(request, "availableDays"));
         putNullableText(result, "facilityAvailableFromDate", facilityAvailableFromDate == null ? null : facilityAvailableFromDate.toString());
         putNullableText(result, "facilityAvailableToDate", facilityAvailableToDate == null ? null : facilityAvailableToDate.toString());

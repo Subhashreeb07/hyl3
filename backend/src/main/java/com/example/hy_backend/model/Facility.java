@@ -22,6 +22,10 @@ public class Facility {
 
     private String icon;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "facility_type", nullable = false, length = 20)
+    private FacilityType facilityType = FacilityType.FACILITY;
+
 
     @Column(nullable = false)
     private Boolean published = false;
@@ -102,6 +106,14 @@ public class Facility {
 
     public void setIcon(String icon) {
         this.icon = icon;
+    }
+
+    public FacilityType getFacilityType() {
+        return facilityType;
+    }
+
+    public void setFacilityType(FacilityType facilityType) {
+        this.facilityType = facilityType;
     }
 
 

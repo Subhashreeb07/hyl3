@@ -35,6 +35,10 @@ export interface FacilityField {
 export interface FacilityRules {
   facilityAvailableFromDate?: string | null;
   facilityAvailableToDate?: string | null;
+  registrationOpenDate?: string | null;
+  registrationOpenTime?: string | null;
+  registrationCloseDate?: string | null;
+  registrationCloseTime?: string | null;
   bookingStartTime?: string | null;
   bookingDeadline?: string | null;
   cancellationDeadline?: string | null;
@@ -60,6 +64,7 @@ export interface FacilitySpecification {
   description?: string;
   category?: string;
   icon?: string;
+  facilityType?: 'FACILITY' | 'EVENT';
   status?: boolean;
   published?: boolean;
   fields: FacilityField[];

@@ -5,6 +5,7 @@ import com.example.hy_backend.model.BookingStatus;
 import com.example.hy_backend.model.Employee;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
+import com.example.hy_backend.model.FacilityType;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.repository.EmployeeRepository;
 import com.example.hy_backend.repository.FacilityRepository;
@@ -65,7 +66,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(f -> new EmployeeDtos.DashboardFacilityResponse(
                         f.getFacilityId(),
                         f.getFacilityName(),
-                        f.getIcon()
+                        f.getIcon(),
+                        f.getFacilityType().name()
                 ))
                 .toList();
     }
@@ -351,6 +353,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         LocalTime now = LocalTime.now();
         return publishedFacilities.stream().map(facility -> {
             Optional<FacilityRule> ruleOpt = facilityRuleRepository.findByFacilityFacilityId(facility.getFacilityId());
+                        boolean isEvent = facility.getFacilityType() == FacilityType.EVENT;
 
             boolean bookingAllowed = true;
             String unavailableReason = null;
@@ -369,11 +372,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                     }
                 }
 
-                                if (bookingAllowed && !isFacilityAvailableOnDay(rule, date)) {
+                                if (bookingAllowed && !isEvent && !isFacilityAvailableOnDay(rule, date)) {
                                         return null;
                                 }
 
-                if (bookingAllowed && date.equals(today)) {
+                                if (bookingAllowed && date.equals(today) && !isEvent) {
                     LocalTime startTime = rule.getBookingStartTime();
                     LocalTime deadline = rule.getBookingDeadline();
 
@@ -386,11 +389,17 @@ public class EmployeeServiceImpl implements EmployeeService {
                     }
                 }
 
-                                if (bookingAllowed && date.isAfter(today)) {
-                                        LocalTime startTime = rule.getBookingStartTime();
-                                        if (startTime != null) {
+                                if (bookingAllowed && date.isAfter(today) && !isEvent) {
+                                        LocalDate tomorrow = today.plusDays(1);
+                                        if (date.equals(tomorrow)) {
+                                                LocalTime deadline = rule.getBookingDeadline();
+                                                if (deadline != null && now.isAfter(deadline)) {
+                                                        bookingAllowed = false;
+                                                        unavailableReason = "Tomorrow booking had to be confirmed before " + deadline + " today";
+                                                }
+                                        } else {
                                                 bookingAllowed = false;
-                                                unavailableReason = "Booking opens on " + date + " at " + startTime;
+                                                unavailableReason = "Daily facility booking is available only for today or tomorrow";
                                         }
                                 }
             }
@@ -407,6 +416,22 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             String availableDaysStr = null;
             Integer bookingWindowDaysInt = null;
+                        String facilityAvailableFromDateStr = null;
+                        String facilityAvailableToDateStr = null;
+                        String registrationOpenDateStr = null;
+                        String registrationOpenTimeStr = null;
+                        String registrationCloseDateStr = null;
+                        String registrationCloseTimeStr = null;
+
+                        if (ruleOpt.isPresent()) {
+                                LocalDate[] dateWindow = resolveFacilityDateWindow(ruleOpt.get());
+                                facilityAvailableFromDateStr = dateWindow[0] != null ? dateWindow[0].toString() : null;
+                                facilityAvailableToDateStr = dateWindow[1] != null ? dateWindow[1].toString() : null;
+                                registrationOpenDateStr = extractRuleText(ruleOpt.get(), "registrationOpenDate");
+                                registrationOpenTimeStr = extractRuleText(ruleOpt.get(), "registrationOpenTime");
+                                registrationCloseDateStr = extractRuleText(ruleOpt.get(), "registrationCloseDate");
+                                registrationCloseTimeStr = extractRuleText(ruleOpt.get(), "registrationCloseTime");
+                        }
 
             boolean alreadyBooked = bookingAllowed && bookingRepository
                     .existsByEmployeeIdAndFacilityFacilityIdAndBookingDateAndStatus(
@@ -428,6 +453,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                     facility.getFacilityId(),
                     facility.getFacilityName(),
                     facility.getIcon(),
+                    facility.getFacilityType().name(),
                     facility.getCategory(),
                     facility.getDescription(),
                     startTimeStr,
@@ -436,6 +462,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                     bookingIdStr,
                     availableDaysStr,
                     bookingWindowDaysInt,
+                    facilityAvailableFromDateStr,
+                    facilityAvailableToDateStr,
+                    registrationOpenDateStr,
+                    registrationOpenTimeStr,
+                    registrationCloseDateStr,
+                    registrationCloseTimeStr,
                     bookingAllowed,
                     unavailableReason
             );

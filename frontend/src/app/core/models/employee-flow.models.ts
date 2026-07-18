@@ -1,5 +1,5 @@
 export interface LoginRequest {
-  employeeId: string;
+  email: string;
   password: string;
 }
 
@@ -31,12 +31,14 @@ export interface DashboardFacility {
   facilityId: number;
   facilityName: string;
   icon?: string;
+  facilityType?: 'FACILITY' | 'EVENT';
 }
 
 export interface AvailableFacility {
   facilityId: number;
   facilityName: string;
   icon?: string;
+  facilityType?: 'FACILITY' | 'EVENT';
   category?: string;
   description?: string;
   bookingStartTime?: string | null;
@@ -45,6 +47,12 @@ export interface AvailableFacility {
   bookingId?: string | null;
   availableDays?: string | null;
   bookingWindowDays?: number | null;
+  facilityAvailableFromDate?: string | null;
+  facilityAvailableToDate?: string | null;
+  registrationOpenDate?: string | null;
+  registrationOpenTime?: string | null;
+  registrationCloseDate?: string | null;
+  registrationCloseTime?: string | null;
   bookingAllowed: boolean;
   unavailableReason?: string | null;
 }

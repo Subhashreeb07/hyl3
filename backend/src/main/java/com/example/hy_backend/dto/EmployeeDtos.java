@@ -7,7 +7,7 @@ public final class EmployeeDtos {
     private EmployeeDtos() {
     }
 
-    public record DashboardFacilityResponse(Long facilityId, String facilityName, String icon) {
+        public record DashboardFacilityResponse(Long facilityId, String facilityName, String icon, String facilityType) {
     }
 
     public record EmployeeHomeResponse(
@@ -67,6 +67,7 @@ public final class EmployeeDtos {
             Long facilityId,
             String facilityName,
             String icon,
+            String facilityType,
             String category,
             String description,
             String bookingStartTime,
@@ -75,6 +76,12 @@ public final class EmployeeDtos {
             String bookingId,
             String availableDays,
             Integer bookingWindowDays,
+            String facilityAvailableFromDate,
+            String facilityAvailableToDate,
+            String registrationOpenDate,
+            String registrationOpenTime,
+            String registrationCloseDate,
+            String registrationCloseTime,
             boolean bookingAllowed,
             String unavailableReason
     ) {

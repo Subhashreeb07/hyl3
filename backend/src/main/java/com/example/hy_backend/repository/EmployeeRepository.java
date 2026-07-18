@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 public interface EmployeeRepository extends JpaRepository<Employee, String> {
     Optional<Employee> findByEmailIgnoreCase(String email);
 
+    List<Employee> findByEmailIgnoreCaseOrderByCreatedAtDesc(String email);
+
     boolean existsByEmailIgnoreCase(String email);
 
     List<Employee> findAllByOrderByCreatedAtDesc();

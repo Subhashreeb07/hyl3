@@ -130,6 +130,13 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
             </div>
 
             <label class="admin-field md:col-span-2">Description<textarea rows="3" formControlName="description" placeholder="Describe what this facility provides..."></textarea></label>
+            <label class="admin-field">
+              Type
+              <select formControlName="facilityType">
+                <option value="FACILITY">Facility</option>
+                <option value="EVENT">Event</option>
+              </select>
+            </label>
             <!-- Icon picker dropdown -->
             <div class="admin-field">
               Icon
@@ -241,7 +248,7 @@ function rulesTimeValidator(group: AbstractControl): Record<string, boolean> | n
         </mat-step>
 
         <mat-step [stepControl]="rulesForm" label="Business Rules">
-          <app-builder-rules-form [form]="rulesForm" />
+          <app-builder-rules-form [form]="rulesForm" [facilityType]="basicForm.value.facilityType || 'FACILITY'" />
           <div class="flex justify-between">
             <button mat-button matStepperPrevious>Back</button>
             <button mat-flat-button color="primary" matStepperNext (click)="rulesForm.markAllAsTouched()">Next</button>
@@ -394,12 +401,17 @@ export class AdminFormBuilderPageComponent {
     description: [''],
     category: ['', Validators.required],
     icon: ['inventory_2'],
+    facilityType: ['FACILITY' as 'FACILITY' | 'EVENT', Validators.required],
   });
 
   readonly rulesForm = this.fb.group({
     bookingMode: ['single'],
     facilityAvailableFromDate: [''],
     facilityAvailableToDate: [''],
+    registrationOpenDate: [''],
+    registrationOpenTime: [''],
+    registrationCloseDate: [''],
+    registrationCloseTime: [''],
     bookingStartTime: ['', Validators.required],
     bookingEndTime: [''],
     bookingDeadline: ['', Validators.required],
@@ -446,6 +458,24 @@ export class AdminFormBuilderPageComponent {
     const navState = this.router.getCurrentNavigation()?.extras?.state;
     this.openMode = navState?.['editMode'] === true ? 'edit' : 'new';
     this.basicForm.valueChanges.subscribe(() => this.refreshJson());
+    this.basicForm.get('facilityType')?.valueChanges.subscribe((type) => {
+      if (type === 'EVENT' && this.rulesForm.value.availableDays) {
+        const eventDate = this.rulesForm.value.facilityAvailableFromDate || this.rulesForm.value.facilityAvailableToDate || '';
+        this.rulesForm.patchValue({
+          bookingMode: 'single',
+          availableDays: '',
+          facilityAvailableFromDate: eventDate,
+          facilityAvailableToDate: eventDate,
+          registrationOpenDate: this.rulesForm.value.registrationOpenDate || eventDate,
+          registrationCloseDate: this.rulesForm.value.registrationCloseDate || eventDate,
+          registrationOpenTime: this.rulesForm.value.registrationOpenTime || this.rulesForm.value.bookingStartTime || '',
+          registrationCloseTime: this.rulesForm.value.registrationCloseTime || this.rulesForm.value.bookingDeadline || ''
+        }, { emitEvent: false });
+      }
+      this.configureRulesValidators(type as 'FACILITY' | 'EVENT');
+      this.refreshJson();
+    });
+    this.configureRulesValidators(this.basicForm.value.facilityType || 'FACILITY');
     this.rulesForm.valueChanges.subscribe(() => this.refreshJson());
     this.bootstrap();
   }
@@ -788,12 +818,17 @@ export class AdminFormBuilderPageComponent {
           description: parsed.description ?? '',
           category: this.categoryOptions().includes(parsed.category ?? '') ? parsed.category : 'Other',
           icon: parsed.icon ?? 'inventory_2',
+          facilityType: parsed.facilityType ?? 'FACILITY',
         });
       }
 
       this.rulesForm.patchValue({
         facilityAvailableFromDate: parsed.rules?.facilityAvailableFromDate ?? '',
         facilityAvailableToDate: parsed.rules?.facilityAvailableToDate ?? '',
+        registrationOpenDate: parsed.rules?.registrationOpenDate ?? '',
+        registrationOpenTime: parsed.rules?.registrationOpenTime ?? '',
+        registrationCloseDate: parsed.rules?.registrationCloseDate ?? '',
+        registrationCloseTime: parsed.rules?.registrationCloseTime ?? '',
         bookingStartTime: parsed.rules?.bookingStartTime ?? '',
         bookingEndTime: parsed.rules?.bookingDeadline ?? '',
         bookingDeadline: parsed.rules?.bookingDeadline ?? '',
@@ -932,10 +967,14 @@ export class AdminFormBuilderPageComponent {
   }
 
   private clearForm(): void {
-    this.basicForm.reset({ facilityName: '', description: '', category: '', icon: 'inventory_2' });
+    this.basicForm.reset({ facilityName: '', description: '', category: '', icon: 'inventory_2', facilityType: 'FACILITY' });
     this.rulesForm.reset({
       facilityAvailableFromDate: '',
       facilityAvailableToDate: '',
+      registrationOpenDate: '',
+      registrationOpenTime: '',
+      registrationCloseDate: '',
+      registrationCloseTime: '',
       bookingStartTime: '',
       bookingEndTime: '',
       bookingDeadline: '',
@@ -957,6 +996,7 @@ export class AdminFormBuilderPageComponent {
       roleOps: true,
       roleDevops: true,
     });
+    this.configureRulesValidators('FACILITY');
     this.draftFields.set([]);
     this.refreshJson();
   }
@@ -976,7 +1016,7 @@ export class AdminFormBuilderPageComponent {
   }
 
   private patchFromRecord(record: FacilityBuilderRecord): void {
-    let cat = (record.category || '').replace(' [EVENT]', '').trim();
+    let cat = (record.category || '').trim();
 
     if (cat && !this.categoryOptions().includes(cat)) {
       this.categoryOptions.update(cats => [...cats, cat]);
@@ -987,12 +1027,22 @@ export class AdminFormBuilderPageComponent {
       description: record.description,
       category: cat,
       icon: record.icon,
+      facilityType: record.facilityType ?? 'FACILITY',
     });
 
+    this.configureRulesValidators(record.facilityType ?? 'FACILITY');
+
+    const isEvent = (record.facilityType ?? 'FACILITY') === 'EVENT';
+    const eventDate = record.rules?.facilityAvailableFromDate || record.rules?.facilityAvailableToDate || '';
+
     this.rulesForm.patchValue({
-      bookingMode: (record.rules?.facilityAvailableFromDate || record.rules?.availableDays) ? 'multi' : 'single',
+      bookingMode: isEvent ? 'single' : ((record.rules?.facilityAvailableFromDate || record.rules?.availableDays) ? 'multi' : 'single'),
       facilityAvailableFromDate: record.rules?.facilityAvailableFromDate ?? '',
       facilityAvailableToDate: record.rules?.facilityAvailableToDate ?? '',
+      registrationOpenDate: record.rules?.registrationOpenDate ?? '',
+      registrationOpenTime: record.rules?.registrationOpenTime ?? '',
+      registrationCloseDate: record.rules?.registrationCloseDate ?? '',
+      registrationCloseTime: record.rules?.registrationCloseTime ?? '',
       bookingStartTime: record.isTemplate ? this.currentTimeString() : (record.rules?.bookingStartTime || this.currentTimeString()),
       // Patch the visible bookingEndTime field. Also sync the hidden bookingDeadline control
       // so both are in agreement immediately after load (prevents stale-value bug on save).
@@ -1017,12 +1067,44 @@ export class AdminFormBuilderPageComponent {
       roleDevops: this.ruleIncludesOrAll(record.rules?.roles, 'Devops'),
     });
 
+    if (isEvent && eventDate) {
+      this.rulesForm.patchValue({
+        facilityAvailableFromDate: eventDate,
+        facilityAvailableToDate: eventDate,
+        registrationOpenDate: record.rules?.registrationOpenDate ?? eventDate,
+        registrationCloseDate: record.rules?.registrationCloseDate ?? eventDate,
+        registrationOpenTime: record.rules?.registrationOpenTime ?? this.rulesForm.value.bookingStartTime ?? '',
+        registrationCloseTime: record.rules?.registrationCloseTime ?? this.rulesForm.value.bookingDeadline ?? '',
+      });
+    }
+
     this.draftFields.set(record.fields.map((field) => ({ ...field })));
     this.normalizeFieldOrder();
   }
 
+  private configureRulesValidators(type: 'FACILITY' | 'EVENT'): void {
+    const registrationValidators = type === 'EVENT' ? [Validators.required] : [];
+    const bookingValidators = type === 'EVENT' ? [] : [Validators.required];
+
+    this.rulesForm.get('bookingStartTime')?.setValidators(bookingValidators);
+    this.rulesForm.get('bookingDeadline')?.setValidators(bookingValidators);
+    this.rulesForm.get('registrationOpenDate')?.setValidators(registrationValidators);
+    this.rulesForm.get('registrationOpenTime')?.setValidators(registrationValidators);
+    this.rulesForm.get('registrationCloseDate')?.setValidators(registrationValidators);
+    this.rulesForm.get('registrationCloseTime')?.setValidators(registrationValidators);
+
+    this.rulesForm.get('bookingStartTime')?.updateValueAndValidity({ emitEvent: false });
+    this.rulesForm.get('bookingDeadline')?.updateValueAndValidity({ emitEvent: false });
+    this.rulesForm.get('registrationOpenDate')?.updateValueAndValidity({ emitEvent: false });
+    this.rulesForm.get('registrationOpenTime')?.updateValueAndValidity({ emitEvent: false });
+    this.rulesForm.get('registrationCloseDate')?.updateValueAndValidity({ emitEvent: false });
+    this.rulesForm.get('registrationCloseTime')?.updateValueAndValidity({ emitEvent: false });
+    this.rulesForm.updateValueAndValidity({ emitEvent: false });
+  }
+
   private currentRecord(published: boolean): FacilityBuilderRecord {
     const existing = this.state.activeFacility();
+    const isEvent = (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT';
 
     return {
       id: existing?.id ?? this.state.createDraft().id,
@@ -1030,6 +1112,7 @@ export class AdminFormBuilderPageComponent {
       description: this.basicForm.value.description?.trim() || '',
       category: this.resolveCategoryValue(),
       icon: this.basicForm.value.icon || 'inventory_2',
+      facilityType: this.basicForm.value.facilityType || 'FACILITY',
       colorTheme: '#0f6cbd',
       status: true,
       published,
@@ -1039,14 +1122,22 @@ export class AdminFormBuilderPageComponent {
       updatedAt: new Date().toISOString(),
       fields: this.orderedFields().map((field) => ({ ...field })),
       rules: {
-        facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
-        facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
+        facilityAvailableFromDate: isEvent
+          ? (this.rulesForm.value.facilityAvailableFromDate || null)
+          : (this.rulesForm.value.facilityAvailableFromDate || null),
+        facilityAvailableToDate: isEvent
+          ? (this.rulesForm.value.facilityAvailableFromDate || null)
+          : (this.rulesForm.value.facilityAvailableToDate || null),
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
         bookingDeadline: this.rulesForm.value.bookingDeadline || this.rulesForm.value.bookingEndTime || null,
+        registrationOpenDate: isEvent ? (this.rulesForm.value.registrationOpenDate || null) : null,
+        registrationOpenTime: isEvent ? (this.rulesForm.value.registrationOpenTime || null) : null,
+        registrationCloseDate: isEvent ? (this.rulesForm.value.registrationCloseDate || null) : null,
+        registrationCloseTime: isEvent ? (this.rulesForm.value.registrationCloseTime || null) : null,
         reminderTime: this.rulesForm.value.reminderTime || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
         bookingWindowDays: this.rulesForm.value.bookingWindowDays || null,
-        availableDays: this.rulesForm.value.availableDays || null,
+        availableDays: isEvent ? null : (this.rulesForm.value.availableDays || null),
         employeeTypes: (() => {
           const t = [
             this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
@@ -1104,6 +1195,7 @@ export class AdminFormBuilderPageComponent {
           description: base.description,
           category: base.category,
           icon: base.icon,
+          facilityType: base.facilityType,
           status: base.status
         })
       );
@@ -1115,6 +1207,7 @@ export class AdminFormBuilderPageComponent {
           description: base.description,
           category: base.category,
           icon: base.icon,
+          facilityType: base.facilityType,
           status: base.status
         })
       );
@@ -1168,11 +1261,29 @@ export class AdminFormBuilderPageComponent {
       this.facilityAdminApi.saveRules(facilityId, {
         bookingDeadline: this.rulesForm.value.bookingDeadline || this.rulesForm.value.bookingEndTime || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
+        registrationOpenDate: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? (this.rulesForm.value.registrationOpenDate || null)
+          : null,
+        registrationOpenTime: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? (this.rulesForm.value.registrationOpenTime || null)
+          : null,
+        registrationCloseDate: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? (this.rulesForm.value.registrationCloseDate || null)
+          : null,
+        registrationCloseTime: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? (this.rulesForm.value.registrationCloseTime || null)
+          : null,
         reminderTime: this.rulesForm.value.reminderTime || null,
-        availableDays: this.rulesForm.value.availableDays || null,
+        availableDays: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? null
+          : (this.rulesForm.value.availableDays || null),
         bookingWindowDays: this.rulesForm.value.bookingWindowDays ?? null,
-        facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
-        facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
+        facilityAvailableFromDate: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? (this.rulesForm.value.facilityAvailableFromDate || null)
+          : (this.rulesForm.value.facilityAvailableFromDate || null),
+        facilityAvailableToDate: (this.basicForm.value.facilityType || 'FACILITY') === 'EVENT'
+          ? (this.rulesForm.value.facilityAvailableFromDate || null)
+          : (this.rulesForm.value.facilityAvailableToDate || null),
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
         employeeTypes: (() => {
           const t = [

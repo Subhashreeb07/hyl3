@@ -38,6 +38,7 @@ public class SpecificationMapperImpl implements SpecificationMapper {
         putNullableText(facilityNode, "description", facility.getDescription());
         putNullableText(facilityNode, "category", facility.getCategory());
         putNullableText(facilityNode, "icon", facility.getIcon());
+        facilityNode.put("facilityType", facility.getFacilityType().name());
 
         facilityNode.put("published", Boolean.TRUE.equals(facility.getPublished()));
 

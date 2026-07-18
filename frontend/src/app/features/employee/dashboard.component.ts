@@ -742,10 +742,31 @@ import { ToastService } from '../../core/services/toast.service';
             </div>
           </div>
 
+          <div *ngIf="!loadingFacilities() && availableFacilities().length > 0" style="display:flex;justify-content:flex-start;">
+            <div style="display:inline-flex;gap:0.3rem;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:10px;padding:0.25rem;">
+              <button
+                type="button"
+                (click)="activeSection.set('FACILITY')"
+                [style.background]="activeSection() === 'FACILITY' ? '#0A1628' : 'transparent'"
+                [style.color]="activeSection() === 'FACILITY' ? '#fff' : '#334155'"
+                style="border:none;border-radius:8px;padding:0.45rem 0.8rem;font-size:0.78rem;font-weight:700;cursor:pointer;">
+                Facility ({{ servicesList().length }})
+              </button>
+              <button
+                type="button"
+                (click)="activeSection.set('EVENT')"
+                [style.background]="activeSection() === 'EVENT' ? '#0A1628' : 'transparent'"
+                [style.color]="activeSection() === 'EVENT' ? '#fff' : '#334155'"
+                style="border:none;border-radius:8px;padding:0.45rem 0.8rem;font-size:0.78rem;font-weight:700;cursor:pointer;">
+                Events ({{ eventsList().length }})
+              </button>
+            </div>
+          </div>
+
           <!-- ── Services ── -->
-          <div *ngIf="!loadingFacilities() && servicesList().length > 0" class="hy-animate" style="animation-delay:0.12s">
+          <div *ngIf="!loadingFacilities() && activeSection() === 'FACILITY' && servicesList().length > 0" class="hy-animate" style="animation-delay:0.12s">
             <div class="hy-section-heading" style="margin-bottom:1rem;">
-              <p class="hy-section-label">Services</p>
+              <p class="hy-section-label">Facilities</p>
               <span class="hy-section-count">{{ servicesList().length }}</span>
               <div class="hy-section-divider"></div>
             </div>
@@ -769,9 +790,19 @@ import { ToastService } from '../../core/services/toast.service';
                 <h4 class="hy-facility-name">{{ facility.facilityName }}</h4>
                 <p *ngIf="facility.description" class="hy-facility-desc">{{ facility.description }}</p>
 
+                <div class="hy-facility-window">
+                  <span class="material-icons-outlined" style="font-size:13px;">event</span>
+                  <span>Event Date: {{ formatDateText(facility.facilityAvailableFromDate) }}</span>
+                </div>
+
+                <div class="hy-facility-window" *ngIf="getEventRegistrationWindow(facility) as regWindow">
+                  <span class="material-icons-outlined" style="font-size:13px;">calendar_month</span>
+                  <span>Registration: {{ regWindow }}</span>
+                </div>
+
                 <div *ngIf="facility.bookingStartTime || facility.bookingDeadline" class="hy-facility-window">
                   <span class="material-icons-outlined" style="font-size:13px;">schedule</span>
-                  <span>{{ facility.bookingStartTime || '00:00' }} – {{ facility.bookingDeadline || '23:59' }}</span>
+                  <span>Time: {{ facility.bookingStartTime || '00:00' }} – {{ facility.bookingDeadline || '23:59' }}</span>
                 </div>
 
                 <p *ngIf="!facility.bookingAllowed && facility.unavailableReason" class="hy-facility-unavail-reason">
@@ -796,12 +827,8 @@ import { ToastService } from '../../core/services/toast.service';
             </div>
           </div>
 
-          <!-- ── Divider ── -->
-          <div *ngIf="!loadingFacilities() && servicesList().length > 0 && eventsList().length > 0"
-               style="height:1px;background:#E2E8F0;"></div>
-
           <!-- ── Events ── -->
-          <div *ngIf="!loadingFacilities() && eventsList().length > 0" class="hy-animate" style="animation-delay:0.15s">
+          <div *ngIf="!loadingFacilities() && activeSection() === 'EVENT' && eventsList().length > 0" class="hy-animate" style="animation-delay:0.15s">
             <div class="hy-section-heading" style="margin-bottom:1rem;">
               <p class="hy-section-label">Events</p>
               <span class="hy-section-count">{{ eventsList().length }}</span>
@@ -851,6 +878,22 @@ import { ToastService } from '../../core/services/toast.service';
             </div>
           </div>
 
+          <div *ngIf="!loadingFacilities() && activeSection() === 'FACILITY' && servicesList().length === 0 && availableFacilities().length > 0" class="hy-card hy-animate">
+            <div class="hy-empty-wrap">
+              <span class="material-icons-outlined hy-empty-icon-lg">domain_disabled</span>
+              <p class="hy-empty-title">No facilities in this date window</p>
+              <p class="hy-empty-sub">Switch to Events to view event registrations for the selected date.</p>
+            </div>
+          </div>
+
+          <div *ngIf="!loadingFacilities() && activeSection() === 'EVENT' && eventsList().length === 0 && availableFacilities().length > 0" class="hy-card hy-animate">
+            <div class="hy-empty-wrap">
+              <span class="material-icons-outlined hy-empty-icon-lg">event_busy</span>
+              <p class="hy-empty-title">No events in this date window</p>
+              <p class="hy-empty-sub">Switch to Facility to view regular facility bookings for the selected date.</p>
+            </div>
+          </div>
+
         </ng-container>
 
         <!-- ── No Date Selected ── -->
@@ -876,22 +919,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Available facilities for selected date
   readonly availableFacilities = signal<AvailableFacility[]>([]);
   readonly loadingFacilities = signal(false);
+  readonly activeSection = signal<'FACILITY' | 'EVENT'>('FACILITY');
+
+  private isEventFacility(item: AvailableFacility): boolean {
+    if (item.facilityType) {
+      return item.facilityType === 'EVENT';
+    }
+    const category = (item.category || '').trim();
+    if (!category) {
+      return false;
+    }
+
+    // Backward compatibility for older payloads that did not include facilityType.
+    // Legacy marker: [EVENT], plus plain category labels like "Event" / "Events".
+    if (category.includes('[EVENT]')) {
+      return true;
+    }
+
+    return /\bevents?\b/i.test(category);
+  }
 
   readonly servicesList = computed(() => {
     return this.availableFacilities()
-      .filter(f => !(f.category || '').includes('[EVENT]'))
+      .filter(f => !this.isEventFacility(f))
       .map(f => ({
         ...f,
-        displayCategory: f.category?.replace(' [EVENT]', '').replace('[EVENT]', '') || 'Service'
+        displayCategory: f.category || 'Facility'
       }));
   });
 
   readonly eventsList = computed(() => {
     return this.availableFacilities()
-      .filter(f => (f.category || '').includes('[EVENT]'))
+      .filter(f => this.isEventFacility(f))
       .map(f => ({
         ...f,
-        displayCategory: f.category?.replace(' [EVENT]', '').replace('[EVENT]', '') || 'Event'
+        displayCategory: f.category || 'Event'
       }));
   });
 
@@ -1088,6 +1150,44 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const parts = iso.split('-');
     if (parts.length !== 3) return null;
     return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  }
+
+  formatDateText(iso: string | null | undefined): string {
+    const date = this.formatLocalDate(iso);
+    if (!date) {
+      return 'Not specified';
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  getEventRegistrationWindow(facility: AvailableFacility): string | null {
+    const explicitOpenDate = this.formatDateText(facility.registrationOpenDate);
+    const explicitCloseDate = this.formatDateText(facility.registrationCloseDate);
+    const explicitOpenTime = facility.registrationOpenTime || null;
+    const explicitCloseTime = facility.registrationCloseTime || null;
+
+    if (facility.registrationOpenDate && facility.registrationCloseDate) {
+      const openText = explicitOpenTime ? `${explicitOpenDate} ${explicitOpenTime}` : explicitOpenDate;
+      const closeText = explicitCloseTime ? `${explicitCloseDate} ${explicitCloseTime}` : explicitCloseDate;
+      return `${openText} - ${closeText}`;
+    }
+
+    const eventDate = this.formatLocalDate(facility.facilityAvailableFromDate);
+    if (!eventDate) {
+      return null;
+    }
+
+    const windowDays = facility.bookingWindowDays ?? null;
+    if (windowDays === null || windowDays < 0) {
+      return this.formatDateText(facility.facilityAvailableFromDate);
+    }
+
+    const start = new Date(eventDate);
+    start.setDate(eventDate.getDate() - windowDays);
+
+    const startText = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const endText = this.formatDateText(facility.facilityAvailableFromDate);
+    return `${startText} - ${endText}`;
   }
 
   firstName(): string {

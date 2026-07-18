@@ -104,15 +104,15 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
         <div class="flex flex-col gap-4 flex-1 overflow-y-auto min-w-0">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-semibold uppercase tracking-widest text-slate-500">
-              All Facilities
+              Facilities
               <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
-                {{ regularFacilities().length }}
+                {{ facilityRecords().length }}
               </span>
             </h3>
           </div>
 
           <div class="grid gap-4 md:grid-cols-2 content-start">
-            <article *ngFor="let facility of regularFacilities()"
+            <article *ngFor="let facility of facilityRecords()"
                      class="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-brand-300 hover:shadow-lg cursor-pointer"
                      (click)="viewFacilityBookings(facility)">
               
@@ -184,7 +184,7 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
             </article>
 
             <!-- Empty state -->
-            <div *ngIf="regularFacilities().length === 0"
+              <div *ngIf="facilityRecords().length === 0"
                  class="col-span-full flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 py-16 text-center gap-3">
               <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -193,6 +193,85 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
               <p class="text-slate-400 text-sm">No facilities yet.</p>
               <p class="text-slate-400 text-xs">Create one above or click a template to get started.</p>
             </div>
+          </div>
+
+          <div class="flex items-center justify-between mt-2">
+            <h3 class="text-sm font-semibold uppercase tracking-widest text-slate-500">
+              Events
+              <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                {{ eventRecords().length }}
+              </span>
+            </h3>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2 content-start">
+            <article *ngFor="let event of eventRecords()"
+                     class="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-brand-300 hover:shadow-lg cursor-pointer"
+                     (click)="viewFacilityBookings(event)">
+              <div>
+                <div class="flex items-start justify-between">
+                  <span class="inline-block rounded bg-amber-50 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 border border-amber-100">
+                    {{ event.category || 'Event' }}
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <span *ngIf="event.published" class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                      <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Published
+                    </span>
+                    <span *ngIf="!event.published" class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      <span class="h-2 w-2 rounded-full bg-amber-500"></span> Draft
+                    </span>
+                    <button mat-icon-button [matMenuTriggerFor]="eventMenu" class="!text-slate-400 hover:!text-slate-700 !h-8 !w-8" (click)="$event.stopPropagation()">
+                      <mat-icon class="!text-[20px]">more_vert</mat-icon>
+                    </button>
+                    <mat-menu #eventMenu="matMenu" class="!rounded-xl !py-2">
+                      <button *ngIf="!event.published" mat-menu-item (click)="publishFacility(event.id)" class="!text-emerald-700">
+                        <mat-icon class="!text-emerald-700">rocket_launch</mat-icon>
+                        <span>Publish</span>
+                      </button>
+                      <button mat-menu-item (click)="duplicateFacility(event.id)">
+                        <mat-icon>content_copy</mat-icon>
+                        <span>Duplicate</span>
+                      </button>
+                      <mat-divider></mat-divider>
+                      <button mat-menu-item (click)="deleteFacility(event.id)" class="!text-rose-600">
+                        <mat-icon class="!text-rose-600">delete_outline</mat-icon>
+                        <span>Delete</span>
+                      </button>
+                    </mat-menu>
+                  </div>
+                </div>
+
+                <h3 class="mt-3 text-lg font-bold text-slate-900 group-hover:text-brand-700 transition-colors">{{ event.facilityName }}</h3>
+                <p class="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                  {{ event.description || 'No description added yet.' }}
+                </p>
+
+                <div *ngIf="event.published" class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                  <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 border border-emerald-200">
+                    Registered: {{ statsFor(event.id).registeredEmployees }}
+                  </span>
+                  <span class="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 border border-amber-200">
+                    Not Registered: {{ statsFor(event.id).notRegisteredEmployees }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                <span class="text-xs font-medium text-slate-400">Added {{ event.createdAt | date: 'mediumDate' }}</span>
+                <div class="flex items-center gap-2">
+                  <button
+                    *ngIf="event.published"
+                    class="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    [disabled]="isReminderBusy(event.id) || statsFor(event.id).notRegisteredEmployees === 0"
+                    (click)="sendReminder(event); $event.stopPropagation()">
+                    {{ isReminderBusy(event.id) ? 'Sending...' : ('Send Reminder (' + statsFor(event.id).notRegisteredEmployees + ')') }}
+                  </button>
+                  <button class="flex items-center gap-1.5 rounded-lg bg-slate-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 hover:text-brand-800" (click)="editFacility(event.id); $event.stopPropagation()">
+                    Edit <mat-icon class="!text-[16px]">arrow_forward</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </article>
           </div>
         </div>
 
@@ -297,7 +376,8 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
 export class AdminFacilitiesPageComponent {
   readonly facilities = computed(() => this.state.filteredFacilities());
   readonly templates = computed(() => this.facilities().filter((f) => f.isTemplate));
-  readonly regularFacilities = computed(() => this.facilities().filter((f) => !f.isTemplate));
+  readonly facilityRecords = computed(() => this.facilities().filter((f) => !f.isTemplate && !this.isEventRecord(f)));
+  readonly eventRecords = computed(() => this.facilities().filter((f) => !f.isTemplate && this.isEventRecord(f)));
   readonly selectedTemplate = signal<FacilityBuilderRecord | null>(null);
   readonly registrationStats = signal<Record<number, FacilityRegistrationStatsResponse>>({});
   readonly reminderBusyFacilityIds = signal<number[]>([]);
@@ -311,6 +391,10 @@ export class AdminFacilitiesPageComponent {
     private readonly specificationApi: SpecificationApiService
   ) {
     this.refreshFromBackend();
+  }
+
+  private isEventRecord(record: FacilityBuilderRecord): boolean {
+    return record.facilityType === 'EVENT';
   }
 
   selectTemplate(t: FacilityBuilderRecord): void {

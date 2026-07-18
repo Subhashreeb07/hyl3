@@ -52,7 +52,7 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
     <form [formGroup]="form" class="space-y-6 py-4">
 
       <!-- ── Booking Mode Toggle ── -->
-      <section class="rules-card">
+      <section *ngIf="!isEventType" class="rules-card">
         <h4>Booking Duration</h4>
         <p class="subtitle">Choose whether this facility supports single-day or multi-day bookings.</p>
         <div class="mode-toggle">
@@ -65,8 +65,44 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
         </div>
       </section>
 
+      <!-- ── Event: Single Date ── -->
+      <section *ngIf="isEventType" class="rules-card">
+        <h4>Event Schedule</h4>
+        <p class="subtitle">Pick the one date when this event happens.</p>
+        <label class="admin-field md:max-w-sm">
+          Event Date
+          <input type="date"
+                 formControlName="facilityAvailableFromDate"
+                 (change)="syncEventDate()"
+                 [class.border-red-500]="form.get('facilityAvailableFromDate')?.invalid && form.get('facilityAvailableFromDate')?.touched" />
+        </label>
+      </section>
+
+      <section *ngIf="isEventType" class="rules-card">
+        <h4>Registration Window</h4>
+        <p class="subtitle">Configure exact opening and closing date-time for registrations.</p>
+        <div class="grid gap-6 md:grid-cols-2">
+          <label class="admin-field">
+            Registration Opens On
+            <input type="date" formControlName="registrationOpenDate" />
+          </label>
+          <label class="admin-field">
+            Registration Opens At
+            <input type="time" formControlName="registrationOpenTime" />
+          </label>
+          <label class="admin-field">
+            Registration Closes On
+            <input type="date" formControlName="registrationCloseDate" />
+          </label>
+          <label class="admin-field">
+            Registration Closes At
+            <input type="time" formControlName="registrationCloseTime" />
+          </label>
+        </div>
+      </section>
+
       <!-- ── Multi-Day: Facility Availability ── -->
-      <section *ngIf="!isSingleDay" class="rules-card">
+      <section *ngIf="!isSingleDay && !isEventType" class="rules-card">
         <h4>Facility Availability</h4>
         <p class="subtitle">Define the date range when this facility is open for bookings.</p>
         <div class="grid gap-6 md:grid-cols-2">
@@ -214,21 +250,22 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
       </section>
 
       <!-- ── Timing Rules ── -->
-      <section class="rules-card">
-        <h4>Timing Rules</h4>
-        <p class="subtitle" *ngIf="isSingleDay">Set the booking start and end time for each day.</p>
-        <p class="subtitle" *ngIf="!isSingleDay">Set the booking start and end time for the multi-day period.</p>
+      <section *ngIf="!isEventType" class="rules-card">
+        <h4>{{ isEventType ? 'Registration Window' : 'Timing Rules' }}</h4>
+        <p class="subtitle" *ngIf="isEventType">Define when employees can register on the selected event date.</p>
+        <p class="subtitle" *ngIf="!isEventType && isSingleDay">Set the booking start and end time for each day.</p>
+        <p class="subtitle" *ngIf="!isEventType && !isSingleDay">Set the booking start and end time for the multi-day period.</p>
 
         <div class="grid gap-6 md:grid-cols-2">
           <label class="admin-field">
-            Booking Start Time *
+               {{ isEventType ? 'Registration Opens At *' : 'Booking Start Time *' }}
             <input type="time" formControlName="bookingStartTime" required
                    [class.border-red-500]="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched" />
             <span *ngIf="form.get('bookingStartTime')?.invalid && form.get('bookingStartTime')?.touched"
                   class="text-[11px] text-red-500 font-medium">Start time is required</span>
           </label>
           <label class="admin-field">
-            Booking End Time *
+               {{ isEventType ? 'Registration Closes At *' : 'Booking End Time *' }}
             <input type="time" formControlName="bookingDeadline" required
                    [class.border-red-500]="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched" />
             <span *ngIf="form.get('bookingDeadline')?.invalid && form.get('bookingDeadline')?.touched"
@@ -249,7 +286,7 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
       </section>
 
       <!-- ── Multi-Day: Available Days ── -->
-      <section *ngIf="!isSingleDay" class="rules-card">
+      <section *ngIf="!isSingleDay && !isEventType" class="rules-card">
         <h4>Available Days</h4>
         <p class="subtitle">Select which days of the week this facility is available. If none selected, defaults to every day.</p>
         <div class="flex flex-wrap gap-2">
@@ -267,6 +304,7 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 })
 export class BuilderRulesFormComponent {
   @Input({ required: true }) form!: FormGroup;
+  @Input() facilityType: 'FACILITY' | 'EVENT' = 'FACILITY';
 
   // ── Calendar Picker ──────────────────────────────────────────────────────
   readonly weekDayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -371,6 +409,22 @@ export class BuilderRulesFormComponent {
 
   get isSingleDay(): boolean {
     return this.form.value.bookingMode !== 'multi';
+  }
+
+  get isEventType(): boolean {
+    return this.facilityType === 'EVENT';
+  }
+
+  syncEventDate(): void {
+    const eventDate = this.form.get('facilityAvailableFromDate')?.value as string;
+    this.form.patchValue({
+      bookingMode: 'single',
+      facilityAvailableToDate: eventDate || '',
+      registrationOpenDate: this.form.get('registrationOpenDate')?.value || eventDate || '',
+      registrationCloseDate: this.form.get('registrationCloseDate')?.value || eventDate || '',
+      registrationOpenTime: this.form.get('registrationOpenTime')?.value || this.form.get('bookingStartTime')?.value || '',
+      registrationCloseTime: this.form.get('registrationCloseTime')?.value || this.form.get('bookingDeadline')?.value || ''
+    });
   }
 
   setMode(mode: 'single' | 'multi'): void {

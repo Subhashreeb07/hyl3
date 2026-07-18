@@ -6,6 +6,7 @@ import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.mapper.SpecificationMapper;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
+import com.example.hy_backend.model.FacilityType;
 import com.example.hy_backend.model.FieldDefinition;
 import com.example.hy_backend.model.FieldType;
 import com.example.hy_backend.repository.FacilityRepository;
@@ -78,6 +79,7 @@ public class SpecificationServiceImpl implements SpecificationService {
         facility.setDescription(getOptionalText(specificationJson, "description"));
         facility.setCategory(getOptionalText(specificationJson, "category"));
         facility.setIcon(getOptionalText(specificationJson, "icon"));
+        facility.setFacilityType(parseFacilityType(getOptionalText(specificationJson, "facilityType")));
 
         facility.setPublished(getOptionalBoolean(specificationJson, "published", false));
 
@@ -108,6 +110,7 @@ public class SpecificationServiceImpl implements SpecificationService {
         root.put("description", "");
         root.put("category", "");
         root.put("icon", "");
+        root.put("facilityType", "FACILITY");
         root.put("status", true);
         root.put("published", false);
         root.putArray("fields");
@@ -367,6 +370,17 @@ public class SpecificationServiceImpl implements SpecificationService {
             return defaultValue;
         }
         return node.path(key).asBoolean(defaultValue);
+    }
+
+    private FacilityType parseFacilityType(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return FacilityType.FACILITY;
+        }
+        try {
+            return FacilityType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid facilityType. Allowed values: FACILITY, EVENT");
+        }
     }
 
     private boolean requiresOptions(FieldType fieldType) {

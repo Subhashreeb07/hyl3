@@ -5,6 +5,7 @@ import com.example.hy_backend.model.Booking;
 import com.example.hy_backend.model.BookingStatus;
 import com.example.hy_backend.model.Facility;
 import com.example.hy_backend.model.FacilityRule;
+import com.example.hy_backend.model.FacilityType;
 import com.example.hy_backend.repository.BookingRepository;
 import com.example.hy_backend.service.RuleEngineService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Locale;
@@ -46,10 +48,12 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         }
 
         validateFacilityDateWindow(rule, bookingDate);
-        validateAvailableDays(rule, bookingDate);
+        if (facility.getFacilityType() != FacilityType.EVENT) {
+            validateAvailableDays(rule, bookingDate);
+        }
 
         LocalDate today = LocalDate.now(clock);
-        validateBookingWindowForDate(rule, bookingDate, today, LocalTime.now(clock));
+        validateBookingWindowForDate(rule, bookingDate, today, LocalTime.now(clock), facility.getFacilityType());
     }
 
     @Override
@@ -80,19 +84,45 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         }
     }
 
-    private void validateBookingWindowForDate(FacilityRule rule, LocalDate bookingDate, LocalDate today, LocalTime now) {
+    private void validateBookingWindowForDate(
+            FacilityRule rule,
+            LocalDate bookingDate,
+            LocalDate today,
+            LocalTime now,
+            FacilityType facilityType
+    ) {
         LocalTime start = rule.getBookingStartTime();
 
-        if (bookingDate.isAfter(today)) {
-            if (start != null) {
-                throw new BadRequestException(
-                        "Booking for " + bookingDate + " opens at " + start + " on that date"
-                );
-            }
+        boolean isEvent = facilityType == FacilityType.EVENT;
+
+        if (bookingDate.isBefore(today)) {
+            throw new BadRequestException("Past dates cannot be booked");
+        }
+
+        if (isEvent) {
+            validateEventRegistrationWindow(rule, bookingDate, today, now);
             return;
         }
 
+        if (bookingDate.isAfter(today)) {
+            LocalDate nextDay = today.plusDays(1);
+            // Daily facilities (for example lunch) must be confirmed by previous day cutoff.
+            if (bookingDate.equals(nextDay)) {
+                if (rule.getBookingDeadline() != null && now.isAfter(rule.getBookingDeadline())) {
+                    throw new BadRequestException(
+                            "Booking for " + bookingDate + " must be confirmed by today before " + rule.getBookingDeadline()
+                    );
+                }
+                return;
+            }
+
+            throw new BadRequestException("Daily facility booking is allowed only for today or tomorrow");
+        }
+
         if (bookingDate.equals(today)) {
+            if (start != null && now.isBefore(start)) {
+                throw new BadRequestException("Booking window has not started yet");
+            }
             validateBookingWindow(rule, now);
         }
     }
@@ -248,6 +278,63 @@ public class RuleEngineServiceImpl implements RuleEngineService {
             return "";
         }
         return "";
+    }
+
+    private void validateEventRegistrationWindow(FacilityRule rule, LocalDate bookingDate, LocalDate today, LocalTime now) {
+        LocalDateTime nowDateTime = LocalDateTime.of(today, now);
+
+        String openDateText = extractRuleText(rule, "registrationOpenDate");
+        String openTimeText = extractRuleText(rule, "registrationOpenTime");
+        String closeDateText = extractRuleText(rule, "registrationCloseDate");
+        String closeTimeText = extractRuleText(rule, "registrationCloseTime");
+
+        LocalDate openDate = parseFlexibleDate(openDateText);
+        LocalDate closeDate = parseFlexibleDate(closeDateText);
+        LocalTime openTime = parseFlexibleTime(openTimeText);
+        LocalTime closeTime = parseFlexibleTime(closeTimeText);
+
+        if (openDate == null || closeDate == null) {
+            LocalDate[] window = resolveFacilityDateWindow(rule);
+            openDate = openDate == null ? window[0] : openDate;
+            closeDate = closeDate == null ? window[1] : closeDate;
+        }
+
+        if (openDate == null || closeDate == null) {
+            return;
+        }
+
+        LocalDateTime openAt = LocalDateTime.of(openDate, openTime != null ? openTime : LocalTime.MIN);
+        LocalDateTime closeAt = LocalDateTime.of(closeDate, closeTime != null ? closeTime : LocalTime.MAX);
+
+        if (nowDateTime.isBefore(openAt)) {
+            throw new BadRequestException("Event registration opens at " + openAt);
+        }
+        if (nowDateTime.isAfter(closeAt)) {
+            throw new BadRequestException("Event registration closed at " + closeAt);
+        }
+
+        if (bookingDate.isBefore(openDate) || bookingDate.isAfter(closeDate)) {
+            throw new BadRequestException("Event can be registered only between " + openDate + " and " + closeDate);
+        }
+    }
+
+    private LocalTime parseFlexibleTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalTime.parse(trimmed);
+        } catch (Exception ignored) {
+            if (trimmed.length() >= 5) {
+                try {
+                    return LocalTime.parse(trimmed.substring(0, 5));
+                } catch (Exception ignoredAgain) {
+                    return null;
+                }
+            }
+            return null;
+        }
     }
 
 
