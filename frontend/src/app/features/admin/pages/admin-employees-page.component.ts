@@ -69,42 +69,48 @@ interface BulkPreviewRow {
             Employee ID *
             <input formControlName="employeeId" placeholder="EMP100"
               class="field-input" [class.border-red-400]="touched('employeeId') && addForm.get('employeeId')?.invalid" />
-            <span *ngIf="touched('employeeId') && addForm.get('employeeId')?.hasError('required')" class="text-red-500 text-xs">Required</span>
+            <span *ngIf="fieldError('employeeId')" class="text-red-500 text-xs">{{ fieldError('employeeId') }}</span>
           </label>
           <label class="field-label">
             Full Name *
             <input formControlName="fullName" placeholder="Jane Smith" class="field-input"
               [class.border-red-400]="touched('fullName') && addForm.get('fullName')?.invalid" />
-            <span *ngIf="touched('fullName') && addForm.get('fullName')?.hasError('required')" class="text-red-500 text-xs">Required</span>
+            <span *ngIf="fieldError('fullName')" class="text-red-500 text-xs">{{ fieldError('fullName') }}</span>
           </label>
           <label class="field-label sm:col-span-2">
             Email *
             <input formControlName="email" type="email" placeholder="jane.smith@company.com" class="field-input"
               [class.border-red-400]="touched('email') && addForm.get('email')?.invalid" />
-            <span *ngIf="touched('email') && addForm.get('email')?.hasError('required')" class="text-red-500 text-xs">Required</span>
-            <span *ngIf="touched('email') && addForm.get('email')?.hasError('email')" class="text-red-500 text-xs">Invalid email</span>
+            <span *ngIf="fieldError('email')" class="text-red-500 text-xs">{{ fieldError('email') }}</span>
           </label>
           <label class="field-label">
-            Department
-            <input formControlName="department" placeholder="Engineering" class="field-input" />
+            Department *
+            <input formControlName="department" placeholder="Engineering" class="field-input"
+              [class.border-red-400]="touched('department') && addForm.get('department')?.invalid" />
+            <span *ngIf="fieldError('department')" class="text-red-500 text-xs">{{ fieldError('department') }}</span>
           </label>
           <label class="field-label">
-            Office Location
-            <select formControlName="officeLocation" class="field-input">
+            Office Location *
+            <select formControlName="officeLocation" class="field-input"
+              [class.border-red-400]="touched('officeLocation') && addForm.get('officeLocation')?.invalid">
               <option *ngFor="let loc of locationOptions()" [value]="loc.locationName.toUpperCase()">{{ loc.locationName | titlecase }}</option>
             </select>
+            <span *ngIf="fieldError('officeLocation')" class="text-red-500 text-xs">{{ fieldError('officeLocation') }}</span>
           </label>
           <label class="field-label">
-            Work Mode
-            <select formControlName="workMode" class="field-input">
+            Work Mode *
+            <select formControlName="workMode" class="field-input"
+              [class.border-red-400]="touched('workMode') && addForm.get('workMode')?.invalid">
               <option value="HYBRID">Hybrid</option>
               <option value="ON_SITE">On-site</option>
               <option value="REMOTE">Remote</option>
             </select>
+            <span *ngIf="fieldError('workMode')" class="text-red-500 text-xs">{{ fieldError('workMode') }}</span>
           </label>
           <label class="field-label">
-            Role
-            <select formControlName="roleCode" class="field-input">
+            Role *
+            <select formControlName="roleCode" class="field-input"
+              [class.border-red-400]="touched('roleCode') && addForm.get('roleCode')?.invalid">
               <option value="EMPLOYEE">Employee (generic)</option>
               <option value="HR">HR</option>
               <option value="MANAGER">Manager</option>
@@ -117,10 +123,13 @@ interface BulkPreviewRow {
               <option value="OPS">Ops</option>
               <option value="DEVOPS">DevOps</option>
             </select>
+            <span *ngIf="fieldError('roleCode')" class="text-red-500 text-xs">{{ fieldError('roleCode') }}</span>
           </label>
           <label class="field-label sm:col-span-2">
             Password
-            <input formControlName="password" type="password" placeholder="Leave blank = password123" class="field-input" />
+            <input formControlName="password" type="password" placeholder="Leave blank = password123" class="field-input"
+              [class.border-red-400]="touched('password') && addForm.get('password')?.invalid" />
+            <span *ngIf="fieldError('password')" class="text-red-500 text-xs">{{ fieldError('password') }}</span>
           </label>
 
           <div class="sm:col-span-2 flex items-center gap-3 pt-2">
@@ -288,6 +297,7 @@ interface BulkPreviewRow {
 })
 export class AdminEmployeesPageComponent implements OnInit {
   private readonly baseUrl = environment.apiUrl;
+  private readonly employeeIdPattern = /^[A-Z0-9_-]+$/;
 
   readonly tabs = [
     { id: 'add',  label: 'Add Employee', icon: 'person_add' },
@@ -320,14 +330,14 @@ export class AdminEmployeesPageComponent implements OnInit {
     private readonly locationApi: LocationApiService
   ) {
     this.addForm = this.fb.group({
-      employeeId:     ['', Validators.required],
-      fullName:       ['', Validators.required],
-      email:          ['', [Validators.required, Validators.email]],
-      department:     [''],
-      roleCode:       ['EMPLOYEE'],
-      workMode:       ['HYBRID'],
-      officeLocation: ['HYDERABAD'],
-      password:       [''],
+      employeeId:     ['', [Validators.required, Validators.maxLength(64), Validators.pattern(this.employeeIdPattern)]],
+      fullName:       ['', [Validators.required, Validators.maxLength(200)]],
+      email:          ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+      department:     ['', [Validators.required, Validators.maxLength(120)]],
+      roleCode:       ['EMPLOYEE', Validators.required],
+      workMode:       ['HYBRID', Validators.required],
+      officeLocation: ['HYDERABAD', Validators.required],
+      password:       ['', [Validators.minLength(8), Validators.maxLength(100)]],
     });
   }
 
@@ -363,6 +373,31 @@ export class AdminEmployeesPageComponent implements OnInit {
     return !!this.addForm.get(field)?.touched;
   }
 
+  fieldError(field: string): string {
+    const control = this.addForm.get(field);
+    if (!control || !control.touched || !control.errors) {
+      return '';
+    }
+
+    if (control.hasError('required')) {
+      return 'Required';
+    }
+    if (control.hasError('email')) {
+      return 'Enter a valid email address';
+    }
+    if (control.hasError('pattern') && field === 'employeeId') {
+      return 'Use only letters, numbers, hyphen, or underscore';
+    }
+    if (control.hasError('maxlength')) {
+      return `Maximum ${control.getError('maxlength').requiredLength} characters`;
+    }
+    if (control.hasError('minlength') && field === 'password') {
+      return 'Password must be at least 8 characters';
+    }
+
+    return 'Invalid value';
+  }
+
   async submitAdd(): Promise<void> {
     this.addForm.markAllAsTouched();
     if (this.addForm.invalid) return;
@@ -377,6 +412,8 @@ export class AdminEmployeesPageComponent implements OnInit {
       this.employees.update(list => [created, ...list.filter(e => e.employeeId !== created.employeeId)]);
       this.activeTab.set('list');
       this.addForm.reset({ roleCode: 'EMPLOYEE', workMode: 'HYBRID', officeLocation: 'HYDERABAD' });
+      this.addForm.markAsPristine();
+      this.addForm.markAsUntouched();
       this.loadEmployees();
       setTimeout(() => this.addSuccess.set(false), 3000);
     } catch (err: any) {

@@ -52,6 +52,22 @@ export interface PublishResponse {
   message: string;
 }
 
+export interface FacilityRegistrationStatsResponse {
+  facilityId: number;
+  eligibleEmployees: number;
+  registeredEmployees: number;
+  notRegisteredEmployees: number;
+}
+
+export interface FacilityReminderResponse {
+  facilityId: number;
+  matchedEmployees: number;
+  notificationsCreated: number;
+  registeredEmployees: number;
+  notRegisteredEmployees: number;
+  message: string;
+}
+
 export interface PublishRequest {
   targetLocations: string[];
   targetEmployeeIds?: string[];
@@ -164,6 +180,18 @@ export class FacilityAdminApiService {
 
   publishFacility(facilityId: number, payload: PublishRequest): Observable<PublishResponse> {
     return this.http.post<PublishResponse>(`${this.baseUrl}/facilities/${facilityId}/publish`, payload, {
+      headers: this.authHeader()
+    });
+  }
+
+  getRegistrationStats(facilityId: number): Observable<FacilityRegistrationStatsResponse> {
+    return this.http.get<FacilityRegistrationStatsResponse>(`${this.baseUrl}/facilities/${facilityId}/registration-stats`, {
+      headers: this.authHeader()
+    });
+  }
+
+  sendReminderToUnregistered(facilityId: number): Observable<FacilityReminderResponse> {
+    return this.http.post<FacilityReminderResponse>(`${this.baseUrl}/facilities/${facilityId}/remind-unregistered`, {}, {
       headers: this.authHeader()
     });
   }

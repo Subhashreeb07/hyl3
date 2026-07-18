@@ -113,11 +113,13 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
                     <div *ngIf="cell.date === null" class="h-9 w-full"></div>
                     <button *ngIf="cell.date !== null" type="button"
                             (click)="selectCalDate(cell.date); $event.stopPropagation()"
+                            [disabled]="isPastDate(cell.date)"
                             class="relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium transition-all duration-150"
                             [ngClass]="{
                               'bg-slate-900 text-white shadow font-bold': isDateSelected('facilityAvailableFromDate', cell.date),
                               'bg-indigo-50 text-indigo-700 font-bold ring-1 ring-inset ring-indigo-200': isCalToday(cell.date) && !isDateSelected('facilityAvailableFromDate', cell.date),
-                              'text-slate-700 hover:bg-slate-100': !isCalToday(cell.date) && !isDateSelected('facilityAvailableFromDate', cell.date)
+                              'text-slate-700 hover:bg-slate-100': !isPastDate(cell.date) && !isCalToday(cell.date) && !isDateSelected('facilityAvailableFromDate', cell.date),
+                              'cursor-not-allowed text-slate-300 bg-slate-50': isPastDate(cell.date)
                             }">
                       {{ cell.num }}
                       <span *ngIf="isCalToday(cell.date) && !isDateSelected('facilityAvailableFromDate', cell.date)"
@@ -179,11 +181,13 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
                     <div *ngIf="cell.date === null" class="h-9 w-full"></div>
                     <button *ngIf="cell.date !== null" type="button"
                             (click)="selectCalDate(cell.date); $event.stopPropagation()"
+                            [disabled]="isPastDate(cell.date)"
                             class="relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium transition-all duration-150"
                             [ngClass]="{
                               'bg-slate-900 text-white shadow font-bold': isDateSelected('facilityAvailableToDate', cell.date),
                               'bg-indigo-50 text-indigo-700 font-bold ring-1 ring-inset ring-indigo-200': isCalToday(cell.date) && !isDateSelected('facilityAvailableToDate', cell.date),
-                              'text-slate-700 hover:bg-slate-100': !isCalToday(cell.date) && !isDateSelected('facilityAvailableToDate', cell.date)
+                              'text-slate-700 hover:bg-slate-100': !isPastDate(cell.date) && !isCalToday(cell.date) && !isDateSelected('facilityAvailableToDate', cell.date),
+                              'cursor-not-allowed text-slate-300 bg-slate-50': isPastDate(cell.date)
                             }">
                       {{ cell.num }}
                       <span *ngIf="isCalToday(cell.date) && !isDateSelected('facilityAvailableToDate', cell.date)"
@@ -320,6 +324,9 @@ export class BuilderRulesFormComponent {
   }
 
   selectCalDate(date: string): void {
+    if (this.isPastDate(date)) {
+      return;
+    }
     const field = this.activeCalField();
     if (!field) return;
     const ctrlName = field === 'from' ? 'facilityAvailableFromDate' : 'facilityAvailableToDate';
@@ -338,6 +345,12 @@ export class BuilderRulesFormComponent {
   isCalToday(date: string): boolean {
     const d = new Date();
     return date === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  isPastDate(date: string): boolean {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return date < today;
   }
 
   getDateLabel(ctrlName: string): string {

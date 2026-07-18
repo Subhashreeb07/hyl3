@@ -19,6 +19,10 @@ public interface FacilityService {
 
     FacilityDtos.PublishResponse publishFacility(Long facilityId, FacilityDtos.PublishRequest request);
 
+    FacilityDtos.FacilityRegistrationStatsResponse getRegistrationStats(Long facilityId);
+
+    FacilityDtos.FacilityReminderResponse sendReminderToUnregistered(Long facilityId);
+
     FacilityDtos.CreateFromTemplateResponse createFromTemplate(Long templateFacilityId, String newFacilityName);
 
     FacilityDtos.FacilityDetailResponse updateTemplateVisibility(Long facilityId, FacilityDtos.TemplateVisibilityRequest request);

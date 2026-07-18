@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -368,6 +369,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                     }
                 }
 
+                                if (bookingAllowed && !isFacilityAvailableOnDay(rule, date)) {
+                                        return null;
+                                }
+
                 if (bookingAllowed && date.equals(today)) {
                     LocalTime startTime = rule.getBookingStartTime();
                     LocalTime deadline = rule.getBookingDeadline();
@@ -508,6 +513,41 @@ public class EmployeeServiceImpl implements EmployeeService {
                         }
                 }
                 return null;
+        }
+
+        private boolean isFacilityAvailableOnDay(FacilityRule rule, LocalDate date) {
+                String availableDays = extractRuleText(rule, "availableDays");
+                if (availableDays == null || availableDays.isBlank()) {
+                        return true;
+                }
+
+                DayOfWeek dayOfWeek = date.getDayOfWeek();
+                return Arrays.stream(availableDays.split(","))
+                                .map(String::trim)
+                                .filter(value -> !value.isBlank())
+                                .map(value -> value.toUpperCase(Locale.ROOT))
+                                .anyMatch(dayOfWeek.name()::equals);
+        }
+
+        private String extractRuleText(FacilityRule rule, String key) {
+                if (rule == null || rule.getRulesJson() == null || rule.getRulesJson().isBlank()) {
+                        return "";
+                }
+                try {
+                        JsonNode rulesNode = objectMapper.readTree(rule.getRulesJson());
+                        if (rulesNode.hasNonNull(key)) {
+                                return rulesNode.get(key).asText("").trim();
+                        }
+                        JsonNode nestedRules = rulesNode.has("rules") && rulesNode.get("rules").isObject()
+                                        ? rulesNode.get("rules")
+                                        : null;
+                        if (nestedRules != null && nestedRules.hasNonNull(key)) {
+                                return nestedRules.get(key).asText("").trim();
+                        }
+                } catch (Exception ignored) {
+                        return "";
+                }
+                return "";
         }
 
         private LocalDate parseFlexibleDate(String value) {

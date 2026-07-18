@@ -227,6 +227,13 @@ public class SpecificationServiceImpl implements SpecificationService {
         putNullableText(result, "availableDays", optionalTrimmedText(rulesNode, "availableDays"));
         putNullableText(result, "facilityAvailableFromDate", rule.getFacilityAvailableFromDate() == null ? null : rule.getFacilityAvailableFromDate().toString());
         putNullableText(result, "facilityAvailableToDate", rule.getFacilityAvailableToDate() == null ? null : rule.getFacilityAvailableToDate().toString());
+        putNullableText(result, "reminderTime", optionalTrimmedText(rulesNode, "reminderTime"));
+        putNullableText(result, "cancellationDeadline", optionalTrimmedText(rulesNode, "cancellationDeadline"));
+        putNullableNumber(result, "bookingWindowDays", optionalInteger(rulesNode, "bookingWindowDays"));
+        putNullableNumber(result, "maximumCapacity", optionalInteger(rulesNode, "maximumCapacity"));
+        putNullableBoolean(result, "qrRequired", optionalBoolean(rulesNode, "qrRequired"));
+        putNullableBoolean(result, "allowCancellation", optionalBoolean(rulesNode, "allowCancellation"));
+        putNullableBoolean(result, "regularCommuteEnabled", optionalBoolean(rulesNode, "regularCommuteEnabled"));
         putNullableText(result, "employeeTypes", optionalTextOrEmpty(rulesNode, "employeeTypes"));
         putNullableText(result, "roles", optionalTextOrEmpty(rulesNode, "roles"));
         return result.toString();
@@ -278,6 +285,48 @@ public class SpecificationServiceImpl implements SpecificationService {
     }
 
     private void putNullableText(ObjectNode node, String key, String value) {
+        if (value == null) {
+            node.putNull(key);
+            return;
+        }
+        node.put(key, value);
+    }
+
+    private Integer optionalInteger(JsonNode node, String key) {
+        if (!node.has(key) || node.get(key).isNull()) {
+            return null;
+        }
+        JsonNode valueNode = node.get(key);
+        if (valueNode.isInt() || valueNode.isLong()) {
+            return valueNode.asInt();
+        }
+        String value = valueNode.asText("").trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            throw new BadRequestException("Invalid integer format for '" + key + "'");
+        }
+    }
+
+    private Boolean optionalBoolean(JsonNode node, String key) {
+        if (!node.has(key) || node.get(key).isNull()) {
+            return null;
+        }
+        return node.get(key).asBoolean();
+    }
+
+    private void putNullableNumber(ObjectNode node, String key, Integer value) {
+        if (value == null) {
+            node.putNull(key);
+            return;
+        }
+        node.put(key, value);
+    }
+
+    private void putNullableBoolean(ObjectNode node, String key, Boolean value) {
         if (value == null) {
             node.putNull(key);
             return;

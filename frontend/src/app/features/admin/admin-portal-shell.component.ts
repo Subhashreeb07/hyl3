@@ -125,7 +125,7 @@ import { FacilityBuilderStateService } from './state/facility-builder-state.serv
           </mat-menu>
         </mat-toolbar>
 
-        <main class="flex-1 overflow-auto p-4 md:p-6 lg:p-8 w-full">
+        <main class="flex-1 overflow-auto p-px md:p-6 lg:p-8 w-full">
           <router-outlet></router-outlet>
         </main>
       </mat-sidenav-content>
@@ -137,8 +137,6 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     { label: 'Dashboard', icon: 'dashboard', link: '/admin/dashboard' },
     { label: 'Facilities', icon: 'apartment', link: '/admin/facilities' },
     { label: 'Form Builder', icon: 'construction', link: '/admin/form-builder' },
-    { label: 'Rules', icon: 'rule', link: '/admin/rules' },
-    { label: 'Notifications', icon: 'notifications_active', link: '/admin/notifications' },
     { label: 'Reports', icon: 'bar_chart', link: '/admin/reports' },
     { label: 'Data Store', icon: 'storage', link: '/admin/data-store' },
     { label: 'Employees', icon: 'group', link: '/admin/employees' }

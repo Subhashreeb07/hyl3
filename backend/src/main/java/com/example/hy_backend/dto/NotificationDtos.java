@@ -52,4 +52,24 @@ public final class NotificationDtos {
             int pageSize
     ) {
     }
+
+    public record EmployeeNotificationItem(
+            long notificationId,
+            String employeeId,
+            Long bookingId,
+            String notificationType,
+            String channelCode,
+            String messageBody,
+            String scheduledAt,
+            String sentAt,
+            String processedAt,
+            String statusCode,
+            String createdAt
+    ) {
+    }
+
+    public record EmployeeNotificationListResponse(
+            List<EmployeeNotificationItem> items
+    ) {
+    }
 }

@@ -82,6 +82,22 @@ public class FacilityController {
         return ResponseEntity.ok(facilityService.publishFacility(facilityId, request));
     }
 
+    @GetMapping("/{facilityId}/registration-stats")
+    @Operation(summary = "Get registration stats for a published facility")
+    public ResponseEntity<FacilityDtos.FacilityRegistrationStatsResponse> getRegistrationStats(
+            @PathVariable Long facilityId
+    ) {
+        return ResponseEntity.ok(facilityService.getRegistrationStats(facilityId));
+    }
+
+    @PostMapping("/{facilityId}/remind-unregistered")
+    @Operation(summary = "Send reminder to employees who have not registered for a published facility")
+    public ResponseEntity<FacilityDtos.FacilityReminderResponse> remindUnregistered(
+            @PathVariable Long facilityId
+    ) {
+        return ResponseEntity.ok(facilityService.sendReminderToUnregistered(facilityId));
+    }
+
     @GetMapping("/{facilityId}/specification")
     @Operation(
             summary = "Get facility specification",

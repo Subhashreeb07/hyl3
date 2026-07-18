@@ -91,7 +91,7 @@ public class RuleServiceImpl implements RuleService {
 
         NotificationDtos.BroadcastNotificationRequest payload = new NotificationDtos.BroadcastNotificationRequest(
                 "FACILITY_CREATED",
-                List.of("EMAIL"),
+            List.of("IN_APP", "EMAIL"),
                 "New facility created: " + facility.getFacilityName(),
                 "A new facility has been created on HY Hub."
                         + " You will receive a follow-up once it is published for booking."
@@ -106,12 +106,12 @@ public class RuleServiceImpl implements RuleService {
 
         try {
             NotificationDtos.BroadcastNotificationResponse result = notificationAdminService.sendBroadcast(payload);
-            log.info("Facility creation email reminders sent for facility {}. matched={}, sent={}",
+            log.info("Facility creation notifications sent for facility {}. matched={}, sent={}",
                     facility.getFacilityId(),
                     result.matchedEmployees(),
                     result.notificationsCreated());
         } catch (Exception ex) {
-            log.warn("Facility {} created but reminder email dispatch failed: {}", facility.getFacilityId(), ex.getMessage());
+            log.warn("Facility {} created but notification dispatch failed: {}", facility.getFacilityId(), ex.getMessage());
         }
     }
 
@@ -279,6 +279,14 @@ public class RuleServiceImpl implements RuleService {
             throw new BadRequestException("facilityAvailableFromDate must be before or equal to facilityAvailableToDate");
         }
 
+        LocalDate today = LocalDate.now();
+        if (facilityAvailableFromDate != null && facilityAvailableFromDate.isBefore(today)) {
+            throw new BadRequestException("facilityAvailableFromDate cannot be in the past");
+        }
+        if (facilityAvailableToDate != null && facilityAvailableToDate.isBefore(today)) {
+            throw new BadRequestException("facilityAvailableToDate cannot be in the past");
+        }
+
         if (bookingStartTime != null && bookingDeadline != null && bookingStartTime.isAfter(bookingDeadline)) {
             throw new BadRequestException("booking Start Time must be before or equal to booking Deadline");
         }
@@ -303,6 +311,13 @@ public class RuleServiceImpl implements RuleService {
         putNullableText(result, "availableDays", optionalTrimmedText(request, "availableDays"));
         putNullableText(result, "facilityAvailableFromDate", facilityAvailableFromDate == null ? null : facilityAvailableFromDate.toString());
         putNullableText(result, "facilityAvailableToDate", facilityAvailableToDate == null ? null : facilityAvailableToDate.toString());
+        putNullableText(result, "reminderTime", optionalTrimmedText(request, "reminderTime"));
+        putNullableText(result, "cancellationDeadline", optionalTrimmedText(request, "cancellationDeadline"));
+        putNullableNumber(result, "bookingWindowDays", optionalInteger(request, "bookingWindowDays"));
+        putNullableNumber(result, "maximumCapacity", optionalInteger(request, "maximumCapacity"));
+        putNullableBoolean(result, "qrRequired", optionalBoolean(request, "qrRequired"));
+        putNullableBoolean(result, "allowCancellation", optionalBoolean(request, "allowCancellation"));
+        putNullableBoolean(result, "regularCommuteEnabled", optionalBoolean(request, "regularCommuteEnabled"));
         putNullableText(result, "employeeTypes", optionalTextOrEmpty(request, "employeeTypes"));
         putNullableText(result, "roles", optionalTextOrEmpty(request, "roles"));
         return result.toString();
@@ -324,6 +339,48 @@ public class RuleServiceImpl implements RuleService {
     }
 
     private void putNullableText(ObjectNode node, String key, String value) {
+        if (value == null) {
+            node.putNull(key);
+            return;
+        }
+        node.put(key, value);
+    }
+
+    private Integer optionalInteger(JsonNode node, String fieldName) {
+        if (node == null || !node.has(fieldName) || node.get(fieldName).isNull()) {
+            return null;
+        }
+        JsonNode valueNode = node.get(fieldName);
+        if (valueNode.isInt() || valueNode.isLong()) {
+            return valueNode.asInt();
+        }
+        String value = valueNode.asText("").trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            throw new BadRequestException("Invalid integer format for " + fieldName);
+        }
+    }
+
+    private Boolean optionalBoolean(JsonNode node, String fieldName) {
+        if (node == null || !node.has(fieldName) || node.get(fieldName).isNull()) {
+            return null;
+        }
+        return node.get(fieldName).asBoolean();
+    }
+
+    private void putNullableNumber(ObjectNode node, String key, Integer value) {
+        if (value == null) {
+            node.putNull(key);
+            return;
+        }
+        node.put(key, value);
+    }
+
+    private void putNullableBoolean(ObjectNode node, String key, Boolean value) {
         if (value == null) {
             node.putNull(key);
             return;

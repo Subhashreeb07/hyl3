@@ -9,7 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { FacilityBuilderStateService, FacilityBuilderRecord } from '../state/facility-builder-state.service';
 import { ConfirmDialogComponent } from '../components/confirm-dialog.component';
 import { FacilityMobilePreviewDialogComponent } from '../components/facility-mobile-preview-dialog.component';
-import { FacilityAdminApiService } from '../../../core/services/facility-admin-api.service';
+import { FacilityAdminApiService, FacilityRegistrationStatsResponse } from '../../../core/services/facility-admin-api.service';
 import { PublishLocationsDialogComponent } from '../components/publish-locations-dialog.component';
 import { firstValueFrom } from 'rxjs';
 import { SpecificationImportDialogComponent } from '../components/specification-import-dialog.component';
@@ -23,7 +23,7 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatSnackBarModule, MatMenuModule, MatIconModule, MatButtonModule],
   template: `
-    <div class="flex flex-col gap-6 h-full">
+    <div class="flex h-full flex-col gap-4 px-3 py-3 md:gap-6 md:px-0 md:py-0">
 
       <!-- ── Header ── -->
       <section class="flex flex-wrap items-center justify-between gap-3">
@@ -155,13 +155,31 @@ import { AdminBookingSearchItem } from '../../../core/models/admin.models';
                 <p class="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed">
                   {{ facility.description || 'No description added yet.' }}
                 </p>
+
+                <div *ngIf="facility.published" class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                  <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 border border-emerald-200">
+                    Registered: {{ statsFor(facility.id).registeredEmployees }}
+                  </span>
+                  <span class="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700 border border-amber-200">
+                    Not Registered: {{ statsFor(facility.id).notRegisteredEmployees }}
+                  </span>
+                </div>
               </div>
 
               <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                 <span class="text-xs font-medium text-slate-400">Added {{ facility.createdAt | date: 'mediumDate' }}</span>
-                <button class="flex items-center gap-1.5 rounded-lg bg-slate-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 hover:text-brand-800" (click)="editFacility(facility.id); $event.stopPropagation()">
-                  Edit <mat-icon class="!text-[16px]">arrow_forward</mat-icon>
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    *ngIf="facility.published"
+                    class="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    [disabled]="isReminderBusy(facility.id) || statsFor(facility.id).notRegisteredEmployees === 0"
+                    (click)="sendReminder(facility); $event.stopPropagation()">
+                    {{ isReminderBusy(facility.id) ? 'Sending...' : ('Send Reminder (' + statsFor(facility.id).notRegisteredEmployees + ')') }}
+                  </button>
+                  <button class="flex items-center gap-1.5 rounded-lg bg-slate-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 hover:text-brand-800" (click)="editFacility(facility.id); $event.stopPropagation()">
+                    Edit <mat-icon class="!text-[16px]">arrow_forward</mat-icon>
+                  </button>
+                </div>
               </div>
             </article>
 
@@ -281,6 +299,8 @@ export class AdminFacilitiesPageComponent {
   readonly templates = computed(() => this.facilities().filter((f) => f.isTemplate));
   readonly regularFacilities = computed(() => this.facilities().filter((f) => !f.isTemplate));
   readonly selectedTemplate = signal<FacilityBuilderRecord | null>(null);
+  readonly registrationStats = signal<Record<number, FacilityRegistrationStatsResponse>>({});
+  readonly reminderBusyFacilityIds = signal<number[]>([]);
 
   constructor(
     private readonly state: FacilityBuilderStateService,
@@ -432,6 +452,7 @@ export class AdminFacilitiesPageComponent {
     }).subscribe({
       next: () => {
         this.state.publishFacility(id);
+        void this.loadFacilityRegistrationStats(id);
         this.snackBar.open('Facility published', 'OK', { duration: 2000 });
       },
       error: (err) => {
@@ -495,11 +516,91 @@ export class AdminFacilitiesPageComponent {
       });
   }
 
+  statsFor(facilityId: number): FacilityRegistrationStatsResponse {
+    return this.registrationStats()[facilityId] ?? {
+      facilityId,
+      eligibleEmployees: 0,
+      registeredEmployees: 0,
+      notRegisteredEmployees: 0
+    };
+  }
+
+  isReminderBusy(facilityId: number): boolean {
+    return this.reminderBusyFacilityIds().includes(facilityId);
+  }
+
+  async sendReminder(facility: FacilityBuilderRecord): Promise<void> {
+    if (!facility.published) {
+      this.snackBar.open('Reminder can be sent only for published facilities.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.setReminderBusy(facility.id, true);
+    try {
+      const result = await firstValueFrom(this.facilityAdminApi.sendReminderToUnregistered(facility.id));
+      this.snackBar.open(
+        `${result.message} Sent: ${result.notificationsCreated}`,
+        'OK',
+        { duration: 3500 }
+      );
+      await this.loadFacilityRegistrationStats(facility.id);
+    } catch (err: any) {
+      this.snackBar.open(err?.error?.message ?? 'Failed to send reminder', 'Close', { duration: 3500 });
+    } finally {
+      this.setReminderBusy(facility.id, false);
+    }
+  }
+
   private async refreshFromBackend(): Promise<void> {
     try {
       await this.state.loadFromBackend();
+      await this.loadPublishedRegistrationStats();
     } catch (error: any) {
       this.snackBar.open(error?.error?.message ?? 'Failed to load facilities from backend', 'Close', { duration: 3500 });
+    }
+  }
+
+  private setReminderBusy(facilityId: number, busy: boolean): void {
+    this.reminderBusyFacilityIds.update((current) => {
+      if (busy) {
+        return current.includes(facilityId) ? current : [...current, facilityId];
+      }
+      return current.filter((id) => id !== facilityId);
+    });
+  }
+
+  private async loadPublishedRegistrationStats(): Promise<void> {
+    const publishedFacilities = this.state.facilities().filter((facility) => facility.published && !facility.isTemplate);
+    if (!publishedFacilities.length) {
+      this.registrationStats.set({});
+      return;
+    }
+
+    const entries = await Promise.all(
+      publishedFacilities.map(async (facility) => {
+        try {
+          const stats = await firstValueFrom(this.facilityAdminApi.getRegistrationStats(facility.id));
+          return [facility.id, stats] as const;
+        } catch {
+          return [facility.id, {
+            facilityId: facility.id,
+            eligibleEmployees: 0,
+            registeredEmployees: 0,
+            notRegisteredEmployees: 0
+          }] as const;
+        }
+      })
+    );
+
+    this.registrationStats.set(Object.fromEntries(entries));
+  }
+
+  private async loadFacilityRegistrationStats(facilityId: number): Promise<void> {
+    try {
+      const stats = await firstValueFrom(this.facilityAdminApi.getRegistrationStats(facilityId));
+      this.registrationStats.update((current) => ({ ...current, [facilityId]: stats }));
+    } catch {
+      // Keep the last known value if stats fetch fails.
     }
   }
 }

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,5 +43,21 @@ public class NotificationController {
             @RequestParam(defaultValue = "20") int pageSize
     ) {
         return ResponseEntity.ok(notificationAdminService.getHistory(query, status, channel, page, pageSize));
+    }
+
+    @GetMapping("/employee/{employeeId}")
+    @Operation(summary = "Get notifications for a specific employee")
+    public ResponseEntity<NotificationDtos.EmployeeNotificationListResponse> employeeNotifications(
+            @PathVariable String employeeId,
+            @RequestParam(required = false) String statusCode
+    ) {
+        return ResponseEntity.ok(notificationAdminService.getEmployeeNotifications(employeeId, statusCode));
+    }
+
+    @PostMapping("/{notificationId}/read")
+    @Operation(summary = "Mark an employee notification as read")
+    public ResponseEntity<Void> markRead(@PathVariable long notificationId) {
+        notificationAdminService.markNotificationRead(notificationId);
+        return ResponseEntity.ok().build();
     }
 }

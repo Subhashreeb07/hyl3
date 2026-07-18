@@ -60,6 +60,24 @@ public final class FacilityDtos {
     public record PublishResponse(Long facilityId, String message) {
     }
 
+    public record FacilityRegistrationStatsResponse(
+            Long facilityId,
+            int eligibleEmployees,
+            int registeredEmployees,
+            int notRegisteredEmployees
+    ) {
+    }
+
+    public record FacilityReminderResponse(
+            Long facilityId,
+            int matchedEmployees,
+            int notificationsCreated,
+            int registeredEmployees,
+            int notRegisteredEmployees,
+            String message
+    ) {
+    }
+
     public record CreateFromTemplateResponse(Long facilityId, String facilityName, String message) {
     }
 

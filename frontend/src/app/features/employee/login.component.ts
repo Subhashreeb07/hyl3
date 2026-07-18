@@ -201,11 +201,7 @@ import { ToastService } from '../../core/services/toast.service';
             </span>
           </button>
 
-          <div *ngIf="mode() === 'SIGN_IN'" class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-            <div class="font-semibold">Default admin login</div>
-            <div class="mt-1 text-xs">Employee ID: ADMIN001</div>
-            <div class="text-xs">Password: password123</div>
-          </div>
+         
         </form>
 
           <p class="mt-6 text-center text-xs text-slate-500">Hyland employee systems access.</p>

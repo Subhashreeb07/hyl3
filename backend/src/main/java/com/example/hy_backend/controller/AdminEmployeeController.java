@@ -4,6 +4,7 @@ import com.example.hy_backend.dto.AdminEmployeeDtos;
 import com.example.hy_backend.service.AdminEmployeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -40,7 +41,7 @@ public class AdminEmployeeController {
     @PostMapping
     @Operation(summary = "Create a single employee")
     public ResponseEntity<AdminEmployeeDtos.EmployeeResponse> create(
-            @RequestBody AdminEmployeeDtos.EmployeeCreateRequest req) {
+            @Valid @RequestBody AdminEmployeeDtos.EmployeeCreateRequest req) {
         return ResponseEntity.ok(service.createEmployee(req));
     }
 

@@ -105,4 +105,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("status") BookingStatus status,
             @Param("officeLocation") String officeLocation
     );
+
+        @Query("SELECT DISTINCT b.employeeId FROM Booking b WHERE b.facility.facilityId = :facilityId AND b.status = :status")
+        List<String> findDistinctEmployeeIdsByFacilityAndStatus(
+            @Param("facilityId") Long facilityId,
+            @Param("status") BookingStatus status
+        );
 }

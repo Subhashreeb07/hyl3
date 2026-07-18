@@ -7,9 +7,7 @@ import { AdminDashboardPageComponent } from './features/admin/pages/admin-dashbo
 import { AdminFacilitiesPageComponent } from './features/admin/pages/admin-facilities-page.component';
 import { AdminFacilityBookingsPageComponent } from './features/admin/pages/admin-facility-bookings-page.component';
 import { AdminFormBuilderPageComponent } from './features/admin/pages/admin-form-builder-page.component';
-import { AdminNotificationsPageComponent } from './features/admin/pages/admin-notifications-page.component';
 import { AdminReportsPageComponent } from './features/admin/pages/admin-reports-page.component';
-import { AdminRulesPageComponent } from './features/admin/pages/admin-rules-page.component';
 import { AdminEmployeesPageComponent } from './features/admin/pages/admin-employees-page.component';
 import { AdminDataStorePageComponent } from './features/admin/pages/admin-data-store-page.component';
 import { BookingDetailComponent } from './features/employee/booking-detail.component';
@@ -56,16 +54,8 @@ export const routes: Routes = [
         component: AdminFormBuilderPageComponent
       },
       {
-        path: 'rules',
-        component: AdminRulesPageComponent
-      },
-      {
         path: 'reports',
         component: AdminReportsPageComponent
-      },
-      {
-        path: 'notifications',
-        component: AdminNotificationsPageComponent
       },
       {
         path: 'employees',

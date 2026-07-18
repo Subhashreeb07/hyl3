@@ -12,4 +12,8 @@ public interface NotificationAdminService {
             int page,
             int pageSize
     );
+
+    NotificationDtos.EmployeeNotificationListResponse getEmployeeNotifications(String employeeId, String statusCode);
+
+    void markNotificationRead(long notificationId);
 }

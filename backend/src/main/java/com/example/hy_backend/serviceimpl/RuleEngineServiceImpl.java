@@ -12,8 +12,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Locale;
 
 @Service
 public class RuleEngineServiceImpl implements RuleEngineService {
@@ -43,6 +46,7 @@ public class RuleEngineServiceImpl implements RuleEngineService {
         }
 
         validateFacilityDateWindow(rule, bookingDate);
+        validateAvailableDays(rule, bookingDate);
 
         LocalDate today = LocalDate.now(clock);
         validateBookingWindowForDate(rule, bookingDate, today, LocalTime.now(clock));
@@ -113,6 +117,24 @@ public class RuleEngineServiceImpl implements RuleEngineService {
             throw new BadRequestException(
                     "Facility is accessible only from " + availableFrom + " to " + availableTo
             );
+        }
+    }
+
+    private void validateAvailableDays(FacilityRule rule, LocalDate bookingDate) {
+        String availableDays = extractRuleText(rule, "availableDays");
+        if (availableDays == null || availableDays.isBlank()) {
+            return;
+        }
+
+        DayOfWeek dayOfWeek = bookingDate.getDayOfWeek();
+        boolean allowed = Arrays.stream(availableDays.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(value -> value.toUpperCase(Locale.ROOT))
+                .anyMatch(dayOfWeek.name()::equals);
+
+        if (!allowed) {
+            throw new BadRequestException("Facility is available only on selected days: " + availableDays);
         }
     }
 
@@ -205,6 +227,27 @@ public class RuleEngineServiceImpl implements RuleEngineService {
             }
         }
         return null;
+    }
+
+    private String extractRuleText(FacilityRule rule, String key) {
+        if (rule.getRulesJson() == null || rule.getRulesJson().isBlank()) {
+            return "";
+        }
+        try {
+            JsonNode rulesNode = objectMapper.readTree(rule.getRulesJson());
+            if (rulesNode.hasNonNull(key)) {
+                return rulesNode.get(key).asText("").trim();
+            }
+            JsonNode nestedRules = rulesNode.has("rules") && rulesNode.get("rules").isObject()
+                    ? rulesNode.get("rules")
+                    : null;
+            if (nestedRules != null && nestedRules.hasNonNull(key)) {
+                return nestedRules.get(key).asText("").trim();
+            }
+        } catch (Exception ignored) {
+            return "";
+        }
+        return "";
     }
 
 

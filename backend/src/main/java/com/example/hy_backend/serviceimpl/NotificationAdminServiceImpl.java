@@ -2,6 +2,7 @@ package com.example.hy_backend.serviceimpl;
 
 import com.example.hy_backend.dto.NotificationDtos;
 import com.example.hy_backend.exception.BadRequestException;
+import com.example.hy_backend.exception.ResourceNotFoundException;
 import com.example.hy_backend.model.Employee;
 import com.example.hy_backend.repository.EmployeeRepository;
 import com.example.hy_backend.service.NotificationAdminService;
@@ -38,6 +39,7 @@ public class NotificationAdminServiceImpl implements NotificationAdminService {
 
     private final AtomicLong historySequence = new AtomicLong(1);
     private final List<HistoryEntry> historyEntries = new CopyOnWriteArrayList<>();
+    private final List<EmployeeNotificationEntry> employeeNotificationEntries = new CopyOnWriteArrayList<>();
 
     public NotificationAdminServiceImpl(
             EmployeeRepository employeeRepository,
@@ -73,6 +75,7 @@ public class NotificationAdminServiceImpl implements NotificationAdminService {
                 if ("IN_APP".equals(channel)) {
                     if (!dryRun) {
                         sseEmitterService.sendNotification(employee.getEmployeeId(), buildInAppPayload(request, employee));
+                        storeEmployeeNotification(employee, request, channel, "SENT");
                     }
                     addHistory(employee, request, channel, "SENT");
                     created++;
@@ -105,9 +108,20 @@ public class NotificationAdminServiceImpl implements NotificationAdminService {
         }
 
         List<String> sample = recipients.stream().map(Employee::getEmployeeId).limit(10).toList();
-        String message = dryRun
-                ? "Dry run completed. Notifications were not dispatched."
-                : "Notifications dispatched successfully.";
+        String message;
+        if (dryRun) {
+            message = "Dry run completed. Notifications were not dispatched.";
+        } else if (created == 0 && !recipients.isEmpty()) {
+            if (channels.contains("EMAIL") && !emailEnabled) {
+                message = "No notifications sent. Email notifications are disabled in this environment.";
+            } else if (channels.contains("EMAIL") && skippedUndeliverableEmail > 0) {
+                message = "No notifications sent. Matched users have undeliverable test emails.";
+            } else {
+                message = "No notifications were created for the selected channels.";
+            }
+        } else {
+            message = "Notifications dispatched successfully.";
+        }
 
         return new NotificationDtos.BroadcastNotificationResponse(
                 recipients.size(),
@@ -143,6 +157,35 @@ public class NotificationAdminServiceImpl implements NotificationAdminService {
                 .toList();
 
         return new NotificationDtos.NotificationHistoryResponse(items, total, safePage, safePageSize);
+    }
+
+    @Override
+    public NotificationDtos.EmployeeNotificationListResponse getEmployeeNotifications(String employeeId, String statusCode) {
+        String normalizedEmployeeId = normalizeNullable(employeeId) == null
+                ? ""
+                : employeeId.trim().toUpperCase(Locale.ROOT);
+        String normalizedStatus = normalizeNullable(statusCode);
+
+        List<NotificationDtos.EmployeeNotificationItem> items = employeeNotificationEntries.stream()
+                .filter(entry -> entry.employeeId().equalsIgnoreCase(normalizedEmployeeId))
+                .filter(entry -> normalizedStatus == null || normalizedStatus.equalsIgnoreCase(entry.statusCode()))
+                .sorted(Comparator.comparingLong(EmployeeNotificationEntry::notificationId).reversed())
+                .map(this::toEmployeeNotificationItem)
+                .toList();
+
+        return new NotificationDtos.EmployeeNotificationListResponse(items);
+    }
+
+    @Override
+    public void markNotificationRead(long notificationId) {
+        for (int i = 0; i < employeeNotificationEntries.size(); i++) {
+            EmployeeNotificationEntry entry = employeeNotificationEntries.get(i);
+            if (entry.notificationId() == notificationId) {
+                employeeNotificationEntries.set(i, entry.markRead());
+                return;
+            }
+        }
+        throw new ResourceNotFoundException("Notification not found: " + notificationId);
     }
 
     private List<String> normalizeChannels(List<String> channels) {
@@ -263,6 +306,52 @@ public class NotificationAdminServiceImpl implements NotificationAdminService {
         );
     }
 
+    private NotificationDtos.EmployeeNotificationItem toEmployeeNotificationItem(EmployeeNotificationEntry entry) {
+        return new NotificationDtos.EmployeeNotificationItem(
+                entry.notificationId(),
+                entry.employeeId(),
+                entry.bookingId(),
+                entry.notificationType(),
+                entry.channelCode(),
+                entry.messageBody(),
+                null,
+                entry.sentAt(),
+                entry.processedAt(),
+                entry.statusCode(),
+                entry.createdAt()
+        );
+    }
+
+    private void storeEmployeeNotification(
+            Employee employee,
+            NotificationDtos.BroadcastNotificationRequest request,
+            String channel,
+            String statusCode
+    ) {
+        long id = historySequence.getAndIncrement();
+        String now = Instant.now().toString();
+        employeeNotificationEntries.add(new EmployeeNotificationEntry(
+                id,
+                employee.getEmployeeId(),
+                null,
+                request.notificationType(),
+                channel,
+                request.messageBody(),
+                "SENT".equalsIgnoreCase(statusCode) ? now : null,
+                null,
+                statusCode,
+                now
+        ));
+
+        // Prevent unbounded memory growth for employee inbox in this in-memory implementation.
+        if (employeeNotificationEntries.size() > 5000) {
+            List<EmployeeNotificationEntry> copy = new ArrayList<>(employeeNotificationEntries);
+            copy.sort(Comparator.comparingLong(EmployeeNotificationEntry::notificationId).reversed());
+            List<Long> keepIds = copy.stream().limit(5000).map(EmployeeNotificationEntry::notificationId).toList();
+            employeeNotificationEntries.removeIf(entry -> !keepIds.contains(entry.notificationId()));
+        }
+    }
+
     private Object buildInAppPayload(NotificationDtos.BroadcastNotificationRequest request, Employee employee) {
         return new InAppPayload(
                 request.notificationType(),
@@ -312,5 +401,34 @@ public class NotificationAdminServiceImpl implements NotificationAdminService {
             boolean read,
             String status
     ) {
+    }
+
+    private record EmployeeNotificationEntry(
+            long notificationId,
+            String employeeId,
+            Long bookingId,
+            String notificationType,
+            String channelCode,
+            String messageBody,
+            String sentAt,
+            String processedAt,
+            String statusCode,
+            String createdAt
+    ) {
+        private EmployeeNotificationEntry markRead() {
+            String processed = Instant.now().toString();
+            return new EmployeeNotificationEntry(
+                    notificationId,
+                    employeeId,
+                    bookingId,
+                    notificationType,
+                    channelCode,
+                    messageBody,
+                    sentAt,
+                    processed,
+                    "READ",
+                    createdAt
+            );
+        }
     }
 }

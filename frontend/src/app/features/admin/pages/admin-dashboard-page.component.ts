@@ -34,7 +34,7 @@ import {
         </div>
       </header>
 
-      <div class="w-full px-[5vw] py-7 space-y-6">
+      <div class="w-full space-y-6 px-px py-px md:px-[5vw] md:py-7">
 
         <!-- ── Date strip ── -->
         <section class="rounded-2xl bg-white p-5 shadow-sm">

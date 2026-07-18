@@ -208,7 +208,7 @@ import { ToastService } from '../../../core/services/toast.service';
           <p class="mt-1 text-xs text-slate-400">Try changing date, status, facility, employee, department, or answer filters.</p>
         </div>
 
-        <div *ngIf="!loading() && filteredBookings().length > 0" class="overflow-x-auto">
+        <div *ngIf="!loading() && filteredBookings().length > 0" class="max-h-[60vh] overflow-auto">
           <table class="w-full min-w-[1250px] text-left text-sm">
             <thead class="bg-slate-50 border-b border-slate-100">
               <tr>

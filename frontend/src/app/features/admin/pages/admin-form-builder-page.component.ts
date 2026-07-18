@@ -445,6 +445,8 @@ export class AdminFormBuilderPageComponent {
     // Capture nav state BEFORE any async work — getCurrentNavigation() returns null after navigation settles.
     const navState = this.router.getCurrentNavigation()?.extras?.state;
     this.openMode = navState?.['editMode'] === true ? 'edit' : 'new';
+    this.basicForm.valueChanges.subscribe(() => this.refreshJson());
+    this.rulesForm.valueChanges.subscribe(() => this.refreshJson());
     this.bootstrap();
   }
 
@@ -1040,15 +1042,11 @@ export class AdminFormBuilderPageComponent {
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
         facilityAvailableToDate: this.rulesForm.value.facilityAvailableToDate || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
-        // bookingEndTime is the visible UI input; bookingDeadline is a hidden shadow — prefer visible field.
-        bookingDeadline: this.rulesForm.value.bookingEndTime || this.rulesForm.value.bookingDeadline || null,
+        bookingDeadline: this.rulesForm.value.bookingDeadline || this.rulesForm.value.bookingEndTime || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
         cancellationDeadline: this.rulesForm.value.cancellationDeadline || null,
         bookingWindowDays: this.rulesForm.value.bookingWindowDays || null,
         availableDays: this.rulesForm.value.availableDays || null,
-        allowCancellation: true,
-        qrRequired: false,
-        regularCommuteEnabled: false,
         employeeTypes: (() => {
           const t = [
             this.rulesForm.value.employeeTypeOnSite ? 'On-site' : null,
@@ -1168,15 +1166,9 @@ export class AdminFormBuilderPageComponent {
 
     await firstValueFrom(
       this.facilityAdminApi.saveRules(facilityId, {
-        // bookingEndTime is the visible UI input; bookingDeadline is a hidden shadow control.
-        // Always prefer the visible field so user edits are not overridden by the stale patched value.
-        bookingDeadline: this.rulesForm.value.bookingEndTime || this.rulesForm.value.bookingDeadline || null,
+        bookingDeadline: this.rulesForm.value.bookingDeadline || this.rulesForm.value.bookingEndTime || null,
         bookingStartTime: this.rulesForm.value.bookingStartTime || null,
         reminderTime: this.rulesForm.value.reminderTime || null,
-        qrRequired: false,
-        allowCancellation: true,
-        maximumCapacity: null,
-        regularCommuteEnabled: false,
         availableDays: this.rulesForm.value.availableDays || null,
         bookingWindowDays: this.rulesForm.value.bookingWindowDays ?? null,
         facilityAvailableFromDate: this.rulesForm.value.facilityAvailableFromDate || null,
