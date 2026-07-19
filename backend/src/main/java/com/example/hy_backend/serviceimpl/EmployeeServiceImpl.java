@@ -218,7 +218,35 @@ public class EmployeeServiceImpl implements EmployeeService {
                 Set<String> allowed = Arrays.stream(raw.split(","))
                         .map(String::trim).filter(s -> !s.isEmpty())
                         .collect(java.util.stream.Collectors.toSet());
-                return allowed.contains(employeeId);
+                if (allowed.contains(employeeId)) {
+                        return true;
+                }
+
+                if (employeeId == null || employeeId.isBlank()) {
+                        return false;
+                }
+
+                // Handle duplicate employee records that share the same corporate email.
+                String currentEmail = employeeRepository.findById(employeeId)
+                                .map(Employee::getEmail)
+                                .map(this::normalizeEmailForCompare)
+                                .orElse("");
+                if (currentEmail.isBlank()) {
+                        return false;
+                }
+
+                return allowed.stream().anyMatch(targetEmployeeId -> employeeRepository.findById(targetEmployeeId)
+                                .map(Employee::getEmail)
+                                .map(this::normalizeEmailForCompare)
+                                .map(currentEmail::equals)
+                                .orElse(false));
+        }
+
+        private String normalizeEmailForCompare(String email) {
+                if (email == null) {
+                        return "";
+                }
+                return email.trim().toLowerCase(Locale.ROOT);
         }
 
         private List<String> splitTargetLocations(String raw) {
@@ -368,13 +396,18 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                     if (availableFromDate != null && availableToDate != null
                             && (date.isBefore(availableFromDate) || date.isAfter(availableToDate))) {
-                        return null;
+                                                bookingAllowed = false;
+                                                unavailableReason = "Available only from " + availableFromDate + " to " + availableToDate;
                     }
                 }
 
-                                if (bookingAllowed && !isEvent && !isFacilityAvailableOnDay(rule, date)) {
-                                        return null;
-                                }
+                                                                if (bookingAllowed && !isEvent && !isFacilityAvailableOnDay(rule, date)) {
+                                                                                bookingAllowed = false;
+                                                                                String availableDays = extractRuleText(rule, "availableDays");
+                                                                                unavailableReason = (availableDays == null || availableDays.isBlank())
+                                                                                                                ? "Not available on this day"
+                                                                                                                : "Available only on: " + availableDays;
+                                                                }
 
                                 if (bookingAllowed && date.equals(today) && !isEvent) {
                     LocalTime startTime = rule.getBookingStartTime();
@@ -433,7 +466,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 registrationCloseTimeStr = extractRuleText(ruleOpt.get(), "registrationCloseTime");
                         }
 
-            boolean alreadyBooked = bookingAllowed && bookingRepository
+            boolean alreadyBooked = bookingRepository
                     .existsByEmployeeIdAndFacilityFacilityIdAndBookingDateAndStatus(
                             normalizedEmployeeId, facility.getFacilityId(), date, BookingStatus.CONFIRMED);
 
