@@ -19,6 +19,7 @@ import com.example.hy_backend.repository.FacilityRepository;
 import com.example.hy_backend.repository.FieldDefinitionRepository;
 import com.example.hy_backend.service.FacilityService;
 import com.example.hy_backend.service.NotificationAdminService;
+import com.example.hy_backend.service.NotificationTemplateService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -53,6 +54,7 @@ public class FacilityServiceImpl implements FacilityService {
     private final FieldDefinitionRepository fieldDefinitionRepository;
     private final FacilityRuleRepository facilityRuleRepository;
     private final NotificationAdminService notificationAdminService;
+    private final NotificationTemplateService notificationTemplateService;
     private final ObjectMapper objectMapper;
 
     public FacilityServiceImpl(
@@ -62,6 +64,7 @@ public class FacilityServiceImpl implements FacilityService {
             FieldDefinitionRepository fieldDefinitionRepository,
             FacilityRuleRepository facilityRuleRepository,
             NotificationAdminService notificationAdminService,
+            NotificationTemplateService notificationTemplateService,
             ObjectMapper objectMapper
     ) {
         this.facilityRepository = facilityRepository;
@@ -70,6 +73,7 @@ public class FacilityServiceImpl implements FacilityService {
         this.fieldDefinitionRepository = fieldDefinitionRepository;
         this.facilityRuleRepository = facilityRuleRepository;
         this.notificationAdminService = notificationAdminService;
+        this.notificationTemplateService = notificationTemplateService;
         this.objectMapper = objectMapper;
     }
 
@@ -159,7 +163,9 @@ public class FacilityServiceImpl implements FacilityService {
 
         facility.setPublished(true);
         facilityRepository.save(facility);
-        sendPublishReminderEmails(facility, normalizedLocations);
+        final Facility savedFacility = facility;
+        final List<String> finalLocations = normalizedLocations;
+        Thread.ofVirtual().start(() -> sendPublishReminderEmails(savedFacility, finalLocations));
         return new FacilityDtos.PublishResponse(facility.getFacilityId(), "Facility published successfully");
     }
 
@@ -216,9 +222,9 @@ public class FacilityServiceImpl implements FacilityService {
             );
         }
 
-        String subject = "Reminder: Register for " + facility.getFacilityName();
-        String message = "You have not yet registered for " + facility.getFacilityName()
-            + ". Please log in to HY Hub and complete your registration.";
+        String[] template = notificationTemplateService.resolveTemplate("REMINDER", facility.getFacilityName(), "{{employeeName}}");
+        String subject = template[0];
+        String message = template[1];
 
         NotificationDtos.BroadcastNotificationRequest payload = new NotificationDtos.BroadcastNotificationRequest(
             "FACILITY_PUBLISHED",
@@ -233,14 +239,24 @@ public class FacilityServiceImpl implements FacilityService {
             false
         );
 
-        NotificationDtos.BroadcastNotificationResponse result = notificationAdminService.sendBroadcast(payload);
+        final List<String> asyncNotRegisteredIds = notRegisteredIds;
+        Thread.ofVirtual().start(() -> {
+            try {
+                notificationAdminService.sendBroadcast(payload);
+                log.info("Reminder notifications dispatched for facility {}, recipients={}",
+                        facilityId, asyncNotRegisteredIds.size());
+            } catch (Exception ex) {
+                log.warn("Reminder dispatch failed for facility {}: {}", facilityId, ex.getMessage());
+            }
+        });
+
         return new FacilityDtos.FacilityReminderResponse(
             facilityId,
-            result.matchedEmployees(),
-            result.notificationsCreated(),
+            notRegisteredIds.size(),
+            notRegisteredIds.size(),
             registeredEmployeeIds.size(),
             notRegisteredIds.size(),
-            result.message()
+            "Reminder queued for " + notRegisteredIds.size() + " employee(s). Emails will be sent in the background."
         );
         }
 
@@ -250,11 +266,11 @@ public class FacilityServiceImpl implements FacilityService {
             log.info("Facility {} published, but no employees matched the selected publish audience.", facility.getFacilityId());
             return;
         }
-        String subject = "Facility published: " + facility.getFacilityName();
-        String message = "A new facility has been published and is ready for booking."
-                + " Please log in and complete your registration preferences for "
-                + facility.getFacilityName()
-                + ".";
+        // Resolve subject/body per-employee so {{employeeName}} is personalised per recipient
+        // For broadcast we use facility name only in subject; body personalisation happens inside sendBroadcast per employee
+        String[] template = notificationTemplateService.resolveTemplate("PUBLISH", facility.getFacilityName(), "{{employeeName}}");
+        String subject = template[0];
+        String message = template[1];
 
         NotificationDtos.BroadcastNotificationRequest payload = new NotificationDtos.BroadcastNotificationRequest(
                 "FACILITY_PUBLISHED",
@@ -276,7 +292,6 @@ public class FacilityServiceImpl implements FacilityService {
                     result.matchedEmployees(),
                     result.notificationsCreated());
         } catch (Exception ex) {
-            // Keep publish operation successful even if email transport has a transient failure.
             log.warn("Facility {} published but notification dispatch failed: {}", facility.getFacilityId(), ex.getMessage());
         }
     }

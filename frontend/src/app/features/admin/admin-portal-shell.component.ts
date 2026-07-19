@@ -139,7 +139,8 @@ export class AdminPortalShellComponent implements OnInit, OnDestroy {
     { label: 'Form Builder', icon: 'construction', link: '/admin/form-builder' },
     { label: 'Reports', icon: 'bar_chart', link: '/admin/reports' },
     { label: 'Data Store', icon: 'storage', link: '/admin/data-store' },
-    { label: 'Employees', icon: 'group', link: '/admin/employees' }
+    { label: 'Employees', icon: 'group', link: '/admin/employees' },
+    { label: 'Notifications', icon: 'notifications', link: '/admin/notifications' }
   ];
   @ViewChild('drawer') private drawerRef!: MatSidenav;
   readonly isMobile = signal(typeof window !== 'undefined' && window.innerWidth < 768);

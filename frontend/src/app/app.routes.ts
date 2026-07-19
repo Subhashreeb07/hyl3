@@ -10,6 +10,7 @@ import { AdminFormBuilderPageComponent } from './features/admin/pages/admin-form
 import { AdminReportsPageComponent } from './features/admin/pages/admin-reports-page.component';
 import { AdminEmployeesPageComponent } from './features/admin/pages/admin-employees-page.component';
 import { AdminDataStorePageComponent } from './features/admin/pages/admin-data-store-page.component';
+import { AdminNotificationsPageComponent } from './features/admin/pages/admin-notifications-page.component';
 import { BookingDetailComponent } from './features/employee/booking-detail.component';
 import { BookingHistoryComponent } from './features/employee/booking-history.component';
 import { DashboardComponent } from './features/employee/dashboard.component';
@@ -64,6 +65,10 @@ export const routes: Routes = [
       {
         path: 'data-store',
         component: AdminDataStorePageComponent
+      },
+      {
+        path: 'notifications',
+        component: AdminNotificationsPageComponent
       },
       {
         path: '',

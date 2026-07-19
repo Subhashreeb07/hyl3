@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
@@ -16,7 +16,7 @@ import { ToastService } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-admin-notifications-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatButtonModule, MatIconModule],
   template: `
     <div class="space-y-6 max-w-[1000px] mx-auto animate-fade-in px-4 pb-12">
       <!-- Title Bar -->
@@ -127,6 +127,81 @@ import { ToastService } from '../../../core/services/toast.service';
           </div>
         </section>
 
+        <!-- ── Notification Templates ─────────────────────────────── -->
+        <section class="border border-slate-200/80 bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-5">
+          <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <mat-icon class="text-slate-500 !text-[18px]">mail_outline</mat-icon>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Email Templates</h3>
+            <span class="ml-auto text-[10px] text-slate-400">Supports: {{ placeholderHint }}</span>
+          </div>
+
+          <div *ngIf="templatesLoading()" class="text-xs text-slate-400 py-4 text-center">Loading templates…</div>
+
+          <div *ngFor="let tpl of templates()" class="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">{{ tpl.templateKey }}</span>
+              <span class="text-[10px] text-slate-400">{{ tpl.displayName }}</span>
+            </div>
+            <div class="space-y-2">
+              <label class="admin-field-label">Subject</label>
+              <input type="text" class="admin-input"
+                     [value]="tpl.subject"
+                     #subjectInput
+                     placeholder="Email subject (use {{facilityName}})" />
+            </div>
+            <div class="space-y-2">
+              <label class="admin-field-label">Body</label>
+              <textarea class="admin-input" rows="6"
+                        [value]="tpl.body"
+                        #bodyInput
+                        placeholder="Email body (use {{facilityName}}, {{employeeName}})"></textarea>
+            </div>
+            <button class="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition"
+                    (click)="saveTemplate(tpl.templateKey, subjectInput.value, bodyInput.value)">
+              <mat-icon class="!text-[14px]">save</mat-icon> Save Template
+            </button>
+          </div>
+        </section>
+
+        <!-- ── Test Send ──────────────────────────────────────────── -->
+        <section class="border border-amber-200 bg-amber-50/30 p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-4">
+          <div class="flex items-center gap-2 border-b border-amber-100 pb-3">
+            <mat-icon class="text-amber-500 !text-[18px]">science</mat-icon>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-amber-600">Test Email Delivery</h3>
+            <span class="ml-auto text-[10px] text-slate-400">Send to any email to verify SMTP is working</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="space-y-1">
+              <label class="admin-field-label">Recipient Email</label>
+              <input type="email" class="admin-input" [(ngModel)]="testEmail" placeholder="you@gmail.com" />
+            </div>
+            <div class="space-y-1">
+              <label class="admin-field-label">Template</label>
+              <select class="admin-input" [(ngModel)]="testTemplateKey">
+                <option value="PUBLISH">PUBLISH</option>
+                <option value="REMINDER">REMINDER</option>
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="admin-field-label">Facility Name (for preview)</label>
+              <input type="text" class="admin-input" [(ngModel)]="testFacilityName" placeholder="e.g. Cab Booking" />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button class="flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition"
+                    (click)="sendTestEmail()">
+              <mat-icon class="!text-[14px]">send</mat-icon> Send Test Email
+            </button>
+            <span *ngIf="testResult()" class="text-xs font-semibold"
+                  [class.text-emerald-600]="testResultOk()"
+                  [class.text-rose-600]="!testResultOk()">
+              {{ testResult() }}
+            </span>
+          </div>
+        </section>
+
       </div>
     </div>
   `,
@@ -163,6 +238,18 @@ export class AdminNotificationsPageComponent implements OnInit {
   readonly facilities = signal<any[]>([]);
   readonly historyPageSize = 20;
 
+  // Templates
+  readonly templates = signal<any[]>([]);
+  readonly templatesLoading = signal(false);
+
+  // Test Send
+  testEmail = '';
+  testTemplateKey = 'PUBLISH';
+  testFacilityName = '';
+  readonly testResult = signal<string | null>(null);
+  readonly testResultOk = signal(false);
+  readonly placeholderHint = '{{facilityName}}, {{employeeName}}';
+
   readonly broadcastForm = this.fb.group({
     targetType: ['ALL', Validators.required],
     subject: ['', Validators.required],
@@ -178,6 +265,7 @@ export class AdminNotificationsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadHistory(1);
+    this.loadTemplates();
   }
 
   setTargetType(type: 'ALL' | 'DIRECT'): void {
@@ -254,6 +342,47 @@ export class AdminNotificationsPageComponent implements OnInit {
       return 'bg-blue-50 text-blue-700 border-blue-200';
     }
     return 'bg-rose-50 text-rose-700 border-rose-200';
+  }
+
+  async loadTemplates(): Promise<void> {
+    this.templatesLoading.set(true);
+    try {
+      const templates = await firstValueFrom(this.adminApi.getEmailTemplates());
+      this.templates.set(templates ?? []);
+    } catch {
+      // non-fatal — templates section will stay empty
+    } finally {
+      this.templatesLoading.set(false);
+    }
+  }
+
+  async saveTemplate(templateKey: string, subject: string, body: string): Promise<void> {
+    try {
+      await firstValueFrom(this.adminApi.updateNotificationTemplate(templateKey, { subject, body }));
+      this.toastService.show('Template saved.', 'success');
+    } catch (err: any) {
+      this.toastService.show(err?.error?.message ?? 'Failed to save template.', 'error');
+    }
+  }
+
+  async sendTestEmail(): Promise<void> {
+    if (!this.testEmail) {
+      this.toastService.show('Enter a recipient email.', 'error');
+      return;
+    }
+    this.testResult.set(null);
+    try {
+      const res = await firstValueFrom(this.adminApi.testSendNotification({
+        toEmail: this.testEmail,
+        templateKey: this.testTemplateKey,
+        facilityName: this.testFacilityName || 'Sample Facility'
+      }));
+      this.testResultOk.set(res.sent);
+      this.testResult.set(res.message);
+    } catch (err: any) {
+      this.testResultOk.set(false);
+      this.testResult.set(err?.error?.message ?? 'Failed to send test email.');
+    }
   }
 
   private buildPayload() {

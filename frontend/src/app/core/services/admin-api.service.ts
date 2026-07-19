@@ -215,6 +215,24 @@ export class AdminApiService {
     });
   }
 
+  getEmailTemplates(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/admin/notification-templates`, {
+      headers: this.authHeader()
+    });
+  }
+
+  updateNotificationTemplate(templateKey: string, payload: { subject: string; body: string; displayName?: string }): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/admin/notification-templates/${templateKey}`, payload, {
+      headers: this.authHeader()
+    });
+  }
+
+  testSendNotification(payload: { toEmail: string; templateKey: string; facilityName?: string }): Observable<{ sent: boolean; message: string }> {
+    return this.http.post<{ sent: boolean; message: string }>(`${this.baseUrl}/admin/notification-templates/test-send`, payload, {
+      headers: this.authHeader()
+    });
+  }
+
   getEmployeeRegistrations(filters?: {
     query?: string | null;
     location?: string | null;
