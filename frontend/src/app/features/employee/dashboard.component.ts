@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject, interval } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, map, takeUntil } from 'rxjs/operators';
 import { AvailableFacility, BookingHistoryItem, DashboardFacility } from '../../core/models/employee-flow.models';
 import { BookingApiService } from '../../core/services/booking-api.service';
 import { EmployeeApiService } from '../../core/services/employee-api.service';
@@ -505,19 +505,6 @@ import { ToastService } from '../../core/services/toast.service';
       font-family: inherit;
     }
     .hy-btn-view:hover { background: #F0FDF4; border-color: #6EE7B7; }
-    .hy-btn-again {
-      background: transparent;
-      color: #475569;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 8px;
-      padding: 0.65rem 0.75rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .hy-btn-again:hover { background: #F8FAFC; border-color: #CBD5E1; }
     .hy-unavail-btn {
       flex: 1;
       background: #F8FAFC;
@@ -790,9 +777,12 @@ import { ToastService } from '../../core/services/toast.service';
                 <h4 class="hy-facility-name">{{ facility.facilityName }}</h4>
                 <p *ngIf="facility.description" class="hy-facility-desc">{{ facility.description }}</p>
 
-                <div class="hy-facility-window">
+                <div class="hy-facility-window" *ngIf="facility.facilityAvailableFromDate">
                   <span class="material-icons-outlined" style="font-size:13px;">event</span>
-                  <span>Event Date: {{ formatDateText(facility.facilityAvailableFromDate) }}</span>
+                  <span>
+                    {{ facility.facilityType === 'EVENT' ? 'Event Date' : 'Available From' }}:
+                    {{ formatDateText(facility.facilityAvailableFromDate) }}
+                  </span>
                 </div>
 
                 <div class="hy-facility-window" *ngIf="getEventRegistrationWindow(facility) as regWindow">
@@ -816,9 +806,6 @@ import { ToastService } from '../../core/services/toast.service';
                   <button *ngIf="facility.alreadyBooked && facility.bookingId"
                           class="hy-btn-view"
                           (click)="viewBooking(facility.bookingId!)">View Booking</button>
-                  <button *ngIf="facility.alreadyBooked"
-                          class="hy-btn-again"
-                          (click)="bookFacility(facility)">Again</button>
                   <div *ngIf="!facility.bookingAllowed && !facility.alreadyBooked" class="hy-unavail-btn">
                     Unavailable
                   </div>
@@ -916,10 +903,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly selectedDate = signal<string | null>(null);
   readonly calendarStartDate = signal<Date>(new Date());
 
-  // Available facilities for selected date
   readonly availableFacilities = signal<AvailableFacility[]>([]);
   readonly loadingFacilities = signal(false);
   readonly activeSection = signal<'FACILITY' | 'EVENT'>('FACILITY');
+  readonly availableCountByDate = signal<Record<string, number>>({});
 
   private isEventFacility(item: AvailableFacility): boolean {
     if (item.facilityType) {
@@ -930,7 +917,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    // Backward compatibility for older payloads that did not include facilityType.
+    // Backward compatibili    
+    // ty for older payloads that did not include facilityType.
     // Legacy marker: [EVENT], plus plain category labels like "Event" / "Events".
     if (category.includes('[EVENT]')) {
       return true;
@@ -977,7 +965,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const bookings = this.bookingEvents() || [];
+    const availableCountByDate = this.availableCountByDate();
 
     const cells: {
       dayOfWeek: string;
@@ -1002,7 +990,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
 
-      const eventCount = bookings.filter(b => b.bookingDate === iso && (b.status === 'CONFIRMED' || b.status === 'ACTIVE' || b.status === 'PENDING' || b.status === 'COMPLETED')).length;
+      const eventCount = availableCountByDate[iso] ?? 0;
 
       cells.push({
         dayOfWeek: dayNames[cellDate.getDay()],
@@ -1042,6 +1030,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     this.selectedDate.set(iso);
     this.loadAvailableForDate(iso);
+    this.loadCalendarStripAvailability();
   }
 
   ngOnDestroy(): void {
@@ -1059,6 +1048,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const startDate = new Date(newDate);
         startDate.setDate(newDate.getDate() - 2);
         this.calendarStartDate.set(startDate);
+        this.loadCalendarStripAvailability();
       }
       this.selectDate(input.value);
     }
@@ -1081,13 +1071,60 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.employeeApi.getAvailableFacilitiesForDate(employeeId, date).subscribe({
       next: (facilities) => {
         this.availableFacilities.set(facilities);
+        this.availableCountByDate.update((current) => ({ ...current, [date]: facilities.length }));
+        this.updateActiveSectionForFacilities(facilities);
         this.loadingFacilities.set(false);
       },
       error: () => {
         this.availableFacilities.set([]);
+        this.availableCountByDate.update((current) => ({ ...current, [date]: 0 }));
         this.loadingFacilities.set(false);
         this.toastService.show('Could not load available services for this date.', 'error');
       }
+    });
+  }
+
+  private updateActiveSectionForFacilities(facilities: AvailableFacility[]): void {
+    const servicesCount = facilities.filter((facility) => !this.isEventFacility(facility)).length;
+    const eventsCount = facilities.length - servicesCount;
+
+    if (servicesCount === 0 && eventsCount > 0) {
+      this.activeSection.set('EVENT');
+      return;
+    }
+
+    if (eventsCount === 0 && servicesCount > 0) {
+      this.activeSection.set('FACILITY');
+    }
+  }
+
+  private loadCalendarStripAvailability(): void {
+    const employeeId = this.sessionService.getEmployeeId();
+    if (!employeeId) {
+      return;
+    }
+
+    const stripDates = this.calendarStrip()
+      .map((cell) => cell.isoDate)
+      .filter((value, index, array) => array.indexOf(value) === index);
+
+    if (stripDates.length === 0) {
+      return;
+    }
+
+    const requests = stripDates.map((isoDate) =>
+      this.employeeApi.getAvailableFacilitiesForDate(employeeId, isoDate).pipe(
+        map((facilities) => ({ isoDate, count: facilities.length })),
+        catchError(() => of({ isoDate, count: 0 }))
+      )
+    );
+
+    forkJoin(requests).subscribe((entries) => {
+      const merged = { ...this.availableCountByDate() };
+      entries.forEach((entry) => {
+        merged[entry.isoDate] = entry.count;
+      });
+      this.availableCountByDate.set(merged);
     });
   }
 
